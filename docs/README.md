@@ -5,4 +5,4 @@ This directory includes any notes, diagrams, logs, etc. that may be used to help
 ## Contents
 
 * [Software Development Plan](SDP/README.md)
-* [Work Logbook](log.md)
+* [Work Logbook](logbook.md)
