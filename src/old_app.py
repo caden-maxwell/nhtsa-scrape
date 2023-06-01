@@ -41,14 +41,16 @@ from io import BytesIO
 
 # Default Image Set: [FT]ront, [FL]ront Left, [LE]ft, [BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right
 
-istartyear = '2011'
-iendyear = '2016'
-imake = 'CHRYSLER'
-imodel = '300'
-idvfrom = "0"
-idvto = "159"
-ipdamage = 'L'
-isdamage = 'ALL'
+# With these presets, the program will need to go to all 1300 pages to scrape all ~52000 cases. This will take a very long time with the current setup (~21 mins).
+# We need to make it so that this program 1) does not need to open a browser to do the scraping, and 2) can scrape multiple pages in parallel.
+istartyear = '2004'
+iendyear = '2015'
+imake = 'All'
+imodel = 'All'
+idvfrom = '0'
+idvto = '5000'
+ipdamage = 'All'
+isdamage = 'All'
 default_imageset = 'All'
 multi_analysis = True
 
@@ -59,7 +61,7 @@ urlpage = 'https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search'
 
 # run firefox webdriver from executable path of your choice
 options = Options()
-options.add_argument("-headless")
+# options.add_argument("-headless")
 driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()),options=options)
 print("Firefox Headless Browser Invoked")
 

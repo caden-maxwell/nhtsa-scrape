@@ -1,3 +1,1 @@
-# [Software Development Plan](README.md)
-
-## Implementation Notes
+# Implementation Notes
