@@ -1,5 +1,7 @@
 [Back to Documentation Overview](README.md)
 
+---
+
 # User Documentation
 
 ## Project Overview
@@ -54,3 +56,7 @@
 
 - [Record the version history of the user documentation]
 - [Include dates and a summary of changes made]
+
+---
+
+[Back to Documentation Overview](README.md)

@@ -1,5 +1,7 @@
 [Back to SDP Overview](README.md)
 
+---
+
 # Project Proposal
 
 ## Project Overview

@@ -1,21 +1,31 @@
+
+# Import libaries and Get Webpage
 from urllib.request import urlopen as uReq
 from bs4 import BeautifulSoup as soup
+from bs4.builder import XMLParsedAsHTMLWarning
 from selenium import webdriver
+
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
+
 from selenium.webdriver.firefox.options import Options
+import time
 from selenium.webdriver.support.ui import Select
 import matplotlib.pyplot as plt
-import pandas
+import pandas as pd
 from sklearn.metrics import r2_score
 import csv 
+# import pdb
+import numpy as np
 import os
-import numpy
 import requests
 from PIL import Image
 from PIL import ImageFont
-from PIL import ImageDraw
+from PIL import ImageDraw 
 from io import BytesIO
+
+# -*- coding: utf-8 -*-
+#%% Case Input Arguments
 
 #Primary Damage Options
 #<="-1">All<>,
@@ -41,36 +51,46 @@ from io import BytesIO
 
 # Default Image Set: [FT]ront, [FL]ront Left, [LE]ft, [BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right
 
-# With these presets, the program will need to go to all 1300 pages to scrape all ~52000 cases. This will take a very long time with the current setup (~21 mins).
-# We need to make it so that this program 1) does not need to open a browser to do the scraping, and 2) can scrape multiple pages in parallel.
-istartyear = '2004'
-iendyear = '2015'
-imake = 'All'
-imodel = 'All'
-idvfrom = '0'
-idvto = '5000'
-ipdamage = 'All'
+istartyear = '2008'
+iendyear = '2016'
+imake = 'CHRYSLER'
+imodel = '300'
+idvfrom = "1"
+idvto = "300"
+ipdamage = 'L'
 isdamage = 'All'
 default_imageset = 'All'
-multi_analysis = True
 
 default_path = os.getcwd()
 
+import warnings
+warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
+
+os.chdir(default_path)
+
 # Specify the URL
 urlpage = 'https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search' 
+#print(urlpage)
 
 # run firefox webdriver from executable path of your choice
+#driver = webdriver.Firefox()
 options = Options()
-# options.add_argument("-headless")
+options.headless = True
+#driver = webdriver.Firefox(options=options)
 driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()),options=options)
 print("Firefox Headless Browser Invoked")
 
 # get web page
 driver.get(urlpage)
 
+# sleep for 30s
+time.sleep(0)
+
 init = soup(driver.page_source,'html.parser')
 
+#make_menu = driver.find_element_by_xpath("//*[@id='ddlMake']")
 make_menu =driver.find_element("xpath","//*[@id='ddlMake']")
+#model_menu = driver.find_element_by_xpath('//*[@id="ddlModel"]')
 model_menu = driver.find_element("xpath",'//*[@id="ddlModel"]')
 
 select_make = Select(make_menu)
@@ -84,11 +104,12 @@ select_model = Select(model_menu)
 model_options = select_model.options
 for row in model_options:
     if imodel in row.text:
-        print(row.text)
         model = row.text
         select_model.select_by_visible_text(model)
 
+#primary_menu = driver.find_element_by_xpath("//*[@id='ddlPrimaryDamage']")
 primary_menu = driver.find_element("xpath","//*[@id='ddlPrimaryDamage']")
+#subsection_menu = driver.find_element_by_xpath("//*[@id='lSecondaryDamage']")
 subsection_menu = driver.find_element("xpath","//*[@id='lSecondaryDamage']")
 
 select_primary = Select(primary_menu)
@@ -110,32 +131,38 @@ test_model = model
 test_dl = ipdamage
 
 # Get Search Results
+#select_start_year = Select(driver.find_element_by_name('ddlStartModelYear'))
 select_start_year = Select(driver.find_element("name",'ddlStartModelYear'))
                     
 select_start_year.select_by_visible_text(istartyear)
 
+#select_end_year = Select(driver.find_element_by_name('ddlEndModelYear'))
 select_end_year = Select(driver.find_element("name",'ddlEndModelYear'))
 select_end_year.select_by_visible_text(iendyear)
 
+#text_DVFrom = driver.find_element_by_name('tDeltaVFrom')
 text_DVFrom = driver.find_element("name",'tDeltaVFrom')
 text_DVFrom.send_keys(idvfrom)
 
+#text_DVTo = driver.find_element_by_name('tDeltaVTo')
 text_DVTo = driver.find_element("name",'tDeltaVTo')
 text_DVTo.send_keys(idvto)
 
 # Click the Search Button box
+#driver.find_element_by_name('btnSubmit').click()
 driver.find_element("name",'btnSubmit').click()
 
-
-
-links_page = soup(driver.page_source,features='xml')
+page_source = driver.page_source
+links_page = soup(driver.page_source,'html.parser')
 
 all_caseid = []
+#page_menu = driver.find_element_by_xpath("//*[@id='ddlPage']")
 page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
 select_page = Select(page_menu)
 page_options = select_page.options
 
 for i in range(len(page_options)):
+    #page_menu = driver.find_element_by_xpath("//*[@id='ddlPage']")
     page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
     select_page = Select(page_menu)
     page_options = select_page.options
@@ -149,18 +176,17 @@ for i in range(len(page_options)):
 print('Number of cases:')
 print(len(all_caseid))
 
+time.sleep(3)
+
 driver.quit()
 
-temp = {}
+#%%
 
-if multi_analysis:
-    if 'contents' not in locals():
-        contents = []
-    if 'file' not in locals():
-        file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl + '.csv'
-else:
-    contents = []
-    file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl + '.csv'
+#imodel = 'CMAX'
+
+temp = {}
+contents = []
+file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
 
 font = ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24)
 def add_event(tempevent, event, voi, chk):
@@ -192,12 +218,12 @@ for caseid2 in list(enumerate(all_caseid)):
     keyevents = []
     tempevent = {}
     img_num = ''
-    print(f"{caseid}: {ind+1}/{len(all_caseid)}")
-
+    print(caseid + ": " + str(ind+1) + "/" + str(len(all_caseid)))
+    #caseid = all_caseid[i]
     begin1 = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid='
     end1 = '&year=&transform=0&docInfo=0'
     case_url=begin1+caseid+end1
-    page = soup(uReq(case_url).read(),features="lxml")
+    page = soup(uReq(case_url).read(),"lxml")
     summary = page.summary.text
     numevents = page.events.text
     numvehicles = page.vehicles.numbervehicles.text
@@ -210,8 +236,6 @@ for caseid2 in list(enumerate(all_caseid)):
     if not vn: 
         print('VN not found')
         continue
-    print(vn)
-    print(eventforms)
     for voi in vn:
         for event in eventforms:
             if (voi in event['vehiclenumber'] and test_dl in event.areaofdamage.text):
@@ -237,7 +261,6 @@ for caseid2 in list(enumerate(all_caseid)):
         image_set = []
         fileName = ''
         for x in range(len(extform)):
-            print("event['voi']")
             if event['voi'] in extform[x]['vehiclenumber']:
                 n_voi = x
                 cdcevents = extform[x].findAll("cdcevent")
@@ -327,61 +350,52 @@ for caseid2 in list(enumerate(all_caseid)):
                         img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
                         draw.text((0, 0),img_text,(220,20,60),font=font)
                         img.show()
-                        user_in = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
+                        g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                                   "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
-                        if 'sa' in user_in.lower():
+                        if 'sa' in g.lower():
                             # write `content` to file
-                            if multi_analysis:
-                                if 'caseid_path' not in locals():
-                                    caseid_path = default_path + "/" + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
-                                    if not os.path.exists(caseid_path):
-                                        os.makedirs(caseid_path)
-                                    os.chdir(caseid_path)
-                                else:
-                                    print("Case ID Path already exists")
-  
-                            else:
-                                caseid_path = os.getcwd() + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
+
+                            if 'caseid_path' not in locals():
+                                caseid_path = os.getcwd() + "/" + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
                                 if not os.path.exists(caseid_path):
                                     os.makedirs(caseid_path)
-                                    print("Making direectoyrt")
                                 os.chdir(caseid_path)
-                                
+  
                             img_num = str(row[0])
                             fileName = caseid_path + '//' + img_num + '.jpg'
                             img.save(fileName)
-                            user_in = 'de'
+                            g = 'de'
                             break
-                        elif 'ne' in user_in.lower():
+                        elif 'ne' in g.lower():
                             continue
-                        elif 'de' in user_in.lower():
+                        elif 'de' in g.lower():
                             break
-                        elif 'ft' in user_in.lower():
+                        elif 'ft' in g.lower():
                             image_set = check_image_set(front_images)
                             break
-                        elif 'fr' in user_in.lower():
+                        elif 'fr' in g.lower():
                             image_set = check_image_set(frontright_images)
                             break
-                        elif 'ri' in user_in.lower():
+                        elif 'ri' in g.lower():
                             image_set = check_image_set(right_images)
                             break
-                        elif 'br' in user_in.lower():
+                        elif 'br' in g.lower():
                             image_set = check_image_set(backright_images) 
                             break
-                        elif 'ba' in user_in.lower():
+                        elif 'ba' in g.lower():
                             image_set = check_image_set(back_images)
                             break
-                        elif 'bl' in user_in.lower():
+                        elif 'bl' in g.lower():
                             image_set = check_image_set(backleft_images)
                             break
-                        elif 'le' in user_in.lower():
+                        elif 'le' in g.lower():
                             image_set = check_image_set(left_images)
                             break
-                        elif 'fl' in user_in.lower():
+                        elif 'fl' in g.lower():
                             image_set = check_image_set(frontleft_images)
                             break
                         img.close()
-                    if 'de' in user_in.lower():
+                    if 'de' in g.lower():
                         break
                     else:
                         continue
@@ -427,8 +441,8 @@ for caseid2 in list(enumerate(all_caseid)):
     
 #%%
 def get_r2(x, y):
-    slope, intercept = numpy.polyfit(x, y, 1)
-    r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * numpy.var(y, ddof=1)))
+    slope, intercept = np.polyfit(x, y, 1)
+    r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * np.var(y, ddof=1)))
     return r_squared
 x = []
 y_nass = []
@@ -446,7 +460,7 @@ for cse in contents:
     a_wt = cse['a_curbweight']*2.20462
     NASS_vc = NASS_dv/(a_wt/(voi_wt+a_wt))
     cse['NASS_vc'] = NASS_vc
-    e = 0.5992 * numpy.exp(-0.1125 * NASS_vc + 0.003889 * NASS_vc ** 2 - 0.0001153 * NASS_vc ** 3)
+    e = 0.5992*np.exp(-0.1125*NASS_vc+0.003889*NASS_vc**2-0.0001153*NASS_vc**3)
     cse['e'] = e
     TOT_dv = NASS_dv*(1.0+e)
     cse['TOT_dv'] = TOT_dv
@@ -454,11 +468,11 @@ for cse in contents:
     y_nass.append(NASS_dv)
     y_total.append(TOT_dv)
     #pdb.set_trace()
-slope, intercept = numpy.polyfit(x, y_nass, 1)
+slope, intercept = np.polyfit(x, y_nass, 1)
 
 ind = []
 [ind.append(cse['image']) for cse in contents]
-df_original = pandas.DataFrame(contents, index = ind)
+df_original = pd.DataFrame(contents,index = ind)
 
 #field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
 #               "lateral_dv","smashl","crush","a_vehnum","a_year","a_make","a_model","a_curbweight", "image","c_bar","NASS_dv",
@@ -475,13 +489,13 @@ df_original = df_original[['caseid', 'casenum', 'vehnum', 'year', 'make', 'model
        'image', 'c_bar', 'NASS_dv', 'NASS_vc', 'e', 'TOT_dv','summary', ]]
         
 # Scatter plots.
-dfn = df.apply(pandas.to_numeric, errors='coerce')
+dfn = df.apply(pd.to_numeric, errors='coerce')
 
 #dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
 dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c='r',figsize=(16,12))
 
-fit=numpy.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
-fit_e=numpy.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
+fit=np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
+fit_e=np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
 
 slope = fit[0]
 slope_e = fit_e[0]
@@ -496,8 +510,8 @@ s_eq_e = 'Y = ' + str(round(slope_e,1)) + 'X + ' + str(round(intercept_e,1))
 plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color='darkblue', linewidth=2)
 #plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
 
-predict = numpy.poly1d(fit)
-predict_e = numpy.poly1d(fit_e)
+predict = np.poly1d(fit)
+predict_e = np.poly1d(fit_e)
 r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))),2))
 r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))),2))
 
@@ -513,7 +527,7 @@ for i, label in enumerate(df['caseid']):
 
 plt.savefig(caseid_path + '//' + 'NASS_Analysis.png', dpi=150)
 
-crush_est = numpy.array([0, 1.0])
+crush_est = np.array([0, 1.0])
 print(predict(crush_est))
 print(predict_e(crush_est))
 print(df)
@@ -528,25 +542,25 @@ for i in df.index:
     #draw.text((0, 0),s,(220,20,60),font=font)
     img.show()
     #plt.text(25, 25, s, fontsize=18, bbox=dict(facecolor='white', edgecolor='red', linewidth=2))
-    user_in = input(s + ' ' "Select: [SA]ve case, [DE]lete Case, [ST]op: ")
+    g = input(s + ' ' "Select: [SA]ve case, [DE]lete Case, [ST]op: ")
     img.close()
-    if 'de' in user_in.lower():
+    if 'de' in g.lower():
         df = df.drop(index = i)
         df_original = df_original.drop(index = i)
         continue
-    elif 'st' in user_in.lower():
+    elif 'st' in g.lower():
         break
     else:
         continue
 # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     
-dfn = df.apply(pandas.to_numeric, errors='coerce')
+dfn = df.apply(pd.to_numeric, errors='coerce')
 
 #dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
 dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c='r',figsize=(16,12))
 
-fit=numpy.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
-fit_e=numpy.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
+fit=np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
+fit_e=np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
 
 slope = fit[0]
 slope_e = fit_e[0]
@@ -561,8 +575,8 @@ s_eq_e = 'Y = ' + str(round(slope_e,1)) + 'X + ' + str(round(intercept_e,1))
 plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color='darkblue', linewidth=2)
 #plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
 
-predict = numpy.poly1d(fit)
-predict_e = numpy.poly1d(fit_e)
+predict = np.poly1d(fit)
+predict_e = np.poly1d(fit_e)
 r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))),2))
 r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))),2))
 
@@ -578,11 +592,14 @@ for i, label in enumerate(df['caseid']):
 
 plt.savefig(caseid_path + '//' + 'NASS_Analysis.png', dpi=150)
 
-crush_est = numpy.array([0, 1.0])
+crush_est = np.array([0, 1.0])
 print(predict(crush_est))
 print(predict_e(crush_est))
 print(df)
 
+
+
+#%%
 df_original.to_csv(caseid_path + '//' + file)
 f = open(caseid_path + '//' + file,'a')
 writer = csv.writer(f)
