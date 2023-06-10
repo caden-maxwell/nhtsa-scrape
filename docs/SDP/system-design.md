@@ -37,7 +37,7 @@ The NHTSA CrashViewer scraper tool consists of several components. The user iter
 5. **Data Storage**
     - **Purpose:** Caches scraped data in a local database.
     - **Interfaces:** Scraper Engine, Configuration Options, Error Handling and Logging, User Interface
-    - **Dependencies:** TDB
+    - **Dependencies:** SQLite3
     - **Interaction Flow:** The data storage component receives data from the Scraper Engine, which is then processed and cached in a local database. The data storage component will also be checking the Configuration Options component to further customize the caching process.* If the logger is enabled, any events deemed worthy of logging during this process will be sent to the Error Handling and Logging component. The user interface can also request profile information or other stored data from this component, which is processed and returned to the user interface for display.
 
 6. **Error Handling and Logging**
