@@ -1,11 +1,8 @@
 [Back to SDP Overview](README.md)
 
+---
+
 # Data Model and Database Design Document
-
-## Project Overview
-
-- **Project Title:** [Your project title]
-- **Project Description:** [Provide a brief overview of the project and its purpose]
 
 ## Entity Relationship Diagram (ERD)
 
@@ -64,11 +61,6 @@
 - [Define the data archiving and purging strategies]
 - [Specify the criteria and frequency for archiving or purging data]
 
-## Glossary
+---
 
-- [Define any key terms or acronyms used in the document]
-
-## Revision History
-
-- [Record any changes made to the document and the corresponding dates]
-
+[Back to SDP Overview](README.md)

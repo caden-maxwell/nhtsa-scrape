@@ -16,7 +16,8 @@ def fetch_url(url):
         print(f"Fetched {url} with status code {response.status_code} in {end-start:.2f} seconds")
     return response.text
 
-urls = ['https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=151007322','https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=151007322','https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=151007322',]
+crash_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=151007322'
+urls = [crash_url] * 20
 # urls = ['https://www.example.com', 'https://www.google.com', 'https://www.github.com', 'https://www.stackoverflow.com', 'https://www.python.org', 'https://www.youtube.com', 'https://www.reddit.com', 'https://www.netflix.com', 'https://www.amazon.com', 'https://www.wikipedia.org', 'https://www.facebook.com', 'https://www.twitter.com', 'https://www.instagram.com', 'https://www.linkedin.com', 'https://www.pinterest.com', 'https://www.tumblr.com', 'https://www.microsoft.com', 'https://www.apple.com', 'https://www.yahoo.com', 'https://www.bing.com', 'https://www.paypal.com', 'https://www.ebay.com', 'https://www.aliexpress.com', 'https://www.wordpress.com', 'https://www.imgur.com', 'https://www.imdb.com', 'https://www.espn.com', 'https://www.cnn.com', 'https://www.nytimes.com', 'https://www.bbc.com', 'https://www.craigslist.org', 'https://www.walmart.com', 'https://www.target.com', 'https://www.bestbuy.com', 'https://www.lowes.com', 'https://www.etsy.com', 'https://www.newegg.com', 'https://www.alibaba.com']
 
 
