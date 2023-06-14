@@ -6,6 +6,7 @@
 
 ## Entity Relationship Diagram (ERD)
 
+- 
 - [Include an entity relationship diagram illustrating the data entities and their relationships]
 - [Specify the tables, primary keys, foreign keys, and cardinality]
 

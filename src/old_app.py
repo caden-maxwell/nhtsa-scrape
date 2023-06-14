@@ -1,4 +1,3 @@
-
 # Import libaries and Get Webpage
 from urllib.request import urlopen as uReq
 from bs4 import BeautifulSoup as soup
@@ -15,7 +14,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import r2_score
 import csv 
-# import pdb
 import numpy as np
 import os
 import requests
@@ -24,8 +22,8 @@ from PIL import ImageFont
 from PIL import ImageDraw 
 from io import BytesIO
 
-# -*- coding: utf-8 -*-
-#%% Case Input Arguments
+import warnings
+warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
 
 #Primary Damage Options
 #<="-1">All<>,
@@ -55,36 +53,26 @@ istartyear = '2008'
 iendyear = '2016'
 imake = 'CHRYSLER'
 imodel = '300'
-idvfrom = "1"
-idvto = "300"
+idvfrom = "0"
+idvto = "159"
 ipdamage = 'L'
-isdamage = 'All'
+isdamage = 'ALL'
 default_imageset = 'All'
+multi_analysis = True
 
 default_path = os.getcwd()
 
-import warnings
-warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
-
-os.chdir(default_path)
-
 # Specify the URL
 urlpage = 'https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search' 
-#print(urlpage)
 
 # run firefox webdriver from executable path of your choice
-#driver = webdriver.Firefox()
 options = Options()
-options.headless = True
-#driver = webdriver.Firefox(options=options)
+options.add_argument("-headless")
 driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()),options=options)
 print("Firefox Headless Browser Invoked")
 
 # get web page
 driver.get(urlpage)
-
-# sleep for 30s
-time.sleep(0)
 
 init = soup(driver.page_source,'html.parser')
 
@@ -107,9 +95,7 @@ for row in model_options:
         model = row.text
         select_model.select_by_visible_text(model)
 
-#primary_menu = driver.find_element_by_xpath("//*[@id='ddlPrimaryDamage']")
 primary_menu = driver.find_element("xpath","//*[@id='ddlPrimaryDamage']")
-#subsection_menu = driver.find_element_by_xpath("//*[@id='lSecondaryDamage']")
 subsection_menu = driver.find_element("xpath","//*[@id='lSecondaryDamage']")
 
 select_primary = Select(primary_menu)
@@ -152,17 +138,16 @@ text_DVTo.send_keys(idvto)
 #driver.find_element_by_name('btnSubmit').click()
 driver.find_element("name",'btnSubmit').click()
 
-page_source = driver.page_source
+
+
 links_page = soup(driver.page_source,'html.parser')
 
 all_caseid = []
-#page_menu = driver.find_element_by_xpath("//*[@id='ddlPage']")
 page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
 select_page = Select(page_menu)
 page_options = select_page.options
 
 for i in range(len(page_options)):
-    #page_menu = driver.find_element_by_xpath("//*[@id='ddlPage']")
     page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
     select_page = Select(page_menu)
     page_options = select_page.options
@@ -180,15 +165,23 @@ time.sleep(3)
 
 driver.quit()
 
-#%%
 
-#imodel = 'CMAX'
+
+
+
 
 temp = {}
-contents = []
-file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
 
-font = ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24)
+if multi_analysis:
+    if 'contents' not in locals():
+        contents = []
+    if 'file' not in locals():
+        file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
+else:
+    contents = []
+    file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
+
+
 def add_event(tempevent, event, voi, chk):
     """Chk variable checks to see if voi is in vehiclenumber (1) or contacted (0)"""
     tempevent['en'] = event['eventnumber']
@@ -201,6 +194,8 @@ def add_event(tempevent, event, voi, chk):
     else:
         tempevent['an'] = event['vehiclenumber']
     return tempevent
+
+
 for caseid2 in list(enumerate(all_caseid)):
     ind,caseid = caseid2
     vn = []
@@ -348,19 +343,25 @@ for caseid2 in list(enumerate(all_caseid)):
                         draw.rectangle(((0, 0), (300, 30)), fill="white")
                         tot_mph = str(float(tot)*0.6214)
                         img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
-                        draw.text((0, 0),img_text,(220,20,60),font=font)
+                        draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
                         img.show()
                         g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                                   "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
                         if 'sa' in g.lower():
                             # write `content` to file
-
-                            if 'caseid_path' not in locals():
-                                caseid_path = os.getcwd() + "/" + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
+                            if multi_analysis:
+                                if 'caseid_path' not in locals():
+                                    caseid_path = os.getcwd() + '/' +  istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
+                                    if not os.path.exists(caseid_path):
+                                        os.makedirs(caseid_path)
+                                    os.chdir(caseid_path)
+  
+                            else:
+                                caseid_path = os.getcwd() + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
                                 if not os.path.exists(caseid_path):
                                     os.makedirs(caseid_path)
                                 os.chdir(caseid_path)
-  
+                                
                             img_num = str(row[0])
                             fileName = caseid_path + '//' + img_num + '.jpg'
                             img.save(fileName)
@@ -437,6 +438,7 @@ for caseid2 in list(enumerate(all_caseid)):
                 temp['image'] = img_num
                 #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
                 contents.append(temp)
+                print(temp)
                 temp = {}
     
 #%%
@@ -447,6 +449,33 @@ def get_r2(x, y):
 x = []
 y_nass = []
 y_total = []
+
+print(contents)
+# "contents" at this point:
+# [{
+    # 'summary': 'V1 was westbound, approaching an intersection. V2 was southbound, approaching the same intersection. As V2 attempted to turn left in the intersection, the front of V1 struck the left side of V2.',
+    # 'caseid': '727018444',
+    # 'casenum': '2014-79-092',
+    # 'vehnum': '2',
+    # 'year': '2013',
+    # 'make': 'CHRYSLER',
+    # 'model': '300/300M/300C/300S',
+    # 'curbweight': 1873.0,
+    # 'damloc': 'Left Side',
+    # 'underride': 'None',
+    # 'edr': 'Yes - Data entered13.0.1OffEvent# 1 10LYEW03Deployment29242925Buckled-7777NoUnbuckledNot Reported-7777Not ReportedSeat Back (Outboard)DriverStage Not ReportedStage Not ReportedRoof Side RailDriverStage Not ReportedStage Not Reported-5.00006773On-4.50006763On-4.00006633Off-3.50009515Off-3.000211077Off-2.5004168818Off-2.0008182217Off-1.50011189714Off-1.00012180610Off-0.500913066On10-.620-1.230-1.940-2.550-3.160-3.770-4.380-590-5100-5110-5120-5130-51400150016001700180019002000210022002300240025002600270028002900103.7206.8309.94012.45014.96015.57016.88017.490181001811017.412017.413017.41400150016001700180019002000210022002300240025002600270028002900',
+    # 'total_dv': 25.0,
+    # 'long_dv': -12.0,
+    # 'lateral_dv': 22.0,
+    # 'smashl': 315.0,
+    # 'crush': [0.0, 5.0, 20.0, 26.0, 24.0, 6.0],
+    # 'a_vehnum': '1',
+    # 'a_year': '2007',
+    # 'a_make': 'FORD',
+    # 'a_model': 'E-SERIES VANS',
+    # 'a_curbweight': 2208.0,
+    # 'image': '995559201'
+# }]
 
 for cse in contents:
     #average crush in inches
