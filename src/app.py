@@ -5,7 +5,7 @@ import sys
 class UI(QWidget):
     def __init__(self):
         super().__init__()
-        uic.loadUi("src/ui/main.ui", self)
+        uic.loadUi("src/ui/MainWindow.ui", self)
 
 app = QApplication(sys.argv)
 window = UI()
