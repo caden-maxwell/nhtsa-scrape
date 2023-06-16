@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QWidget
+
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 
 

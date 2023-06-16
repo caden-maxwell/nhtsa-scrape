@@ -1,6 +1,8 @@
-from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSlot
+from PyQt6.QtWidgets import QWidget
+
 from app.ui.LogsWindow_ui import Ui_LogsWindow
+
 
 class LogsWindowController(QWidget):
     def __init__(self):
@@ -10,5 +12,6 @@ class LogsWindowController(QWidget):
         self.ui.setupUi(self)
         self.ui.logsEdit.setReadOnly(True)
 
+    @pyqtSlot(str)
     def handle_logger_message(self, msg):
         self.ui.logsEdit.append(msg)
