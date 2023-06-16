@@ -9,53 +9,35 @@
 from PyQt6 import QtCore, QtGui, QtWidgets
 
 
-class Ui_ExitDataViewDialog(object):
-    def setupUi(self, ExitDataViewDialog):
-        ExitDataViewDialog.setObjectName("ExitDataViewDialog")
-        ExitDataViewDialog.resize(398, 184)
-        self.verticalLayout = QtWidgets.QVBoxLayout(ExitDataViewDialog)
+class Ui_ExitDialog(object):
+    def setupUi(self, ExitDialog):
+        ExitDialog.setObjectName("ExitDialog")
+        ExitDialog.resize(445, 262)
+        self.verticalLayout = QtWidgets.QVBoxLayout(ExitDialog)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.promptLabel = QtWidgets.QLabel(parent=ExitDataViewDialog)
+        self.promptLabel = QtWidgets.QLabel(parent=ExitDialog)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.promptLabel.sizePolicy().hasHeightForWidth())
         self.promptLabel.setSizePolicy(sizePolicy)
-        font = QtGui.QFont()
-        font.setBold(True)
-        self.promptLabel.setFont(font)
         self.promptLabel.setObjectName("promptLabel")
         self.verticalLayout.addWidget(self.promptLabel)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
-        self.verticalLayout.addItem(spacerItem)
-        self.label = QtWidgets.QLabel(parent=ExitDataViewDialog)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
-        self.label.setSizePolicy(sizePolicy)
-        self.label.setObjectName("label")
-        self.verticalLayout.addWidget(self.label)
-        self.profileNameEdit = QtWidgets.QLineEdit(parent=ExitDataViewDialog)
+        self.profileNameEdit = QtWidgets.QLineEdit(parent=ExitDialog)
         self.profileNameEdit.setObjectName("profileNameEdit")
         self.verticalLayout.addWidget(self.profileNameEdit)
-        self.bottomHLayout = QtWidgets.QHBoxLayout()
-        self.bottomHLayout.setObjectName("bottomHLayout")
-        self.discardBtn = QtWidgets.QPushButton(parent=ExitDataViewDialog)
-        self.discardBtn.setObjectName("discardBtn")
-        self.bottomHLayout.addWidget(self.discardBtn)
-        self.saveBtn = QtWidgets.QPushButton(parent=ExitDataViewDialog)
-        self.saveBtn.setObjectName("saveBtn")
-        self.bottomHLayout.addWidget(self.saveBtn)
-        self.verticalLayout.addLayout(self.bottomHLayout)
+        self.buttonBox = QtWidgets.QDialogButtonBox(parent=ExitDialog)
+        self.buttonBox.setOrientation(QtCore.Qt.Orientation.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.NoButton)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
 
-        self.retranslateUi(ExitDataViewDialog)
-        QtCore.QMetaObject.connectSlotsByName(ExitDataViewDialog)
+        self.retranslateUi(ExitDialog)
+        self.buttonBox.accepted.connect(ExitDialog.accept) # type: ignore
+        self.buttonBox.rejected.connect(ExitDialog.reject) # type: ignore
+        QtCore.QMetaObject.connectSlotsByName(ExitDialog)
 
-    def retranslateUi(self, ExitDataViewDialog):
+    def retranslateUi(self, ExitDialog):
         _translate = QtCore.QCoreApplication.translate
-        ExitDataViewDialog.setWindowTitle(_translate("ExitDataViewDialog", "Form"))
-        self.promptLabel.setText(_translate("ExitDataViewDialog", "Save as New Profile?"))
-        self.label.setText(_translate("ExitDataViewDialog", "Enter Profile Name:"))
-        self.discardBtn.setText(_translate("ExitDataViewDialog", "Exit without Saving"))
-        self.saveBtn.setText(_translate("ExitDataViewDialog", "Save and Exit"))
+        ExitDialog.setWindowTitle(_translate("ExitDialog", "Dialog"))
+        self.promptLabel.setText(_translate("ExitDialog", "Save Profile?"))

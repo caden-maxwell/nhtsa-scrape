@@ -3,12 +3,17 @@ from PyQt6.QtWidgets import (
 )
 
 from .DataView_controller import DataViewController
-from .LoadingScreen_controller import LoadingScreenController
 from .LogsWindow_controller import LogsWindowController
-from .MainMenu_controller import MainMenuController
 from .ProfileMenu_controller import ProfileMenuController
 from .ScrapeMenu_controller import ScrapeMenuController
 from .SettingsMenu_controller import SettingsMenuController
+
+from app.widgets.DataViewWidget import DataViewWidget
+from app.widgets.LogsWindowWidget import LogsWindowWidget
+from app.widgets.MainMenuWidget import MainMenuWidget
+from app.widgets.ProfileMenuWidget import ProfileMenuWidget
+from app.widgets.ScrapeMenuWidget import ScrapeMenuWidget
+from app.widgets.SettingsMenuWidget import SettingsMenuWidget
 
 from app.logger_utils.log_handler import QtLogHandler
 import logging
@@ -18,88 +23,90 @@ class MainWindowController(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Setup the controllers
-        self.main_menu_controller = MainMenuController()
-        self.scrape_menu_controller = ScrapeMenuController()
-        self.profile_menu_controller = ProfileMenuController()
-        self.loading_screen_controller = LoadingScreenController()
-        self.data_view_controller = DataViewController()
-        self.logs_window_controller = LogsWindowController()
-        self.settings_menu_controller = SettingsMenuController()
+        # Setup widgets and controllers
+        self.main_menu_widget = MainMenuWidget()
 
-        # Setup the logger
+        self.scrape_menu_widget = ScrapeMenuWidget()
+        self.scrape_menu_controller = ScrapeMenuController(self.scrape_menu_widget)
+
+        self.profile_menu_widget = ProfileMenuWidget()
+        self.profile_menu_controller = ProfileMenuController(self.profile_menu_widget)
+
+        self.data_view_widget = DataViewWidget()
+        self.data_view_controller = DataViewController(self.data_view_widget)
+
+        self.logs_window_widget = LogsWindowWidget()
+        self.logs_window_controller = LogsWindowController(self.logs_window_widget)
+
+        self.settings_menu_widget = SettingsMenuWidget()
+        self.settings_menu_controller = SettingsMenuController(self.settings_menu_widget)
+
+        self.menu_history = []
+
+        self.setup_logger()
+        self.setup_ui()
+        self.setup_signals()
+
+    def setup_logger(self):
         log_handler = QtLogHandler()
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         log_handler.setFormatter(formatter)
         log_handler.log_message.connect(self.logs_window_controller.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[log_handler])
 
-        self.setup_ui()
-        self.setup_signals()
-
     def setup_ui(self):
-        # Setup the stacked widget with the other page controllers
+        # Add the controllers to the stacked widget
         self.stacked_widget = QStackedWidget()
-        self.stacked_widget.addWidget(self.main_menu_controller)
-        self.stacked_widget.addWidget(self.scrape_menu_controller)
-        self.stacked_widget.addWidget(self.profile_menu_controller)
-        self.stacked_widget.addWidget(self.loading_screen_controller)
-        self.stacked_widget.addWidget(self.data_view_controller)
-        self.stacked_widget.addWidget(self.settings_menu_controller)
+        self.stacked_widget.addWidget(self.main_menu_widget)
+        self.stacked_widget.addWidget(self.scrape_menu_widget)
+        self.stacked_widget.addWidget(self.profile_menu_widget)
+        self.stacked_widget.addWidget(self.data_view_widget)
+        self.stacked_widget.addWidget(self.settings_menu_widget)
 
         # Set layout for the main widget
         layout = QVBoxLayout(self)
         layout.addWidget(self.stacked_widget)
-        self.stacked_widget.setCurrentWidget(self.main_menu_controller)
+        self.stacked_widget.setCurrentWidget(self.main_menu_widget)
 
     def setup_signals(self):
         # Main menu signals
-        self.main_menu_controller.new_scrape_clicked.connect(self.change_to_scrape_menu)
-        self.main_menu_controller.open_existing_clicked.connect(self.change_to_profile_menu)
-        self.main_menu_controller.logs_clicked.connect(self.open_logs_window)
-        self.main_menu_controller.settings_clicked.connect(self.change_to_settings_screen)
+        self.main_menu_widget.new_scrape_clicked.connect(self.switch_to_scrape_menu)
+        self.main_menu_widget.open_existing_clicked.connect(self.switch_to_profile_menu)
+        self.main_menu_widget.logs_clicked.connect(self.open_logs_window)
+        self.main_menu_widget.settings_clicked.connect(self.switch_to_settings_menu)
 
         # Scrape menu signals
-        self.scrape_menu_controller.back_btn_clicked.connect(self.change_to_main_menu)
-        self.scrape_menu_controller.submit_scrape.connect(self.change_to_loading_screen)
+        self.scrape_menu_widget.back_button_clicked.connect(self.switch_to_main_menu)
+        self.scrape_menu_controller.scrape_finished.connect(self.switch_to_data_view)
 
         # Profile menu signals
-        self.profile_menu_controller.back_btn_clicked.connect(self.change_to_main_menu)
-        self.profile_menu_controller.open_profile_clicked.connect(self.change_to_data_view)
-        self.profile_menu_controller.rescrape_clicked.connect(self.change_to_scrape_menu)
+        self.profile_menu_widget.back_button_clicked.connect(self.switch_to_main_menu)
+        self.profile_menu_widget.open_profile_clicked.connect(self.switch_to_data_view)
+        self.profile_menu_widget.rescrape_clicked.connect(self.switch_to_scrape_menu)
 
         # Settings menu signals
-        self.settings_menu_controller.back_btn_clicked.connect(self.change_to_main_menu)
+        self.settings_menu_widget.back_button_clicked.connect(self.switch_to_main_menu)
 
-        # Loading screen menu signals
-        self.loading_screen_controller.cancel_btn_clicked.connect(self.change_to_scrape_menu)
-        self.loading_screen_controller.stop_btn_clicked.connect(self.change_to_data_view)
+        # Data view signals:
 
-        # Data view screen signals
-        # self.data_view_controller.save_btn_clicked.connect(self.change_to_profile_menu)
 
+    def switch_to_main_menu(self):
+        self.stacked_widget.setCurrentWidget(self.main_menu_widget)
         
+    def switch_to_scrape_menu(self):
+        self.stacked_widget.setCurrentWidget(self.scrape_menu_widget)
+    
+    def switch_to_profile_menu(self):
+        self.stacked_widget.setCurrentWidget(self.profile_menu_widget)
 
-    def change_to_main_menu(self):
-        self.stacked_widget.setCurrentWidget(self.main_menu_controller)
-        
-    def change_to_scrape_menu(self):
-        self.stacked_widget.setCurrentWidget(self.scrape_menu_controller)
+    def switch_to_settings_menu(self):
+        self.stacked_widget.setCurrentWidget(self.settings_menu_widget)
 
-    def change_to_profile_menu(self):
-        self.stacked_widget.setCurrentWidget(self.profile_menu_controller)
+    def switch_to_data_view(self):
+        self.stacked_widget.setCurrentWidget(self.data_view_widget)
 
-    def change_to_data_view(self):
-        self.stacked_widget.setCurrentWidget(self.data_view_controller)
-
-    def change_to_loading_screen(self):
-        self.stacked_widget.setCurrentWidget(self.loading_screen_controller)
-
-    def change_to_settings_screen(self):
-        self.stacked_widget.setCurrentWidget(self.settings_menu_controller)
-        
     def open_logs_window(self):
-        self.logs_window_controller.show()
+        self.logs_window_widget.show()
 
     def closeEvent(self, event):
         QApplication.closeAllWindows()

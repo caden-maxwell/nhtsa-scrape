@@ -1,64 +1,52 @@
-from PyQt6 import QtGui
-from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QWidget
+import logging
 
-from app.ui.DataView_ui import Ui_DataView
-from app.ui.ExitDataViewDialog_ui import Ui_ExitDataViewDialog
+from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import QObject
 
-from app.logger_utils import logger
+from app.widgets.ExitDataViewDialog import ExitDataViewDialog
+from app.widgets.DataViewWidget import DataViewWidget
 
+class DataViewController(QObject):
+    exited = pyqtSignal()
 
-class DataViewController(QWidget):
-    def __init__(self):
+    def __init__(self, widget: DataViewWidget):
         super().__init__()
+        self.widget = widget
+        self.logger = logging.getLogger(__name__)
 
-        self.logger = logger.get_logger()
+        self.widget.exit_button_clicked.connect(self.handle_exit_button_clicked)
 
-        self.ui = Ui_DataView()
-        self.ui.setupUi(self)
-
+    def handle_exit_button_clicked(self):
         self.exit_dialog_controller = ExitDialogController()
-
-        # Data View signals
-        self.ui.exitBtn.clicked.connect(self.handle_exit_btn_clicked)
-
-        # Exit Dialog signals
-        self.exit_dialog_controller.save.connect(self.handle_save_profile)
-        self.exit_dialog_controller.discard.connect(self.handle_discard_data)
-    
-    @pyqtSlot()
-    def handle_exit_btn_clicked(self):
-        self.exit_dialog_controller.show()
-    
-    @pyqtSlot(str)
-    def handle_save_profile(self, profile_name):
-        self.logger.info(f"Save & exit: \'{profile_name}\'")
-
-    @pyqtSlot()
-    def handle_discard_data(self):
-        self.logger.info("Data Discarded")
+        self.exit_dialog_controller.exited.connect(self.exited.emit)
+        self.exit_dialog_controller.show_dialog()
 
 
-class ExitDialogController(QWidget):
-    save = pyqtSignal(str)
-    discard = pyqtSignal()
-    
+class ExitDialogController(QObject):
+    exited = pyqtSignal()
+
     def __init__(self):
         super().__init__()
-        
-        self.ui = Ui_ExitDataViewDialog()
-        self.ui.setupUi(self)
+        self.exit_widget = ExitDataViewDialog()
+        self.logger = logging.getLogger(__name__)
 
-        self.ui.saveBtn.clicked.connect(self.handle_save_btn_clicked)
-        self.ui.discardBtn.clicked.connect(self.handle_discard_btn_clicked)
+        self.exit_widget.save.connect(self.handle_save)
+        self.exit_widget.discard.connect(self.handle_discard)
+        self.exit_widget.cancel.connect(self.handle_cancel)
     
-    @pyqtSlot()
-    def handle_save_btn_clicked(self):
-        profile_name = self.ui.profileNameEdit.text()
-        self.close()
-        self.save.emit(profile_name)
+    def show_dialog(self):
+        self.exit_widget.exec()
 
-    @pyqtSlot()
-    def handle_discard_btn_clicked(self):
-        self.close()
-        self.discard.emit()
+    def handle_save(self):
+        ### TODO: Add save logic ###
+        profile_name = self.exit_widget.ui.profileNameEdit.text()
+        self.logger.info(f"User saved changes to profile \'{profile_name}\' and exited data viewer.")
+        self.exited.emit()
+
+    def handle_discard(self):
+        ### TODO: Add discard logic ###
+        self.logger.info("User discarded changes and exited data viewer.")
+        self.exited.emit()
+    
+    def handle_cancel(self):
+        self.logger.info("User cancelled data viewer exit.")
