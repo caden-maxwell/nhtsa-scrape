@@ -1,3 +1,4 @@
+from PyQt6 import QtGui
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
