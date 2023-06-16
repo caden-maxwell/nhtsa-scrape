@@ -1,22 +1,20 @@
-from PyQt6.QtCore import pyqtSlot
-from PyQt6.QtWidgets import QWidget
-
-from app.ui.LogsWindow_ui import Ui_LogsWindow
+import logging
 
 
-class LogsWindowController(QWidget):
-    def __init__(self):
-        super().__init__()
-        
-        self.ui = Ui_LogsWindow()
-        self.ui.setupUi(self)
-        self.ui.logsEdit.setReadOnly(True)
-        self.ui.clearBtn.clicked.connect(self.handle_clear_btn_clicked)
+class LogsWindowController:
+    def __init__(self, widget):
+        self.widget = widget
+        self.logger = logging.getLogger(__name__)
 
-    @pyqtSlot(str)
+        self.widget.clear_logs.connect(self.handle_clear_btn_clicked)
+        self.widget.save_logs.connect(self.handle_save_btn_clicked)
+
     def handle_logger_message(self, msg):
-        self.ui.logsEdit.append(msg)
+        self.widget.ui.logsEdit.append(msg)
 
-    @pyqtSlot()
     def handle_clear_btn_clicked(self):
-        self.ui.logsEdit.clear()
+        self.widget.ui.logsEdit.clear()
+
+    def handle_save_btn_clicked(self):
+        ### TODO: Actually save the logs somewhere ###
+        self.logger.info('Saving logs to file...')

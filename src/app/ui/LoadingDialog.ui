@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>ExitDialog</class>
- <widget class="QDialog" name="ExitDialog">
+ <class>LoadingDialog</class>
+ <widget class="QDialog" name="LoadingDialog">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>445</width>
-    <height>262</height>
+    <width>353</width>
+    <height>153</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QLabel" name="promptLabel">
+    <widget class="QLabel" name="mainTitle">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -23,12 +23,19 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>Save Profile?</string>
+      <string>Scraping NASS/CDS Database...</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QLineEdit" name="profileNameEdit"/>
+    <widget class="QProgressBar" name="progressBar">
+     <property name="value">
+      <number>78</number>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -47,7 +54,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>accepted()</signal>
-   <receiver>ExitDialog</receiver>
+   <receiver>LoadingDialog</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -63,7 +70,7 @@
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
-   <receiver>ExitDialog</receiver>
+   <receiver>LoadingDialog</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

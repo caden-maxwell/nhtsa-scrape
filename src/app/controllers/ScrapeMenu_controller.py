@@ -1,24 +1,42 @@
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QWidget
+import logging
 
-from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
+from PyQt6.QtCore import QObject, pyqtSignal
+
+from app.widgets.LoadingDialog import LoadingWindowWidget
 
 
-class ScrapeMenuController(QWidget):
-    back_btn_clicked = pyqtSignal()
-    submit_scrape = pyqtSignal()
+class ScrapeMenuController(QObject):
+    scrape_finished = pyqtSignal()
 
+    def __init__(self, widget):
+        super().__init__()
+        self.widget = widget
+        self.logger = logging.getLogger(__name__)
+        self.loading_window_controller = LoadingWindowController()
+
+        self.widget.submit_button_clicked.connect(self.handle_submission)
+
+    def handle_submission(self):
+        self.loading_window_controller.show()
+    
+
+class LoadingWindowController(QObject):
     def __init__(self):
         super().__init__()
+        self.widget = LoadingWindowWidget()
+        self.logger = logging.getLogger(__name__)
 
-        self.ui = Ui_ScrapeMenu()
-        self.ui.setupUi(self)
+        self.widget.cancel_btn_clicked.connect(self.handle_cancel_button_clicked)
+        self.widget.view_btn_clicked.connect(self.handle_view_button_clicked)
 
-        self.ui.backBtn.clicked.connect(self.handle_back_btn_clicked)
-        self.ui.submitBtn.clicked.connect(self.handle_scrape_submission)
+    def show(self):
+        self.widget.exec()
 
-    def handle_back_btn_clicked(self):
-        self.back_btn_clicked.emit()
+    def handle_cancel_button_clicked(self):
+        self.logger.info("Cancel button clicked")
+        self.widget.close()
 
-    def handle_scrape_submission(self):
-        self.submit_scrape.emit()
+    def handle_view_button_clicked(self):
+        ### TODO: Add logic to get scraped data and export to data viewer ###
+        self.logger.info("View button clicked")
+        self.widget.close()
