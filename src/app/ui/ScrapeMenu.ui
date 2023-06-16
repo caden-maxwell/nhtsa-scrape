@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
    <item>
-    <layout class="QHBoxLayout" name="topBarLayout">
+    <layout class="QHBoxLayout" name="topHLayout">
      <item>
       <widget class="QPushButton" name="backBtn">
        <property name="text">
@@ -24,7 +24,13 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="menuTitle">
+      <widget class="QLabel" name="mainTitle">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
         <string>New Scrape</string>
        </property>
@@ -36,7 +42,7 @@
     <layout class="QGridLayout" name="body"/>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="bottomBarLayout">
+    <layout class="QHBoxLayout" name="bottomHLayout">
      <item>
       <widget class="QLabel" name="expandBtn">
        <property name="text">

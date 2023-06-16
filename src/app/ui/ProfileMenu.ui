@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
    <item>
-    <layout class="QHBoxLayout" name="topBarHLayout">
+    <layout class="QHBoxLayout" name="topHLayout">
      <item>
       <widget class="QPushButton" name="backBtn">
        <property name="text">
@@ -24,7 +24,7 @@
       </widget>
      </item>
      <item>
-      <widget class="QLabel" name="menuTitle">
+      <widget class="QLabel" name="mainTitle">
        <property name="text">
         <string>Open Existing Case Profile...</string>
        </property>
@@ -36,16 +36,16 @@
     <widget class="QListView" name="listView"/>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="bottomBarHLayout">
+    <layout class="QHBoxLayout" name="bottomHLayout">
      <item>
-      <widget class="QPushButton" name="reScrapeBtn">
+      <widget class="QPushButton" name="rescrapeBtn">
        <property name="text">
         <string>Re-Scrape</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="openCaseBtn">
+      <widget class="QPushButton" name="openBtn">
        <property name="text">
         <string>Open Case Profile</string>
        </property>
