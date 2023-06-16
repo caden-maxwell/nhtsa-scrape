@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout
+from PyQt6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QApplication
 from .MainMenu_controller import MainMenuController
 from .ScrapeMenu_controller import ScrapeMenuController
 from .ProfileMenu_controller import ProfileMenuController
@@ -7,15 +7,17 @@ from .LoadingScreen_controller import LoadingScreenController
 from .DataView_controller import DataViewController
 
 class MainWindowController(QWidget):
-    def __init__(self):
+    def __init__(self, log_handler):
         super().__init__()
 
         self.main_menu_controller = MainMenuController()
         self.scrape_menu_controller = ScrapeMenuController()
         self.profile_menu_controller = ProfileMenuController()
-        self.logs_window_controller = LogsWindowController()
         self.loading_screen_controller = LoadingScreenController()
         self.data_view_controller = DataViewController()
+
+        self.logs_window_controller = LogsWindowController()
+        log_handler.log_message.connect(self.logs_window_controller.handle_logger_message)
 
         self.setup_ui()
         self.setup_signals()
@@ -46,14 +48,15 @@ class MainWindowController(QWidget):
 
         # Profile menu signals
         self.profile_menu_controller.back_btn_clicked.connect(self.change_to_main_menu)
-        self.profile_menu_controller.open_profile_clicked.connect(self.change_to_scrape_menu)
+        self.profile_menu_controller.open_profile_clicked.connect(self.change_to_data_view)
+        self.profile_menu_controller.rescrape_clicked.connect(self.change_to_scrape_menu)
 
         # Loading screen menu signals
         self.loading_screen_controller.cancel_btn_clicked.connect(self.change_to_scrape_menu)
         self.loading_screen_controller.stop_btn_clicked.connect(self.change_to_data_view)
 
         # Data view screen signals
-        self.data_view_controller.back_btn_clicked.connect(self.change_to_scrape_menu)
+        # self.data_view_controller.save_btn_clicked.connect(self.change_to_profile_menu)
 
     def change_to_main_menu(self):
         self.stacked_widget.setCurrentWidget(self.main_menu_controller)
@@ -72,3 +75,6 @@ class MainWindowController(QWidget):
         
     def open_logs_window(self):
         self.logs_window_controller.show()
+
+    def closeEvent(self, event):
+        QApplication.closeAllWindows()

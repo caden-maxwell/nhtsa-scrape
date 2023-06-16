@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import pyqtSignal
 from app.ui.LoadingScreen_ui import Ui_LoadingScreen
+import logging
 
 class LoadingScreenController(QWidget):
     cancel_btn_clicked = pyqtSignal()
@@ -8,6 +9,8 @@ class LoadingScreenController(QWidget):
     
     def __init__(self):
         super().__init__()
+
+        self.logger = logging.getLogger(__name__)
 
         self.ui = Ui_LoadingScreen()
         self.ui.setupUi(self)
@@ -17,6 +20,8 @@ class LoadingScreenController(QWidget):
 
     def handle_cancel_btn_clicked(self):
         self.cancel_btn_clicked.emit()
+        self.logger.info("Cancel button clicked")
 
     def handle_stop_btn_clicked(self):
         self.stop_btn_clicked.emit()
+        self.logger.info("Stop button clicked")

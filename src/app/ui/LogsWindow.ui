@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <widget class="QTextEdit" name="logsEditText">
+    <widget class="QTextEdit" name="logsEdit">
      <property name="font">
       <font>
        <family>Consolas</family>
@@ -27,7 +27,7 @@
     </widget>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="bottomBarHLayout" stretch="1,1">
+    <layout class="QHBoxLayout" name="bottomHLayout" stretch="1,1">
      <item>
       <spacer name="horizontalSpacer">
        <property name="orientation">
@@ -42,7 +42,7 @@
       </spacer>
      </item>
      <item>
-      <widget class="QPushButton" name="saveLogsBtn">
+      <widget class="QPushButton" name="saveBtn">
        <property name="text">
         <string>Save Logs</string>
        </property>

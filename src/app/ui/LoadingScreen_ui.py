@@ -21,9 +21,9 @@ class Ui_LoadingScreen(object):
         self.gridLayout.addItem(spacerItem1, 2, 1, 1, 1)
         self.mainVLayout = QtWidgets.QVBoxLayout()
         self.mainVLayout.setObjectName("mainVLayout")
-        self.menuTitle = QtWidgets.QLabel(parent=LoadingScreen)
-        self.menuTitle.setObjectName("menuTitle")
-        self.mainVLayout.addWidget(self.menuTitle)
+        self.mainTitle = QtWidgets.QLabel(parent=LoadingScreen)
+        self.mainTitle.setObjectName("mainTitle")
+        self.mainVLayout.addWidget(self.mainTitle)
         spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         self.mainVLayout.addItem(spacerItem2)
         self.progressBar = QtWidgets.QProgressBar(parent=LoadingScreen)
@@ -52,6 +52,6 @@ class Ui_LoadingScreen(object):
     def retranslateUi(self, LoadingScreen):
         _translate = QtCore.QCoreApplication.translate
         LoadingScreen.setWindowTitle(_translate("LoadingScreen", "Form"))
-        self.menuTitle.setText(_translate("LoadingScreen", "Scraping NASS/CDS Database..."))
+        self.mainTitle.setText(_translate("LoadingScreen", "Scraping NASS/CDS Database..."))
         self.cancelBtn.setText(_translate("LoadingScreen", "Cancel"))
         self.stopBtn.setText(_translate("LoadingScreen", "Stop and View Data"))

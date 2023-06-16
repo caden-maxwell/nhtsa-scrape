@@ -43,7 +43,7 @@
    <item row="1" column="1">
     <layout class="QVBoxLayout" name="mainVLayout">
      <item>
-      <widget class="QLabel" name="menuTitle">
+      <widget class="QLabel" name="mainTitle">
        <property name="text">
         <string>Scraping NASS/CDS Database...</string>
        </property>
