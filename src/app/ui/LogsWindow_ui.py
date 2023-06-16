@@ -19,18 +19,18 @@ class Ui_LogsWindow(object):
         font = QtGui.QFont()
         font.setFamily("Consolas")
         self.logsEdit.setFont(font)
+        self.logsEdit.setStyleSheet("background-color: black; color: white;")
         self.logsEdit.setReadOnly(True)
         self.logsEdit.setObjectName("logsEdit")
         self.verticalLayout.addWidget(self.logsEdit)
         self.bottomHLayout = QtWidgets.QHBoxLayout()
         self.bottomHLayout.setObjectName("bottomHLayout")
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
-        self.bottomHLayout.addItem(spacerItem)
+        self.clearBtn = QtWidgets.QPushButton(parent=LogsWindow)
+        self.clearBtn.setObjectName("clearBtn")
+        self.bottomHLayout.addWidget(self.clearBtn)
         self.saveBtn = QtWidgets.QPushButton(parent=LogsWindow)
         self.saveBtn.setObjectName("saveBtn")
         self.bottomHLayout.addWidget(self.saveBtn)
-        self.bottomHLayout.setStretch(0, 1)
-        self.bottomHLayout.setStretch(1, 1)
         self.verticalLayout.addLayout(self.bottomHLayout)
 
         self.retranslateUi(LogsWindow)
@@ -39,4 +39,13 @@ class Ui_LogsWindow(object):
     def retranslateUi(self, LogsWindow):
         _translate = QtCore.QCoreApplication.translate
         LogsWindow.setWindowTitle(_translate("LogsWindow", "Form"))
+        self.logsEdit.setHtml(_translate("LogsWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"hr { height: 1px; border-width: 0; }\n"
+"li.unchecked::marker { content: \"\\2610\"; }\n"
+"li.checked::marker { content: \"\\2612\"; }\n"
+"</style></head><body style=\" font-family:\'Consolas\'; font-size:12pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+        self.clearBtn.setText(_translate("LogsWindow", "Clear Logs"))
         self.saveBtn.setText(_translate("LogsWindow", "Save Logs"))

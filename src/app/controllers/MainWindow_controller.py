@@ -29,7 +29,6 @@ class MainWindowController(QWidget):
 
         # Setup the logger
         log_handler = QtLogHandler()
-        date_format = '%H:%M:%S.%f'
         formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
         log_handler.setFormatter(formatter)
         log_handler.log_message.connect(self.logs_window_controller.handle_logger_message)
