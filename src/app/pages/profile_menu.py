@@ -1,10 +1,12 @@
+import logging
+
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 
 
-class ProfileMenuWidget(QWidget):
+class ProfileMenuController(QWidget):
     open_profile_clicked = pyqtSignal()
     back_button_clicked = pyqtSignal()
     rescrape_clicked = pyqtSignal()
@@ -14,6 +16,8 @@ class ProfileMenuWidget(QWidget):
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
+
+        self.logger = logging.getLogger(__name__)
 
         self.ui.rescrapeBtn.clicked.connect(self.rescrape_clicked.emit)
         self.ui.backBtn.clicked.connect(self.back_button_clicked.emit)

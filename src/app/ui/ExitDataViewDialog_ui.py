@@ -28,7 +28,7 @@ class Ui_ExitDialog(object):
         self.verticalLayout.addWidget(self.profileNameEdit)
         self.buttonBox = QtWidgets.QDialogButtonBox(parent=ExitDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.NoButton)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Discard|QtWidgets.QDialogButtonBox.StandardButton.Save)
         self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout.addWidget(self.buttonBox)
 
