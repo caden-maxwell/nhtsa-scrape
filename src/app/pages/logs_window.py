@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QWidget
 from app.ui.LogsWindow_ui import Ui_LogsWindow
 
 
-class LogsWindowController(QWidget):
+class LogsWindow(QWidget):
     clear_logs = pyqtSignal()
     save_logs = pyqtSignal()
 

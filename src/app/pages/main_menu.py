@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QWidget
 from app.ui.MainMenu_ui import Ui_MainMenu
 
 
-class MainMenuWidget(QWidget):
+class MainMenu(QWidget):
     new_scrape_clicked = pyqtSignal()
     open_existing_clicked = pyqtSignal()
     logs_clicked = pyqtSignal()

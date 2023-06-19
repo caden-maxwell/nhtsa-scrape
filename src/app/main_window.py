@@ -1,13 +1,13 @@
 from PyQt6.QtWidgets import QWidget, QStackedWidget, QVBoxLayout, QApplication
 
 from app.pages.data_view import DataView
-from app.pages.logs_window import LogsWindowController
-from app.pages.profile_menu import ProfileMenuController
-from app.pages.scrape_menu import ScrapeMenuController
-from app.pages.settings_menu import SettingsMenuController
-from app.pages.main_menu import MainMenuWidget
+from app.pages.logs_window import LogsWindow
+from app.pages.profile_menu import ProfileMenu
+from app.pages.scrape_menu import ScrapeMenu
+from app.pages.settings_menu import SettingsMenu
+from app.pages.main_menu import MainMenu
 
-from app.logger_utils.log_handler import QtLogHandler
+from app.log_handler import QtLogHandler
 import logging
 
 
@@ -16,12 +16,12 @@ class MainWindowController(QWidget):
         super().__init__()
 
         # Setup widgets and controllers
-        self.main_menu_widget = MainMenuWidget()
-        self.scrape_menu = ScrapeMenuController()
-        self.profile_menu = ProfileMenuController()
+        self.main_menu = MainMenu()
+        self.scrape_menu = ScrapeMenu()
+        self.profile_menu = ProfileMenu()
         self.data_view = DataView()
-        self.logs_window = LogsWindowController()
-        self.settings_menu = SettingsMenuController()
+        self.logs_window = LogsWindow()
+        self.settings_menu = SettingsMenu()
 
         self.setup_logger()
         self.setup_ui()
@@ -37,7 +37,7 @@ class MainWindowController(QWidget):
     def setup_ui(self):
         # Add the controllers to the stacked widget
         self.stacked_widget = QStackedWidget()
-        self.stacked_widget.addWidget(self.main_menu_widget)
+        self.stacked_widget.addWidget(self.main_menu)
         self.stacked_widget.addWidget(self.scrape_menu)
         self.stacked_widget.addWidget(self.profile_menu)
         self.stacked_widget.addWidget(self.data_view)
@@ -46,14 +46,14 @@ class MainWindowController(QWidget):
         # Set layout for the main widget
         layout = QVBoxLayout(self)
         layout.addWidget(self.stacked_widget)
-        self.stacked_widget.setCurrentWidget(self.main_menu_widget)
+        self.stacked_widget.setCurrentWidget(self.main_menu)
 
     def setup_signals(self):
         # Main menu signals
-        self.main_menu_widget.new_scrape_clicked.connect(self.switch_to_scrape_menu)
-        self.main_menu_widget.open_existing_clicked.connect(self.switch_to_profile_menu)
-        self.main_menu_widget.logs_clicked.connect(self.open_logs_window)
-        self.main_menu_widget.settings_clicked.connect(self.switch_to_settings_menu)
+        self.main_menu.new_scrape_clicked.connect(self.switch_to_scrape_menu)
+        self.main_menu.open_existing_clicked.connect(self.switch_to_profile_menu)
+        self.main_menu.logs_clicked.connect(self.open_logs_window)
+        self.main_menu.settings_clicked.connect(self.switch_to_settings_menu)
 
         # Scrape menu signals
         self.scrape_menu.back_button_clicked.connect(self.switch_to_main_menu)
@@ -71,7 +71,7 @@ class MainWindowController(QWidget):
 
 
     def switch_to_main_menu(self):
-        self.stacked_widget.setCurrentWidget(self.main_menu_widget)
+        self.stacked_widget.setCurrentWidget(self.main_menu)
         
     def switch_to_scrape_menu(self):
         self.stacked_widget.setCurrentWidget(self.scrape_menu)

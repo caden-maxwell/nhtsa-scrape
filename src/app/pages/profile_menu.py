@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QWidget
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 
 
-class ProfileMenuController(QWidget):
+class ProfileMenu(QWidget):
     open_profile_clicked = pyqtSignal()
     back_button_clicked = pyqtSignal()
     rescrape_clicked = pyqtSignal()
