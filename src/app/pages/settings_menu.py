@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QWidget
 from app.ui.SettingsMenu_ui import Ui_SettingsMenu
 
 
-class SettingsMenuController(QWidget):
+class SettingsMenu(QWidget):
     back_button_clicked = pyqtSignal()
 
     def __init__(self):

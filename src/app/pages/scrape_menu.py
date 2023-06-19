@@ -7,7 +7,7 @@ from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 
 
-class ScrapeMenuController(QWidget):
+class ScrapeMenu(QWidget):
     back_button_clicked = pyqtSignal()
     scrape_finished = pyqtSignal()
 
