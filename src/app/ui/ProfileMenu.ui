@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
    <item>
-    <layout class="QHBoxLayout" name="topHLayout">
+    <layout class="QHBoxLayout" name="topHLayout" stretch="0,1">
      <item>
       <widget class="QPushButton" name="backBtn">
        <property name="text">
@@ -38,9 +38,19 @@
    <item>
     <layout class="QHBoxLayout" name="bottomHLayout">
      <item>
+      <widget class="QPushButton" name="deleteBtn">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Delete</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="rescrapeBtn">
        <property name="enabled">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <property name="text">
         <string>Re-Scrape</string>
@@ -59,16 +69,16 @@
      <item>
       <widget class="QPushButton" name="openBtn">
        <property name="enabled">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <property name="text">
-        <string>Open Case Profile</string>
+        <string>Open</string>
        </property>
        <property name="autoDefault">
         <bool>false</bool>
        </property>
        <property name="default">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
       </widget>
      </item>
