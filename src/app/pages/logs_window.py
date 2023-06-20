@@ -1,4 +1,6 @@
+import datetime
 import logging
+import os
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
@@ -28,5 +30,7 @@ class LogsWindow(QWidget):
         self.ui.logsEdit.clear()
 
     def handle_save_btn_clicked(self):
-        ### TODO: Actually save the logs somewhere ###
-        self.logger.info('Saving logs to file...')
+        os.makedirs('logs', exist_ok=True)
+        with open(f'logs/{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log', 'w') as f:
+            f.write(self.ui.logsEdit.toPlainText())
+        self.logger.info(f"Saved all logs to file at '{f.name}'.")
