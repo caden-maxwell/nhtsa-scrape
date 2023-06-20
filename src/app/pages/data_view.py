@@ -9,18 +9,21 @@ from app.ui.DataView_ui import Ui_DataView
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, new_profile):
         super().__init__()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
-        self.logger = logging.getLogger(__name__)
-
         self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
+
+        self.logger = logging.getLogger(__name__)
+        self.modified = False
+        self.new_profile = new_profile
 
     def handle_exit_button_clicked(self):
         self.exit_dialog_controller = ExitDataViewDialog()
         self.exit_dialog_controller.exec()
+        self.exited.emit()
 
 class ExitDataViewDialog(QDialog):
     def __init__(self):
@@ -33,7 +36,7 @@ class ExitDataViewDialog(QDialog):
 
         self.ui.buttonBox.accepted.connect(self.handle_accepted)
         self.ui.buttonBox.button(self.ui.buttonBox.StandardButton.Discard).clicked.connect(self.handle_rejected)
-    
+        
     def handle_accepted(self):
         ### TODO: Add save logic ###
         profile_name = self.ui.profileNameEdit.text()

@@ -5,10 +5,10 @@ from app.ui.MainMenu_ui import Ui_MainMenu
 
 
 class MainMenu(QWidget):
-    new_scrape_clicked = pyqtSignal()
-    open_existing_clicked = pyqtSignal()
-    logs_clicked = pyqtSignal()
-    settings_clicked = pyqtSignal()
+    new = pyqtSignal()
+    existing = pyqtSignal()
+    logs = pyqtSignal()
+    settings = pyqtSignal()
     
     def __init__(self):
         super().__init__()
@@ -16,7 +16,7 @@ class MainMenu(QWidget):
         self.ui = Ui_MainMenu()
         self.ui.setupUi(self)
 
-        self.ui.scrapeBtn.clicked.connect(self.new_scrape_clicked.emit)
-        self.ui.openBtn.clicked.connect(self.open_existing_clicked.emit)
-        self.ui.logsBtn.clicked.connect(self.logs_clicked.emit)
-        self.ui.settingsBtn.clicked.connect(self.settings_clicked.emit)
+        self.ui.scrapeBtn.clicked.connect(self.new.emit)
+        self.ui.openBtn.clicked.connect(self.existing.emit)
+        self.ui.logsBtn.clicked.connect(self.logs.emit)
+        self.ui.settingsBtn.clicked.connect(self.settings.emit)

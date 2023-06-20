@@ -7,7 +7,7 @@ from app.ui.SettingsMenu_ui import Ui_SettingsMenu
 
 
 class SettingsMenu(QWidget):
-    back_button_clicked = pyqtSignal()
+    back = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -17,4 +17,4 @@ class SettingsMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
 
-        self.ui.backBtn.clicked.connect(self.back_button_clicked.emit)
+        self.ui.backBtn.clicked.connect(self.back.emit)
