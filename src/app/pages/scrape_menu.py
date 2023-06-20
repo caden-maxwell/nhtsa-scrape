@@ -7,6 +7,7 @@ from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 
 from . import DataView
+from app.scrape import scrape_search
 
 
 class ScrapeMenu(QWidget):
@@ -30,6 +31,9 @@ class ScrapeMenu(QWidget):
 
         self.loading_window = LoadingWindow()
         self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
+
+    def handle_refresh(self):
+        responses = scrape_search.get_search_info()
 
     def handle_submission(self):
         self.loading_window.show()

@@ -76,9 +76,7 @@ driver.get(urlpage)
 
 init = soup(driver.page_source,'html.parser')
 
-#make_menu = driver.find_element_by_xpath("//*[@id='ddlMake']")
 make_menu =driver.find_element("xpath","//*[@id='ddlMake']")
-#model_menu = driver.find_element_by_xpath('//*[@id="ddlModel"]')
 model_menu = driver.find_element("xpath",'//*[@id="ddlModel"]')
 
 select_make = Select(make_menu)
@@ -117,25 +115,20 @@ test_model = model
 test_dl = ipdamage
 
 # Get Search Results
-#select_start_year = Select(driver.find_element_by_name('ddlStartModelYear'))
 select_start_year = Select(driver.find_element("name",'ddlStartModelYear'))
                     
 select_start_year.select_by_visible_text(istartyear)
 
-#select_end_year = Select(driver.find_element_by_name('ddlEndModelYear'))
 select_end_year = Select(driver.find_element("name",'ddlEndModelYear'))
 select_end_year.select_by_visible_text(iendyear)
 
-#text_DVFrom = driver.find_element_by_name('tDeltaVFrom')
 text_DVFrom = driver.find_element("name",'tDeltaVFrom')
 text_DVFrom.send_keys(idvfrom)
 
-#text_DVTo = driver.find_element_by_name('tDeltaVTo')
 text_DVTo = driver.find_element("name",'tDeltaVTo')
 text_DVTo.send_keys(idvto)
 
 # Click the Search Button box
-#driver.find_element_by_name('btnSubmit').click()
 driver.find_element("name",'btnSubmit').click()
 
 
