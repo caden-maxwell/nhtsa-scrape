@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import QWidget, QMessageBox
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 from app.models.case_profiles import CaseProfiles
 
+from . import DataView
+
 
 class ProfileMenu(QWidget):
-    open_profile = pyqtSignal()
     back = pyqtSignal()
     rescrape = pyqtSignal(int, str, str, int, int)
     
@@ -27,7 +28,7 @@ class ProfileMenu(QWidget):
 
         self.ui.rescrapeBtn.clicked.connect(self.handle_rescrape)
         self.ui.backBtn.clicked.connect(self.back.emit)
-        self.ui.openBtn.clicked.connect(self.open_profile.emit)
+        self.ui.openBtn.clicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
 
         self.profile_btns = [self.ui.openBtn, self.ui.deleteBtn, self.ui.rescrapeBtn]
@@ -54,6 +55,10 @@ class ProfileMenu(QWidget):
         data = data[0:1] + data[5:9] # Get only the profile primary key and the vehicle info
         self.rescrape.emit(*data)
 
+    def handle_open(self):
+        self.data_viewer = DataView(False)
+        self.data_viewer.show()
+        
     def handle_delete(self):
         selected = self.ui.listView.selectedIndexes()
         if not selected:
