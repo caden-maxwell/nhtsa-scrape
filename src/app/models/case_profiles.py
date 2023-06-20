@@ -9,7 +9,6 @@ class CaseProfiles(QAbstractListModel):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        # Safely open db connection
         try:
             self.db = sqlite3.connect('app/models/db.sqlite3')
             self.cursor = self.db.cursor()
@@ -31,7 +30,7 @@ class CaseProfiles(QAbstractListModel):
         return decorator
 
     @check_connection("Cannot close database")
-    def closeDatabase(self):
+    def close_database(self):
         self.cursor.close()
         self.db.close()
         self.db = None
@@ -105,4 +104,4 @@ class CaseProfiles(QAbstractListModel):
         self.logger.debug("Refreshed data")
 
     def __del__(self):
-        self.closeDatabase()
+        self.close_database()

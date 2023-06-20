@@ -16,6 +16,8 @@
 | 6/13 | 4.5 | - Got a relatively vague email back from the NHTSA regarding rate limits, so I sent another, more detailed inquiry. <br> - Did some research on SQLite and databasing in general. Created a small demo program to see if SQLite3 will actually be a good option for the project. Demo code is [`here`](../demos/sqlite_db.py). It's actually pretty simple to use, so I think I'll go with it. <br> - Coming up with a good database design was harder than I thought, but it's finished and now I can finally start on implementation! |
 | 6/14 | 8.5 | - Created the general layout for the main window, logs window, and saving window in the PyQt6 designer. This program definitely has a bit of a steep learning curve but I'm getting better at it. <br> - Set up all slots/signals so that each page can be accessed via buttons. <br> - Refactored `MainWindow.ui` to separate `.ui` files and restructured the project files to be more consistent. |
 | 6/15 | 7 | - UI is 90% done, just have to make sure I have all the necessary options for the scrape menu. <br> - Not sure what I need to put in the settings page or if I actually need it at all, but I'll leave it in there for now. <br> - I just realized I need to implement some parallelization for the loading screen, will do that first thing tomorrow. <br> - Need to implement a way to get data to the scrape menu from the profile menu. |
+| 6/19 | 6 | - Added database table for the case profiles <br> - Added ability to view case profiles from the ListView in "Open existing profile" submenu. <br> - Added ability to delete profiles, rescrape a profile, and open the profile, and the ability to pass any amount of data between two pages as needed. Lots of key components are now in place. |
+| 6/20 | N/A | N/A |
 
 ---
 
