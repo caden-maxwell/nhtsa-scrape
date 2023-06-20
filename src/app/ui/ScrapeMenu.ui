@@ -18,6 +18,12 @@
     <layout class="QHBoxLayout" name="topHLayout">
      <item>
       <widget class="QPushButton" name="backBtn">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="text">
         <string>Back</string>
        </property>
@@ -39,7 +45,64 @@
     </layout>
    </item>
    <item>
-    <layout class="QGridLayout" name="body"/>
+    <layout class="QGridLayout" name="body">
+     <item row="1" column="0">
+      <layout class="QVBoxLayout" name="modelLayout">
+       <item>
+        <widget class="QLabel" name="modelLabel">
+         <property name="text">
+          <string>Model</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="modelEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="0">
+      <layout class="QVBoxLayout" name="makeLayout">
+       <item>
+        <widget class="QLabel" name="makeLabel">
+         <property name="text">
+          <string>Make</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLineEdit" name="makeEdit"/>
+       </item>
+      </layout>
+     </item>
+     <item row="0" column="1">
+      <layout class="QVBoxLayout" name="startYearLayout">
+       <item>
+        <widget class="QLabel" name="startYearLabel">
+         <property name="text">
+          <string>Start Year</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="startYearCombo"/>
+       </item>
+      </layout>
+     </item>
+     <item row="1" column="1">
+      <layout class="QVBoxLayout" name="endYearLayout">
+       <item>
+        <widget class="QLabel" name="endYearLabel">
+         <property name="text">
+          <string>End Year</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="endYearCombo"/>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </item>
    <item>
     <layout class="QHBoxLayout" name="bottomHLayout">

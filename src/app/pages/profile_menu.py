@@ -7,9 +7,9 @@ from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 
 
 class ProfileMenu(QWidget):
-    open_profile_clicked = pyqtSignal()
+    open_profile = pyqtSignal()
     back = pyqtSignal()
-    rescrape_clicked = pyqtSignal()
+    rescrape = pyqtSignal(str, str, int, int)
     
     def __init__(self):
         super().__init__()
@@ -19,6 +19,9 @@ class ProfileMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
 
-        self.ui.rescrapeBtn.clicked.connect(self.rescrape_clicked.emit)
+        self.ui.rescrapeBtn.clicked.connect(self.handle_rescrape)
         self.ui.backBtn.clicked.connect(self.back.emit)
-        self.ui.openBtn.clicked.connect(self.open_profile_clicked.emit)
+        self.ui.openBtn.clicked.connect(self.open_profile.emit)
+
+    def handle_rescrape(self):
+        self.rescrape.emit("Chevrolet", "Corvette", 2005, 2007)
