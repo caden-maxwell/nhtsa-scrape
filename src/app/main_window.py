@@ -47,12 +47,10 @@ class MainWindow(QWidget):
             if getattr(menu, "back", None):
                 menu.back.connect(lambda: self.switch_page(self.main_menu))
         
-        # Connect the main menu buttons to switch to the appropriate page
         self.main_menu.new.connect(lambda: self.switch_page(self.scrape_menu))
         self.main_menu.existing.connect(lambda: self.switch_page(self.profile_menu))
         self.main_menu.settings.connect(lambda: self.switch_page(self.settings_menu))
         self.main_menu.logs.connect(self.logs_window.show)
-
         self.profile_menu.rescrape.connect(lambda *data: self.switch_page(self.scrape_menu, *data))
 
     def switch_page(self, page, *data):

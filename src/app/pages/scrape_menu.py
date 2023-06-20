@@ -6,10 +6,11 @@ from PyQt6.QtWidgets import QWidget, QDialogButtonBox, QDialog
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 
+from .data_view import DataView
+
 
 class ScrapeMenu(QWidget):
     back = pyqtSignal()
-    scrape_finished = pyqtSignal()
 
     def __init__(self):
         super().__init__()
@@ -30,6 +31,7 @@ class ScrapeMenu(QWidget):
         self.loading_window = LoadingWindow()
 
     def handle_submission(self):
+        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
         self.loading_window.show()
 
     def setup(self, profile_id=-1, make="All", model="All", start_year="Any", end_year="Any"):
@@ -38,6 +40,10 @@ class ScrapeMenu(QWidget):
         self.ui.modelEdit.setText(model)
         self.ui.startYearCombo.setCurrentText(str(start_year))
         self.ui.endYearCombo.setCurrentText(str(end_year))
+
+    def open_data_viewer(self):
+        self.data_viewer = DataView(self.is_new_profile())
+        self.data_viewer.show()
 
     def is_new_profile(self):
         return self.profile_id < 0
@@ -71,3 +77,4 @@ class LoadingWindow(QDialog):
         ### TODO: Add logic to stop scraping data and export everything to the data viewer ###
         self.logger.info("Scraping stopped and data viewer opened.")
         self.close()
+        self.view_btn_clicked.emit()
