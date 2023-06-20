@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QWidget, QDialogButtonBox, QDialog
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 
-from .data_view import DataView
+from . import DataView
 
 
 class ScrapeMenu(QWidget):
@@ -29,9 +29,9 @@ class ScrapeMenu(QWidget):
         self.profile_id = -1
 
         self.loading_window = LoadingWindow()
+        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
 
     def handle_submission(self):
-        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
         self.loading_window.show()
 
     def setup(self, profile_id=-1, make="All", model="All", start_year="Any", end_year="Any"):
