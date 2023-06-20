@@ -1,5 +1,5 @@
 import logging
-from time import sleep
+import json
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QDialogButtonBox, QDialog
@@ -42,26 +42,26 @@ class ScrapeMenu(QWidget):
         response = self.search_scrape.get_response()
         self.search_scrape = None
 
+        if not response:
+            return
+
         soup = BeautifulSoup(response.content, 'html.parser')
 
+        ### TODO: Move all this parsing to the scrape module ###
         # Find the dropdown elements using appropriate selectors
         table = soup.find('table', id='searchTable')
 
         # Find the dropdown elements within the table
-        dropdown_elements = table.select('select')
-        self.logger.debug(dropdown_elements)
+        dropdowns = table.select('select')
 
-        # Extract the data from each dropdown element
         dropdown_data = {}
-        for dropdown_element in dropdown_elements:
-            options = dropdown_element.find_all('option')
-            dropdown_data[dropdown_element['name']] = [option.text for option in options]
+        for dropdown in dropdowns:
+            options = dropdown.find_all('option')
+            dropdown_data[dropdown['name']] = [option.text for option in options]
 
-        # Process or store the extracted data as needed
-        # print(dropdown_data)
-        # for dropdown in dropdown_data:
-        #     print(dropdown)  # Example: Print the data for each dropdown
-        
+        self.logger.debug(f"Dropdown data:\n{json.dumps(dropdown_data, indent=4)}")
+        ### TODO ###
+
         self.ui.startYearCombo.addItem("Any")
         self.ui.endYearCombo.addItem("Any")
         self.ui.startYearCombo.addItems([str(year) for year in range(2004, 2017)])
