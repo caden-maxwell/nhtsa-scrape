@@ -2,7 +2,6 @@ import logging
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QDialogButtonBox, QDialog
-from PyQt6.QtGui import QMouseEvent
 
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
@@ -20,6 +19,11 @@ class ScrapeMenu(QWidget):
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submission)
 
+        self.ui.startYearCombo.addItem("Any")
+        self.ui.endYearCombo.addItem("Any")
+        self.ui.startYearCombo.addItems([str(year) for year in range(2004, 2017)])
+        self.ui.endYearCombo.addItems([str(year) for year in range(2004, 2017)])
+
         self.logger = logging.getLogger(__name__)
 
         self.loading_window = LoadingWindow()
@@ -27,8 +31,11 @@ class ScrapeMenu(QWidget):
     def handle_submission(self):
         self.loading_window.show()
 
-    def setup(self, *args):
-        self.logger.info("Scrape menu setup called.")
+    def setup(self, make="All", model="All", start_year="Any", end_year="Any"):
+        self.ui.makeEdit.setText(make)
+        self.ui.modelEdit.setText(model)
+        self.ui.startYearCombo.setCurrentText(str(start_year))
+        self.ui.endYearCombo.setCurrentText(str(end_year))
     
 
 class LoadingWindow(QDialog):

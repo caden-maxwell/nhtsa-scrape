@@ -39,15 +39,36 @@
     <layout class="QHBoxLayout" name="bottomHLayout">
      <item>
       <widget class="QPushButton" name="rescrapeBtn">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="text">
         <string>Re-Scrape</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>false</bool>
+       </property>
+       <property name="flat">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="openBtn">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="text">
         <string>Open Case Profile</string>
+       </property>
+       <property name="autoDefault">
+        <bool>false</bool>
+       </property>
+       <property name="default">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
