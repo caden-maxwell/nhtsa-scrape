@@ -54,8 +54,6 @@ class MainWindow(QWidget):
         self.main_menu.logs.connect(self.logs_window.show)
 
     def switch_page(self, page):
-        if getattr(page, "setup", None):
-            page.setup()
         self.ui.stackedWidget.setCurrentWidget(page)
 
     def closeEvent(self, event):

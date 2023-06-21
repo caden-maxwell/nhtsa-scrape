@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+from PyQt6 import QtGui
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
@@ -22,6 +23,10 @@ class LogsWindow(QWidget):
 
         self.ui.clearBtn.clicked.connect(self.handle_clear_btn_clicked)
         self.ui.saveBtn.clicked.connect(self.handle_save_btn_clicked)
+
+    def showEvent(self, a0):
+        self.ui.logsEdit.verticalScrollBar().setValue(self.ui.logsEdit.verticalScrollBar().maximum())
+        return super().showEvent(a0)
 
     def handle_logger_message(self, msg):
         self.ui.logsEdit.append(msg)
