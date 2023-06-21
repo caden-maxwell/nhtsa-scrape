@@ -25,7 +25,6 @@ class ScrapeMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.loading_window = LoadingWindow()
-        self.profile_id = -1
 
         self.populate_search()
 
@@ -34,36 +33,15 @@ class ScrapeMenu(QWidget):
         self.ui.makeCombo.currentIndexChanged.connect(self.handle_make_change)
         self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
 
-    def setup(self, data=None):
-        self.profile_id = -1
-        make = "All"
-        model = "All"
-        start_year = "All"
-        end_year = "All"
-        primary_damage = "All"
-        secondary_damage = "All"
-        min_dv = 0
-        max_dv = 0
-
-        if data:
-            self.profile_id, make, model, start_year, end_year, primary_damage, secondary_damage, min_dv, max_dv = data
-        if self.profile_id > 0:
-            self.ui.mainTitle.setText("Re Scrape Profile")
-            self.ui.submitBtn.setText("Re-Scrape")
-        
-        # Disconnect and reconnect the signal to prevent the connected function from being called while the combobox is being populated
-        self.ui.makeCombo.currentIndexChanged.disconnect(self.handle_make_change)
-        self.ui.makeCombo.setCurrentText(make)
-        self.ui.makeCombo.currentIndexChanged.connect(self.handle_make_change)
-
-        # Populate the rest of the comboboxes
-        self.ui.modelCombo.setCurrentText(model)
-        self.ui.startYearCombo.setCurrentText(str(start_year))
-        self.ui.endYearCombo.setCurrentText(str(end_year))
-        self.ui.pDmgCombo.setCurrentText(primary_damage)
-        self.ui.sDmgCombo.setCurrentText(secondary_damage)
-        self.ui.minDvSpin.setValue(min_dv)
-        self.ui.maxDvSpin.setValue(max_dv)
+    def setup(self):
+        self.ui.makeCombo.setCurrentText("All")
+        self.ui.modelCombo.setCurrentText("All")
+        self.ui.startYearCombo.setCurrentText("All")
+        self.ui.endYearCombo.setCurrentText("All")
+        self.ui.pDmgCombo.setCurrentText("All")
+        self.ui.sDmgCombo.setCurrentText("All")
+        self.ui.minDvSpin.setValue(0)
+        self.ui.maxDvSpin.setValue(0)
 
     def populate_search(self):
         self.worker = SearchRefreshWorker()
@@ -126,9 +104,5 @@ class ScrapeMenu(QWidget):
         self.loading_window.show()
 
     def open_data_viewer(self):
-        self.data_viewer = DataView(self.is_new_profile())
+        self.data_viewer = DataView(True)
         self.data_viewer.show()
-
-    def is_new_profile(self):
-        return self.profile_id < 0
-    
