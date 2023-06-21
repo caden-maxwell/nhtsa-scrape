@@ -1,10 +1,9 @@
 import logging
-from time import sleep
 import requests
 from urllib3 import PoolManager
 from urllib.parse import urlencode
 
-from PyQt6.QtCore import QThread, pyqtSignal, QRunnable
+from PyQt6.QtCore import QThread, pyqtSignal
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -56,7 +55,7 @@ class WebRequestHandler(QThread):
 
 
 class SearchRefreshWorker(QThread):
-    refreshed = pyqtSignal(str)
+    retrieved = pyqtSignal(str)
     def __init__(self):
         super().__init__()
         self.url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search"
@@ -65,7 +64,7 @@ class SearchRefreshWorker(QThread):
     def run(self):
         try:
             response = requests.get(self.url, timeout=5)
-            self.refreshed.emit(response.text)
+            self.retrieved.emit(response.text)
         except Exception as e:
             self.logger.error(e)
 
@@ -76,6 +75,7 @@ class ModelUpdateWorker(QThread):
         super().__init__()
         self.url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/"
         self.params= { "make": make }
+        self.logger = logging.getLogger(__name__)
 
     def run(self):
         try:

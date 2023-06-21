@@ -37,7 +37,7 @@ class ProfileMenu(QWidget):
         current_datetime = datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-        self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime, 'FORD', 'BRONCO-FULLSIZE', 2015, 2016, "F Front", "L Left - front or rear", 0, 159))
+        self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime))
         ### TODO ###
 
     def handle_open(self):

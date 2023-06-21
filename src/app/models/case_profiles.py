@@ -45,7 +45,7 @@ class CaseProfiles(QAbstractListModel):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
             ### TODO: Change this later to display the data in a format that makes sense ###
-            data = str(data[1]) + " - " + str(data[2]) + " - " + str(data[5]) + " " + str(data[6]) + " - " + str(data[3])
+            data = str(data[0]) + " - " + str(data[1]) + " - " + str(data[2]) + " - " + str(data[3])
             return str(data)
             ### TODO ###
         return None
@@ -54,8 +54,8 @@ class CaseProfiles(QAbstractListModel):
     def add_data(self, data):
         self.cursor.execute(
             """
-            INSERT INTO case_profiles (name, description, date_created, date_modified, make, model, start_year, end_year, p_dmg_location, s_dmg_location, min_dv, max_dv)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO case_profiles (name, description, date_created, date_modified)
+            VALUES (?, ?, ?, ?)
             """,
             data
         )
@@ -87,15 +87,7 @@ class CaseProfiles(QAbstractListModel):
                 name TEXT,
                 description TEXT,
                 date_created TEXT,
-                date_modified TEXT,
-                make TEXT,
-                model TEXT,
-                start_year INTEGER,
-                end_year INTEGER,
-                p_dmg_location TEXT,
-                s_dmg_location TEXT,
-                min_dv INTEGER,
-                max_dv INTEGER
+                date_modified TEXT
                 );
             """
         )
