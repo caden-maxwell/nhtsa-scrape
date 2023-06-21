@@ -12,7 +12,6 @@ from .data_view import DataView
 
 class ProfileMenu(QWidget):
     back = pyqtSignal()
-    rescrape = pyqtSignal(tuple)
     
     def __init__(self):
         super().__init__()
@@ -26,12 +25,9 @@ class ProfileMenu(QWidget):
         self.ui.listView.selectionModel().selectionChanged.connect(self.handle_selection_changed)
         self.ui.listView.clearSelection()
 
-        self.ui.rescrapeBtn.clicked.connect(self.handle_rescrape)
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.openBtn.clicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
-
-        self.profile_btns = [self.ui.openBtn, self.ui.deleteBtn, self.ui.rescrapeBtn]
 
     def setup(self):
         self.model.refresh_data()
@@ -43,17 +39,6 @@ class ProfileMenu(QWidget):
 
         self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime, 'FORD', 'BRONCO-FULLSIZE', 2015, 2016, "F Front", "L Left - front or rear", 0, 159))
         ### TODO ###
-
-    def handle_rescrape(self):
-        selected = self.ui.listView.selectedIndexes()
-        if not selected:
-            return
-
-        self.logger.debug("Rescraping...")
-        selected = selected.pop()
-        profile = self.model.data_list[selected.row()]
-        data = profile[0:1] + profile[5:]
-        self.rescrape.emit(data)
 
     def handle_open(self):
         self.data_viewer = DataView(False)
@@ -75,7 +60,7 @@ class ProfileMenu(QWidget):
     
     def handle_selection_changed(self, selected, deselected):
         # Enable/disable buttons based on if a profile is selected
-        for button in self.profile_btns:
+        for button in [self.ui.openBtn, self.ui.deleteBtn]:
             button.setEnabled(False)
             if self.ui.listView.selectedIndexes():
                 button.setEnabled(True)
