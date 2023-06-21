@@ -7,12 +7,12 @@ from PyQt6.QtWidgets import QWidget, QMessageBox
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
 from app.models.case_profiles import CaseProfiles
 
-from . import DataView
+from .data_view import DataView
 
 
 class ProfileMenu(QWidget):
     back = pyqtSignal()
-    rescrape = pyqtSignal(int, str, str, int, int)
+    rescrape = pyqtSignal(tuple)
     
     def __init__(self):
         super().__init__()
@@ -41,7 +41,7 @@ class ProfileMenu(QWidget):
         current_datetime = datetime.now()
         formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
 
-        self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime, 'Ford', 'Bronco', 2015, 2016))
+        self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime, 'FORD', 'BRONCO-FULLSIZE', 2015, 2016, "F Front", "L Left - front or rear", 0, 159))
         ### TODO ###
 
     def handle_rescrape(self):
@@ -51,9 +51,9 @@ class ProfileMenu(QWidget):
 
         self.logger.debug("Rescraping...")
         selected = selected.pop()
-        data = self.model.data_list[selected.row()]
-        data = data[0:1] + data[5:9] # Get only the profile primary key and the vehicle info
-        self.rescrape.emit(*data)
+        profile = self.model.data_list[selected.row()]
+        data = profile[0:1] + profile[5:]
+        self.rescrape.emit(data)
 
     def handle_open(self):
         self.data_viewer = DataView(False)
