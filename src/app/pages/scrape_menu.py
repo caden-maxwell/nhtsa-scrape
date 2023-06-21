@@ -26,7 +26,7 @@ class ScrapeMenu(QWidget):
         self.scrape_engine = ScrapeEngine()
         self.loading_window = LoadingWindow(self.scrape_engine)
 
-        self.get_dropdown_data()
+        self.retrieve_dropdown_data()
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submission)
@@ -42,7 +42,7 @@ class ScrapeMenu(QWidget):
 
         self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
 
-    def setup(self):
+    def showEvent(self, event):
         self.ui.makeCombo.setCurrentText("All")
         self.ui.modelCombo.setCurrentText("All")
         self.ui.startYearCombo.setCurrentText("All")
@@ -51,11 +51,13 @@ class ScrapeMenu(QWidget):
         self.ui.sDmgCombo.setCurrentText("All")
         self.ui.minDvSpin.setValue(0)
         self.ui.maxDvSpin.setValue(0)
+        self.refresh_worker.start()
+        return super().showEvent(event)
 
-    def get_dropdown_data(self):
-        self.worker = SearchRefreshWorker()
-        self.worker.retrieved.connect(self.parse_retrieved)
-        self.worker.start()
+    def retrieve_dropdown_data(self):
+        self.refresh_worker = SearchRefreshWorker()
+        self.refresh_worker.retrieved.connect(self.parse_retrieved)
+        self.refresh_worker.start()
 
     def parse_retrieved(self, response):
         soup = BeautifulSoup(response, 'html.parser')
@@ -67,13 +69,15 @@ class ScrapeMenu(QWidget):
             options = dropdown.find_all('option')
             dropdown_data[dropdown['name']] = [option.text for option in options]
         
-        self.logger.debug(f"Dropdown data:\n{json.dumps(dropdown_data, indent=4)}")
-
         self.populate_combos(dropdown_data)
 
     def populate_combos(self, dropdown_data):
 
+        # Disconnect signal temporarily to prevent unnessesary calls to handle_make_change
+        self.ui.makeCombo.disconnect()
         self.ui.makeCombo.addItems(dropdown_data['ddlMake'])
+        self.ui.makeCombo.currentIndexChanged.connect(self.handle_make_change)
+
         self.ui.modelCombo.addItems(dropdown_data['ddlModel'])
         self.ui.startYearCombo.addItems(dropdown_data['ddlStartModelYear'])
         self.ui.endYearCombo.addItems(dropdown_data['ddlEndModelYear'])
@@ -85,9 +89,9 @@ class ScrapeMenu(QWidget):
     def handle_make_change(self, make):
         self.scrape_engine.set_param("make", self.ui.makeCombo.itemText(make))
         make = self.ui.makeCombo.itemText(make)
-        self.worker = ModelUpdateWorker(make)
-        self.worker.updated.connect(self.update_model_combo)
-        self.worker.start()
+        self.update_worker = ModelUpdateWorker(make)
+        self.update_worker.updated.connect(self.update_model_combo)
+        self.update_worker.start()
 
     def update_model_combo(self, response):
         model_dcts = json.loads(response)
@@ -98,7 +102,7 @@ class ScrapeMenu(QWidget):
         self.ui.modelCombo.clear()
         self.ui.modelCombo.addItem("All")
         self.ui.modelCombo.addItems(models)
-        self.logger.info("Model update finished. Populated model field.")
+        self.logger.info("Updated model dropdown.")
 
     def handle_submission(self):
         self.scrape_engine.start()

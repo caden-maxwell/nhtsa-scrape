@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from PyQt6 import QtGui
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QMessageBox
@@ -29,7 +30,7 @@ class ProfileMenu(QWidget):
         self.ui.openBtn.clicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
 
-    def setup(self):
+    def showEvent(self, event):
         self.model.refresh_data()
         self.ui.listView.clearSelection()
 
@@ -39,6 +40,7 @@ class ProfileMenu(QWidget):
 
         self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime))
         ### TODO ###
+        return super().showEvent(event)
 
     def handle_open(self):
         self.data_viewer = DataView(False)

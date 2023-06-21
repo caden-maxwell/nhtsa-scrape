@@ -29,13 +29,9 @@ class ScrapeEngine(QThread):
             case "secondary_dmg": self.secondary_dmg = value
             case "image_set": self.image_set = value
             case _: self.logger.error(f"Invalid param: {param}"); return
-        self.logger.info(f"Set param: {param} to {value}")
 
     def run(self):
-        self.logger.info("Scrape engine started.")
-        count = 0
-        
-        self.logger.debug( f"""Scrape engine params:
+        self.logger.debug( f"""Scrape engine started with these params:
 {{
     start_year: {self.start_year}
     end_year: {self.end_year}
@@ -49,7 +45,5 @@ class ScrapeEngine(QThread):
 }}"""
         )
 
-        while count < 5:
-            self.logger.info(f"Scrape engine count: {count}")
-            count += 1
-            self.sleep(1)
+
+        self.logger.info("Scrape engine finished.")

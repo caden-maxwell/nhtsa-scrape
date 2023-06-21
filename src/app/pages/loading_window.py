@@ -1,5 +1,4 @@
 import logging
-from PyQt6 import QtGui
 
 from PyQt6.QtWidgets import QDialog, QDialogButtonBox
 from PyQt6.QtCore import pyqtSignal
@@ -21,10 +20,10 @@ class LoadingWindow(QDialog):
 
         self.cancel_button = self.ui.buttonBox.addButton(QDialogButtonBox.StandardButton.Cancel)
         self.view_button = self.ui.buttonBox.addButton("Stop and View Data", QDialogButtonBox.ButtonRole.AcceptRole)
-        self.cancel_button.clicked.connect(self.handle_cancel_clicked)
+        self.cancel_button.clicked.connect(self.handle_cancelled)
         self.view_button.clicked.connect(self.handle_view_clicked)
 
-    def handle_cancel_clicked(self):
+    def handle_cancelled(self):
         self.logger.info("Scrape cancelled, all scraped data discarded.")
         self.scrape_engine.terminate()
 
@@ -35,5 +34,5 @@ class LoadingWindow(QDialog):
         self.view_btn_clicked.emit()
 
     def closeEvent(self, a0):
-        self.handle_cancel_clicked()
+        self.handle_cancelled()
         return super().closeEvent(a0)
