@@ -54,8 +54,8 @@ class CaseProfiles(QAbstractListModel):
     def add_data(self, data):
         self.cursor.execute(
             """
-            INSERT INTO case_profiles (name, description, date_created, date_modified, make, model, start_year, end_year)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO case_profiles (name, description, date_created, date_modified, make, model, start_year, end_year, p_dmg_location, s_dmg_location, min_dv, max_dv)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             data
         )
@@ -91,7 +91,11 @@ class CaseProfiles(QAbstractListModel):
                 make TEXT,
                 model TEXT,
                 start_year INTEGER,
-                end_year INTEGER
+                end_year INTEGER,
+                p_dmg_location TEXT,
+                s_dmg_location TEXT,
+                min_dv INTEGER,
+                max_dv INTEGER
                 );
             """
         )

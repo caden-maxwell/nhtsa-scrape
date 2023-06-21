@@ -26,6 +26,7 @@ class MainWindow(QWidget):
         log_handler.setFormatter(formatter)
         log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[log_handler])
+        self.logger = logging.getLogger(__name__)
 
     def setup_ui(self):
         # Instantiate and add menus to the stacked widget

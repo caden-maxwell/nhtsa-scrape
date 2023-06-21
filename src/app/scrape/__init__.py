@@ -1,2 +1,1 @@
-from .request_handler import WebRequestHandler
-from .search_scrape import SearchScrape
+from .request_handler import WebRequestHandler, Request
