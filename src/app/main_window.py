@@ -22,7 +22,7 @@ class MainWindow(QWidget):
     def setup_logger(self):
         self.logs_window = LogsWindow()
         log_handler = QtLogHandler()
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
         log_handler.setFormatter(formatter)
         log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[log_handler])
