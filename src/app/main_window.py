@@ -58,4 +58,3 @@ class MainWindow(QWidget):
 
     def closeEvent(self, event):
         QApplication.closeAllWindows()
-    
