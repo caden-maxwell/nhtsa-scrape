@@ -18,6 +18,7 @@
 | 6/15 | 7 | - UI is 90% done, just have to make sure I have all the necessary options for the scrape menu. <br> - Not sure what I need to put in the settings page or if I actually need it at all, but I'll leave it in there for now. <br> - I just realized I need to implement some parallelization for the loading screen, will do that first thing tomorrow. <br> - Need to implement a way to get data to the scrape menu from the profile menu. |
 | 6/19 | 6 | - Added database table for the case profiles <br> - Added ability to view case profiles from the ListView in "Open existing profile" submenu. <br> - Added ability to delete profiles, rescrape a profile, and open the profile, and the ability to pass any amount of data between two pages as needed. Lots of key components are now in place. |
 | 6/20 | 8 | - Added necessary elements for request handling <br> - Added auto-scrape from website dropdown fields upon startup, along with automatic field population and updating the vehicle model when the vehicle make is changed. <br> - Started on main scraping engine. There should be some copy/paste from the old application, however a lot still needs to be refactored to fit into the new app. |
+| 6/21 | 2 | - Added dropdown 'values' to application. We need these, since the POST request to query the database uses these and not the make/model/etc names.
 
 ---
 
