@@ -89,6 +89,31 @@ class ScrapeEngine(QThread):
         self.request_handler.clear()
         self.logger.debug(f"Total responses received: {len(responses)}")
 
+        case_urls = []
+        for response in responses:
+            if response.status != 200:
+                self.logger.error(f"Bad response for url '{response.request_url}': {response.status}")
+                continue
+            if not response:
+                continue
+            soup = BeautifulSoup(response.data, "html.parser")
+            table = soup.find_all("table")[1]
+            # Get all URL links in table
+            case_urls += [a["href"] for a in table.find_all("a")]
+            
+        if len(case_urls) > self.case_limit:
+            case_urls = case_urls[:self.case_limit]
+
+        self.request_handler.queue_requests([Request(url) for url in case_urls])
+        self.request_handler.finished.connect(self.done)
+        self.request_handler.start()
+
+    def done(self):
+        self.request_handler.finished.disconnect(self.done)
+        responses = self.request_handler.get_responses()
+        self.request_handler.clear()
+        print("There are", len(responses), "cases")
+
     def requestInterruption(self):
         self.request_handler.requestInterruption()
         self.request_handler.wait()
