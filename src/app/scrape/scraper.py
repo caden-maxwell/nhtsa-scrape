@@ -51,12 +51,12 @@ class ScrapeEngine(QThread):
         
         request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload)
         self.request_handler.queue_request(request)
-        self.request_handler.finished.connect(self.get_num_pages)
+        self.request_handler.finished.connect(self.request_pages)
         self.request_handler.start()
         self.logger.debug("Started request handler.")
 
-    def get_num_pages(self):
-        self.request_handler.finished.disconnect(self.get_num_pages)
+    def request_pages(self):
+        self.request_handler.finished.disconnect(self.request_pages)
         response = self.request_handler.get_responses()
 
         if not response:
@@ -89,7 +89,7 @@ class ScrapeEngine(QThread):
         self.request_handler.clear()
         self.logger.debug(f"Total responses received: {len(responses)}")
 
-        case_urls = []
+        case_ids = []
         for response in responses:
             if response.status != 200:
                 self.logger.error(f"Bad response for url '{response.request_url}': {response.status}")
@@ -99,17 +99,19 @@ class ScrapeEngine(QThread):
             soup = BeautifulSoup(response.data, "html.parser")
             table = soup.find_all("table")[1]
             # Get all URL links in table
-            case_urls += [a["href"] for a in table.find_all("a")]
+            case_urls = [a["href"] for a in table.find_all("a")]
+            case_ids.extend([row.split('=')[2] for row in case_urls])
             
-        if len(case_urls) > self.case_limit:
-            case_urls = case_urls[:self.case_limit]
+        if len(case_ids) > self.case_limit:
+            case_ids = case_ids[:self.case_limit]
 
-        self.request_handler.queue_requests([Request(url) for url in case_urls])
-        self.request_handler.finished.connect(self.done)
+        url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+        self.request_handler.queue_requests([Request(url + case_id) for case_id in case_ids])
+        self.request_handler.finished.connect(self.cases_retrieved)
         self.request_handler.start()
 
-    def done(self):
-        self.request_handler.finished.disconnect(self.done)
+    def cases_retrieved(self):
+        self.request_handler.finished.disconnect(self.cases_retrieved)
         responses = self.request_handler.get_responses()
         self.request_handler.clear()
         print("There are", len(responses), "cases")
