@@ -1,10 +1,11 @@
 import logging
+import random
 import requests
+import time
 from urllib3 import PoolManager
-from urllib.parse import urlencode
 
 from PyQt6.QtCore import QThread, pyqtSignal
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Request:
@@ -20,11 +21,13 @@ class Request:
 
 class WebRequestHandler(QThread):
     def __init__(self):
+        super().__init__()
         self.logger = logging.getLogger(__name__)
         self.requests = []
         self.responses = []
         self.timeout = 5
         self.pool_manager = PoolManager()
+        self.rate_limit = 5
 
     def queue_request(self, request):
         self.requests.append(request)
@@ -36,22 +39,47 @@ class WebRequestHandler(QThread):
         return self.responses
 
     def clear(self):
-        self.requests = []
         self.responses = []
 
     def run(self):
+        num_requests = len(self.requests)
+
+        # Bracketed rate limiting: Larger # of requests = longer time between requests. Keeps load on server low.
+        if num_requests <= 10:
+            self.rate_limit = 0.25
+        elif num_requests <= 20:
+            self.rate_limit = 1
+        elif num_requests <= 30:
+            self.rate_limit = 1.75
+        elif num_requests <= 40:
+            self.rate_limit = 2.5
+        elif num_requests <= 50:
+            self.rate_limit = 3.25
+        else:
+            self.rate_limit = 4
+
+        self.logger.info(f"Sending {num_requests} request{'s'[:num_requests^1]} at 1 request per {self.rate_limit}s.")
+
         with ThreadPoolExecutor() as executor:
             for request in self.requests:
-                executor.submit(self.send_request, request)
+                if self.isInterruptionRequested():
+                    self.logger.info("Request handler interrupted. Stopping thread.")
+                    self.requests = []
+                    return
+                future = executor.submit(self.send_request, request)
+                randomize = self.rate_limit + (self.rate_limit * (random.random() / 2))
+                time.sleep(randomize)
+                self.logger.info(f"Randomized rate limit: {randomize}s")
+                self.responses.append(future.result())
+        self.requests = []
 
-    def send_request(self, request):
+    def send_request(self, request: Request):
         response = None
         try:
-            full_url = request.url + '?' + urlencode(request.params)
-            response = self.pool_manager.request(request.method, full_url, headers=request.headers, timeout=self.timeout)
+            response = self.pool_manager.request(request.method, request.url, request.params, request.headers, timeout=self.timeout)
         except Exception as e:
             self.logger.error(e)
-        self.responses.append(response)
+        return response
 
 
 class SearchRefreshWorker(QThread):

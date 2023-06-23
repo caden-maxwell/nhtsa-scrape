@@ -1,7 +1,7 @@
 import logging
 
-from PyQt6.QtWidgets import QDialog, QDialogButtonBox
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QDialog, QDialogButtonBox 
+from PyQt6.QtCore import pyqtSignal, QThread
 
 from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 
@@ -9,7 +9,7 @@ from app.ui.LoadingDialog_ui import Ui_LoadingDialog
 class LoadingWindow(QDialog):
     view_btn_clicked = pyqtSignal()
     
-    def __init__(self, scrape_engine):
+    def __init__(self, scrape_engine: QThread):
         super().__init__()
 
         self.ui = Ui_LoadingDialog()
@@ -25,7 +25,10 @@ class LoadingWindow(QDialog):
 
     def handle_cancelled(self):
         self.logger.info("Scrape cancelled, all scraped data discarded.")
-        self.scrape_engine.terminate()
+        # Safely end scrape thread
+        self.scrape_engine.requestInterruption()
+        self.scrape_engine.wait()
+
 
     def handle_view_clicked(self):
         ### TODO: Add logic to stop scraping data and export everything to the data viewer ###

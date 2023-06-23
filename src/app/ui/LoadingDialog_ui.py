@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_LoadingDialog(object):
     def setupUi(self, LoadingDialog):
         LoadingDialog.setObjectName("LoadingDialog")
-        LoadingDialog.resize(353, 153)
+        LoadingDialog.resize(353, 157)
         self.verticalLayout = QtWidgets.QVBoxLayout(LoadingDialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.mainTitle = QtWidgets.QLabel(parent=LoadingDialog)
@@ -28,6 +28,10 @@ class Ui_LoadingDialog(object):
         self.progressBar.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.progressBar.setObjectName("progressBar")
         self.verticalLayout.addWidget(self.progressBar)
+        self.lineEdit = QtWidgets.QLineEdit(parent=LoadingDialog)
+        self.lineEdit.setEnabled(False)
+        self.lineEdit.setObjectName("lineEdit")
+        self.verticalLayout.addWidget(self.lineEdit)
         self.buttonBox = QtWidgets.QDialogButtonBox(parent=LoadingDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Orientation.Horizontal)
         self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.NoButton)
@@ -43,3 +47,4 @@ class Ui_LoadingDialog(object):
         _translate = QtCore.QCoreApplication.translate
         LoadingDialog.setWindowTitle(_translate("LoadingDialog", "Dialog"))
         self.mainTitle.setText(_translate("LoadingDialog", "Scraping NASS/CDS Database..."))
+        self.lineEdit.setText(_translate("LoadingDialog", "Logging here"))
