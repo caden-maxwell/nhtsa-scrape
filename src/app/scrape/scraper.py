@@ -25,6 +25,14 @@ class ScrapeEngine(QThread):
         self.search_payload[key] = val
         self.logger.info(f"{key} updated to '{val}'.")
 
+    def set_case_limit(self, limit):
+        self.case_limit = limit
+        self.logger.info(f"Case limit updated to '{limit}'.")
+        
+    def change_image_set(self, image_set):
+        self.image_set = image_set
+        self.logger.info(f"Image set updated to '{image_set}'.")
+
     def run(self):
         self.logger.debug( f"""Scrape engine started with these params:
 {{
@@ -60,7 +68,7 @@ class ScrapeEngine(QThread):
         soup = BeautifulSoup(response.data, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
-            self.logger.error("Page dropdown not found.")
+            self.logger.error("No cases found.")
             return
 
         num_pages = int(page_dropdown.find_all("option")[-1].text)
@@ -79,7 +87,6 @@ class ScrapeEngine(QThread):
         self.request_handler.finished.disconnect(self.request_cases)
         responses = self.request_handler.get_responses()
         self.request_handler.clear()
-        print(responses)
         self.logger.debug(f"Total responses received: {len(responses)}")
 
     def requestInterruption(self):
