@@ -65,7 +65,7 @@ class ScrapeEngine(QThread):
 
         response = response[0]
 
-        soup = BeautifulSoup(response.data, "html.parser")
+        soup = BeautifulSoup(response.text, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
             self.logger.error("No cases found.")
@@ -91,12 +91,12 @@ class ScrapeEngine(QThread):
 
         case_ids = []
         for response in responses:
-            if response.status != 200:
-                self.logger.error(f"Bad response for url '{response.request_url}': {response.status}")
+            if response.status_code != 200:
+                self.logger.error(f"Bad response for url '{response.url}': {response.status_code}")
                 continue
             if not response:
                 continue
-            soup = BeautifulSoup(response.data, "html.parser")
+            soup = BeautifulSoup(response.text, "html.parser")
             table = soup.find_all("table")[1]
             # Get all URL links in table
             case_urls = [a["href"] for a in table.find_all("a")]
