@@ -198,7 +198,14 @@
         </widget>
        </item>
        <item>
-        <widget class="QSpinBox" name="casesSpin"/>
+        <widget class="QSpinBox" name="casesSpin">
+         <property name="minimum">
+          <number>1</number>
+         </property>
+         <property name="maximum">
+          <number>999999999</number>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

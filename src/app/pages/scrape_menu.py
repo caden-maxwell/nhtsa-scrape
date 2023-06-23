@@ -38,13 +38,14 @@ class ScrapeMenu(QWidget):
         self.ui.sDmgCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('lSecondaryDamage', self.ui.sDmgCombo.currentData()))
         self.ui.dvMinSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVFrom', self.ui.dvMinSpin.value()))
         self.ui.dvMaxSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVTo', self.ui.dvMaxSpin.value()))
-        self.ui.casesSpin.valueChanged.connect(self.limit_cases)
-        self.ui.imageSetCombo.currentTextChanged.connect(self.limit_images)
+        self.ui.casesSpin.valueChanged.connect(self.scrape_engine.set_case_limit)
+        self.ui.imageSetCombo.currentTextChanged.connect(self.scrape_engine.change_image_set)
         
         self.loading_window = LoadingWindow(self.scrape_engine)
         self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
 
         self.fetch_search()
+        self.ui.casesSpin.setValue(self.scrape_engine.CASES_PER_PAGE)
 
     def showEvent(self, event):
         self.fetch_search()
@@ -119,12 +120,6 @@ class ScrapeMenu(QWidget):
         for model in models:
             self.ui.modelCombo.addItem(*model)
         self.logger.info("Updated model dropdown.")
-
-    def limit_cases(self, cases):
-        self.scrape_engine.case_limit = cases
-
-    def limit_images(self, image_set):
-        self.scrape_engine.image_set = image_set
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""

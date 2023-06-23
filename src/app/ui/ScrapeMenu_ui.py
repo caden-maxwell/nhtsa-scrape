@@ -136,6 +136,8 @@ class Ui_ScrapeMenu(object):
         self.label_9.setObjectName("label_9")
         self.numCasesLayout.addWidget(self.label_9)
         self.casesSpin = QtWidgets.QSpinBox(parent=ScrapeMenu)
+        self.casesSpin.setMinimum(1)
+        self.casesSpin.setMaximum(999999999)
         self.casesSpin.setObjectName("casesSpin")
         self.numCasesLayout.addWidget(self.casesSpin)
         self.body.addLayout(self.numCasesLayout, 6, 2, 1, 1)
