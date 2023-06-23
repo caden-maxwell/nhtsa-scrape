@@ -2,10 +2,9 @@ import logging
 import random
 import requests
 import time
-from urllib3 import PoolManager
 
 from PyQt6.QtCore import QThread, pyqtSignal
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 
 
 class Request:
@@ -26,7 +25,6 @@ class WebRequestHandler(QThread):
         self.requests = []
         self.responses = []
         self.timeout = 5
-        self.pool_manager = PoolManager()
         self.rate_limit = 5
 
     def queue_request(self, request):
@@ -76,7 +74,10 @@ class WebRequestHandler(QThread):
     def send_request(self, request: Request):
         response = None
         try:
-            response = self.pool_manager.request(request.method, request.url, request.params, request.headers, timeout=self.timeout)
+            if request.method == 'GET':
+                response = requests.get(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
+            elif request.method == 'POST':
+                response = requests.post(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
         except Exception as e:
             self.logger.error(e)
         return response
