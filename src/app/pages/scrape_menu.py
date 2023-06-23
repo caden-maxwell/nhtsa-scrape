@@ -21,18 +21,15 @@ class ScrapeMenu(QWidget):
 
         self.ui = Ui_ScrapeMenu()
         self.ui.setupUi(self)
-        self.logger = logging.getLogger(__name__)
-
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
+        self.ui.imageSetCombo.addItems(["All", "F - Front", "FL - Front Left", "FR - Front Right", "B - Back", "BL - Back Left", "BR - Back Right", "L - Left", "R - Right"])
 
+        self.logger = logging.getLogger(__name__)
         self.scrape_engine = ScrapeEngine()
-        self.loading_window = LoadingWindow(self.scrape_engine)
-        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
-
-        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
 
         # Set up signals to update the scrape engine payload when the user changes any search criteria
+        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.ui.makeCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlMake', self.ui.makeCombo.currentData()))
         self.ui.modelCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlModel', self.ui.modelCombo.currentData()))
         self.ui.startYearCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlStartModelYear', self.ui.startYearCombo.currentData()))
@@ -41,6 +38,11 @@ class ScrapeMenu(QWidget):
         self.ui.sDmgCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('lSecondaryDamage', self.ui.sDmgCombo.currentData()))
         self.ui.dvMinSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVFrom', self.ui.dvMinSpin.value()))
         self.ui.dvMaxSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVTo', self.ui.dvMaxSpin.value()))
+        self.ui.casesSpin.valueChanged.connect(self.limit_cases)
+        self.ui.imageSetCombo.currentTextChanged.connect(self.limit_images)
+        
+        self.loading_window = LoadingWindow(self.scrape_engine)
+        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
 
         self.fetch_search()
 
@@ -118,6 +120,11 @@ class ScrapeMenu(QWidget):
             self.ui.modelCombo.addItem(*model)
         self.logger.info("Updated model dropdown.")
 
+    def limit_cases(self, cases):
+        self.scrape_engine.case_limit = cases
+
+    def limit_images(self, image_set):
+        self.scrape_engine.image_set = image_set
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
@@ -128,6 +135,7 @@ class ScrapeMenu(QWidget):
         """Opens the data viewer window, terminating the scrape engine if it is running."""
         if self.scrape_engine.isRunning():
             self.logger.info("Scrape engine is running. Terminating.")
-            self.scrape_engine.terminate()
+            self.scrape_engine.requestInterruption()
+            self.scrape_engine.wait()
         self.data_viewer = DataView(True)
         self.data_viewer.show()

@@ -40,5 +40,6 @@
     "ddlAutomaticBeltAvail": -1,
     "ddlAirBagDeployed": -1,
     "ddlChildSeatUsed": -1,
-    "btnSubmit": "Submit2"
+    "btnSubmit": "Submit2",
+    "currentPage": 1
 }
