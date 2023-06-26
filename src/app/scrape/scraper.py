@@ -1,7 +1,7 @@
 import json
 import logging
 from math import ceil
-import os
+from pathlib import Path
 
 from PyQt6.QtCore import QThread
 
@@ -18,8 +18,9 @@ class ScrapeEngine(QThread):
         self.image_set = "All"
         self.request_handler = WebRequestHandler()
 
-        # Get deafult search payload
-        with open(os.path.dirname(__file__) + "/payload.json", "r") as f:
+        # Get default search payload
+        payload_path = Path(__file__).parent / "payload.json"
+        with open(payload_path, "r") as f:
             self.search_payload = json.load(f)
 
     def update_payload(self, key, val):
