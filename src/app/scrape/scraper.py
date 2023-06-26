@@ -1,6 +1,7 @@
 import json
 import logging
 from math import ceil
+import os
 
 from PyQt6.QtCore import QThread
 
@@ -18,7 +19,7 @@ class ScrapeEngine(QThread):
         self.request_handler = WebRequestHandler()
 
         # Get deafult search payload
-        with open("app/scrape/payload.json", "r") as f:
+        with open(os.path.dirname(__file__) + "/payload.json", "r") as f:
             self.search_payload = json.load(f)
 
     def update_payload(self, key, val):

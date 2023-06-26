@@ -1,4 +1,5 @@
 import logging
+import os
 import sqlite3
 from sqlite3 import Error
 
@@ -10,7 +11,7 @@ class CaseProfiles(QAbstractListModel):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         try:
-            self.db = sqlite3.connect('app/models/db_saves.sqlite3')
+            self.db = sqlite3.connect(os.path.dirname(__file__) + "/db_saves.sqlite3")
             self.cursor = self.db.cursor()
         except Error as e:
             self.logger.error(e)
