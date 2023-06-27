@@ -60,14 +60,22 @@ class WebRequestHandler(QThread):
 
         with ThreadPoolExecutor() as executor:
             for request in self.requests:
-                if self.isInterruptionRequested():
-                    self.logger.info("Request handler interrupted. Stopping thread.")
-                    self.requests = []
-                    return
                 future = executor.submit(self.send_request, request)
-                randomize = self.rate_limit + (self.rate_limit * (random.random() / 2))
-                time.sleep(randomize)
-                self.logger.info(f"Randomized rate limit: {randomize}s")
+
+                # Randomize rate limit by +/- 33%
+                rand_time = self.rate_limit + random.uniform(-self.rate_limit / 3, self.rate_limit / 3)
+                self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
+
+                # Rate limiting with quick interruption response
+                start = time.time()
+                while time.time() - start < rand_time and not self.isInterruptionRequested():
+                    time.sleep(0.01)
+
+                if self.isInterruptionRequested():
+                    self.logger.debug("Request handler interrupted. Stopping thread.")
+                    future.cancel()
+                    break
+
                 self.responses.append(future.result())
         self.requests = []
 
@@ -78,6 +86,8 @@ class WebRequestHandler(QThread):
                 response = requests.get(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
             elif request.method == 'POST':
                 response = requests.post(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
+            else:
+                self.logger.error(f"Invalid request method: {request.method}")
         except Exception as e:
             self.logger.error(e)
         return response

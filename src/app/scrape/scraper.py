@@ -53,19 +53,22 @@ class ScrapeEngine(QThread):
         
         request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload)
         self.request_handler.queue_request(request)
-        self.request_handler.finished.connect(self.request_pages)
+        self.request_handler.finished.connect(self.query_web_db)
         self.request_handler.start()
         self.logger.debug("Started request handler.")
 
-    def request_pages(self):
-        self.request_handler.finished.disconnect(self.request_pages)
+    def query_web_db(self):
+        self.request_handler.finished.disconnect(self.query_web_db)
         response = self.request_handler.get_responses()
 
         if not response:
             self.logger.error("No response received.")
             return
-
+        
         response = response[0]
+        if not response:
+            self.logger.error("No response received.")
+            return
 
         soup = BeautifulSoup(response.text, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
