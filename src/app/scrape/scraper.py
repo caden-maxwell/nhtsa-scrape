@@ -41,7 +41,7 @@ class ScrapeEngine(QThread):
     Make: {self.search_payload['ddlMake']},
     Model: {self.search_payload['ddlModel']},
     Model Start Year: {self.search_payload['ddlStartModelYear']},
-    Model End Yearj: {self.search_payload['ddlEndModelYear']},
+    Model End Year: {self.search_payload['ddlEndModelYear']},
     Min Delta V: {self.search_payload['tDeltaVFrom']},
     Max Delta V: {self.search_payload['tDeltaVTo']},
     Primary Damage: {self.search_payload['ddlPrimaryDamage']},
@@ -54,6 +54,7 @@ class ScrapeEngine(QThread):
         request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload)
         self.request_handler.queue_request(request)
         self.request_handler.finished.connect(self.query_web_db)
+        self.request_handler.clear()
         self.request_handler.start()
         self.logger.debug("Started request handler.")
 
