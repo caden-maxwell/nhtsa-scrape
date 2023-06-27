@@ -1,5 +1,7 @@
-from PyQt6.QtCore import QObject, pyqtSignal
 import logging
+
+from PyQt6.QtCore import QObject, pyqtSignal
+
 
 class QtLogHandler(logging.Handler, QObject):
     log_message = pyqtSignal(str)
