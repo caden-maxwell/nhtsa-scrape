@@ -29,7 +29,6 @@ class LoadingWindow(QDialog):
         self.scrape_engine.requestInterruption()
         self.scrape_engine.wait()
 
-
     def handle_view_clicked(self):
         ### TODO: Add logic to stop scraping data and export everything to the data viewer ###
         self.logger.info("Data viewer opened.")
