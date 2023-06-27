@@ -1,4 +1,4 @@
-from .log_utils.log_handler import QtLogHandler
+from .log_utils import QtLogHandler, ColorFormatter
 import logging
 
 from PyQt6.QtWidgets import QWidget, QApplication
@@ -22,7 +22,7 @@ class MainWindow(QWidget):
     def setup_logger(self):
         self.logs_window = LogsWindow()
         log_handler = QtLogHandler()
-        formatter = logging.Formatter('%(levelname)s - %(name)s - %(message)s')
+        formatter = ColorFormatter('%(levelname)s - %(name)s - %(message)s')
         log_handler.setFormatter(formatter)
         log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[log_handler])

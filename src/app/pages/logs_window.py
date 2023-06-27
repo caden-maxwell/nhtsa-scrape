@@ -24,6 +24,8 @@ class LogsWindow(QWidget):
         self.ui.clearBtn.clicked.connect(self.handle_clear_clicked)
         self.ui.saveBtn.clicked.connect(self.handle_save_clicked)
 
+        self.ui.logsEdit.setFontFamily("Consolas")
+
     def showEvent(self, a0):
         self.ui.logsEdit.verticalScrollBar().setValue(self.ui.logsEdit.verticalScrollBar().maximum())
         return super().showEvent(a0)
