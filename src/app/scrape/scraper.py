@@ -176,30 +176,19 @@ class ScrapeEngine(QThread):
 
                     contacted = event.find("Contacted")
 
+                    if tempevent.get('en') != None and tempevent.get('en') != int(event['EventNumber']):
+                        keyevents.append(tempevent)
+
                     if voi in event['VehicleNumber'] and int(payload["ddlPrimaryDamage"]) == area_of_dmg:
-                        if 'en' in tempevent:
-
-                            if tempevent.get('en') != int(event['EventNumber']):
-                                keyevents.append(tempevent)
-
                         if int(contacted['value']) > num_vehicles:
                             tempevent['an'] = contacted.text
                         else:
                             tempevent['an'] = contacted['value']
-
-                        tempevent['en'] = event['EventNumber']
-                        tempevent['voi'] = voi
-
                     elif voi in contacted.text and int(payload["ddlPrimaryDamage"]) == contacted_aod:
-                        if 'en' in tempevent:
-                            if tempevent.get('en') != int(event['EventNumber']):
-                                keyevents.append(tempevent)
-                                tempevent['en'] = event['EventNumber']
-                        else:
-                            tempevent['en'] = event['EventNumber']
-
-                        tempevent['voi'] = voi
                         tempevent['an'] = event['VehicleNumber']
+
+                    tempevent['en'] = event['EventNumber']
+                    tempevent['voi'] = voi
 
             keyevents.append(tempevent)
             print(keyevents)
