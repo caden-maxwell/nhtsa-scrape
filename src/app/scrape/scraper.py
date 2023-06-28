@@ -1,11 +1,13 @@
 import json
 import logging
 from math import ceil
+import os
 from pathlib import Path
 
 from PyQt6.QtCore import QThread
 
 from bs4 import BeautifulSoup
+import requests
 
 from .request_handler import WebRequestHandler, Request
 
@@ -98,26 +100,29 @@ class ScrapeEngine(QThread):
             soup = BeautifulSoup(response.text, "html.parser")
         
         self.logger.info(f"Received {len(responses)} cases.")
+
+        temp = {}
+        contents = []
+        file = payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + '_'  + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"] + '.csv'
         
-        self.old_code(responses)
+        def add_event(tempevent, event, voi, chk):
+            """Chk variable checks to see if voi is in vehiclenumber (1) or contacted (0)"""
+            tempevent['en'] = event['eventnumber']
+            tempevent['voi'] = voi
+            if chk:
+                if int(event.contacted['value']) > int(numvehicles):
+                    tempevent['an'] = event.contacted.text
+                else:
+                    tempevent['an'] = event.contacted['value']
+            else:
+                tempevent['an'] = event['vehiclenumber']
+            return tempevent
 
-    def get_case_ids(self, soup: BeautifulSoup):
-        tables = soup.find_all("table")
-        if len(tables) > 1:
-            table = tables[1] # The second table should have all the case links
-            case_urls = [a["href"] for a in table.find_all("a")]
-            return [url.split('=')[2] for url in case_urls]
-        return []
-
-    def old_code(self, responses: list):
-        for caseid2 in list(enumerate(all_caseid)):
-            ind,caseid = caseid2
+        for response in responses:
+            caseid = response
             vn = []
-            en = []
-            an = []
             cdc = []
             cdcevents = []
-            crushevents = []
             tot = []
             lat = []
             lon = []
@@ -127,12 +132,8 @@ class ScrapeEngine(QThread):
             keyevents = []
             tempevent = {}
             img_num = ''
-            print(caseid + ": " + str(ind+1) + "/" + str(len(all_caseid)))
-            #caseid = all_caseid[i]
-            begin1 = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid='
-            end1 = '&year=&transform=0&docInfo=0'
-            case_url=begin1+caseid+end1
-            page = soup(uReq(case_url).read(),"lxml")
+            
+            page = BeautifulSoup(response.text,"lxml")
             summary = page.summary.text
             numevents = page.events.text
             numvehicles = page.vehicles.numbervehicles.text
@@ -140,14 +141,14 @@ class ScrapeEngine(QThread):
             genvehform = page.findAll("generalvehicleform")
             eventforms = page.findAll("eventsum")
             imgforms = page.imgform.findAll('vehicle')
-            vn = [genvehform[x]['vehiclenumber'] for x in range(len(genvehform)) if (test_make in genvehform[x].make.text 
-                and imodel in genvehform[x].model.text and test_yr_min <= int(genvehform[x].modelyear.text) <= test_yr_max)]
+            vn = [genvehform[x]['vehiclenumber'] for x in range(len(genvehform)) if (payload["ddlMake"] in genvehform[x].make.text 
+                and payload["ddlModel"] in genvehform[x].model.text and payload["ddlStartModelYear"] <= int(genvehform[x].modelyear.text) <= payload["ddlEndModelYear"])]
             if not vn: 
                 print('VN not found')
                 continue
             for voi in vn:
                 for event in eventforms:
-                    if (voi in event['vehiclenumber'] and test_dl in event.areaofdamage.text):
+                    if (voi in event['vehiclenumber'] and payload["ddlPrimaryDamage"] in event.areaofdamage.text):
                         if 'en' in tempevent:
                             if str(tempevent.get('en')) in event['eventnumber']:
                                 tempevent = add_event(tempevent,event,voi,chk=1)
@@ -156,7 +157,7 @@ class ScrapeEngine(QThread):
                                 tempevent = add_event(tempevent,event,voi,chk=1)
                         else:
                             tempevent = add_event(tempevent,event,voi,chk=1)
-                    elif voi in event.contacted.text and test_dl in event.contactedareaofdamage.text:
+                    elif voi in event.contacted.text and payload["ddlPrimaryDamage"] in event.contactedareaofdamage.text:
                         if 'en' in tempevent:
                             if str(tempevent.get('en')) in event['eventnumber']:
                                 tempevent = add_event(tempevent,event,voi,chk=0)
@@ -205,48 +206,42 @@ class ScrapeEngine(QThread):
                     #print(extform[n_voi]['caseid'])
                     def check_image_set(image_set):
                         if not image_set:
-                            if 'F' in ipdamage:
+                            if 'F' in payload["ddlPrimaryDamage"]:
                                 image_set = front_images
-                            elif 'R' in ipdamage:
+                            elif 'R' in payload["ddlPrimaryDamage"]:
                                 image_set = right_images
-                            elif 'B' in ipdamage:
+                            elif 'B' in payload["ddlPrimaryDamage"]:
                                 image_set = back_images
-                            elif 'L' in ipdamage:
+                            elif 'L' in payload["ddlPrimaryDamage"]:
                                 image_set = left_images
                             print('Empty Image Set')
                             return image_set
                         else: return image_set
                     with requests.session() as s:
-                        url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=' + str(extform[n_voi]['caseid'])
-                        r = s.get(url)
-                        #try: image_set
-                        #except NameError: image_set = None
-                        #if image_set is None:
-                        default_imageset
-                        if 'ft' in default_imageset.lower():
+                        if 'ft' in self.image_set.lower():
                             image_set = front_images
-                        elif 'fr' in default_imageset.lower():
+                        elif 'fr' in self.image_set.lower():
                             image_set = frontright_images
-                        elif 'ri' in default_imageset.lower():
+                        elif 'ri' in self.image_set.lower():
                             image_set = right_images
-                        elif 'br' in default_imageset.lower():
+                        elif 'br' in self.image_set.lower():
                             image_set = backright_images
-                        elif 'ba' in default_imageset.lower():
+                        elif 'ba' in self.image_set.lower():
                             image_set = back_images
-                        elif 'bl' in default_imageset.lower():
+                        elif 'bl' in self.image_set.lower():
                             image_set = backleft_images
-                        elif 'le' in default_imageset.lower():
+                        elif 'le' in self.image_set.lower():
                             image_set = left_images
-                        elif 'fl' in default_imageset.lower():
+                        elif 'fl' in self.image_set.lower():
                             image_set = frontleft_images
                         if not image_set:
-                            if 'F' in ipdamage:
+                            if 'F' in payload["ddlPrimaryDamage"]:
                                 image_set = front_images
-                            elif 'R' in ipdamage:
+                            elif 'R' in payload["ddlPrimaryDamage"]:
                                 image_set = right_images
-                            elif 'B' in ipdamage:
+                            elif 'B' in payload["ddlPrimaryDamage"]:
                                 image_set = back_images
-                            elif 'L' in ipdamage:
+                            elif 'L' in payload["ddlPrimaryDamage"]:
                                 image_set = left_images  
                         while True:
                             for row in image_set:
@@ -262,20 +257,11 @@ class ScrapeEngine(QThread):
                                 g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                                         "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
                                 if 'sa' in g.lower():
-                                    # write `content` to file
-                                    if multi_analysis:
-                                        if 'caseid_path' not in locals():
-                                            caseid_path = os.getcwd() + '/' +  istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
-                                            if not os.path.exists(caseid_path):
-                                                os.makedirs(caseid_path)
-                                            os.chdir(caseid_path)
+                                    caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
+                                    if not os.path.exists(caseid_path):
+                                        os.makedirs(caseid_path)
+                                    os.chdir(caseid_path)
         
-                                    else:
-                                        caseid_path = os.getcwd() + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
-                                        if not os.path.exists(caseid_path):
-                                            os.makedirs(caseid_path)
-                                        os.chdir(caseid_path)
-                                        
                                     img_num = str(row[0])
                                     fileName = caseid_path + '//' + img_num + '.jpg'
                                     img.save(fileName)
@@ -348,14 +334,20 @@ class ScrapeEngine(QThread):
                             temp['a_year'] = '--'
                             temp['a_make'] = '--'
                             temp['a_model'] = '--'
-                            temp['a_curbweight'] = float(99999)
+                            temp['a_curbweight'] = 99999.0
                         temp['image'] = img_num
                         #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
                         contents.append(temp)
                         print(temp)
                         temp = {}
                 
-                
+    def get_case_ids(self, soup: BeautifulSoup):
+        tables = soup.find_all("table")
+        if len(tables) > 1:
+            table = tables[1] # The second table should have all the case links
+            case_urls = [a["href"] for a in table.find_all("a")]
+            return [url.split('=')[2] for url in case_urls]
+        return []
 
     def requestInterruption(self):
         self.request_handler.stop()

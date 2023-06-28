@@ -160,15 +160,8 @@ driver.quit()
 
 
 temp = {}
-
-if multi_analysis:
-    if 'contents' not in locals():
-        contents = []
-    if 'file' not in locals():
-        file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
-else:
-    contents = []
-    file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
+contents = []
+file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
 
 
 def add_event(tempevent, event, voi, chk):
