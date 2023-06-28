@@ -380,9 +380,6 @@ for caseid2 in list(enumerate(all_caseid)):
                         img.close()
                     if 'de' in g.lower():
                         break
-                    else:
-                        continue
-                    break      
             if not len(fileName) == 0:
                 temp = {'summary':summary}
                 temp['caseid'] = extform[n_voi]['caseid']

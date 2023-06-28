@@ -1,13 +1,16 @@
+from io import BytesIO
 import json
 import logging
-from math import ceil
 import os
 from pathlib import Path
+import requests
 
 from PyQt6.QtCore import QThread
 
 from bs4 import BeautifulSoup
-import requests
+from PIL import Image
+from PIL import ImageFont
+from PIL import ImageDraw 
 
 from .request_handler import WebRequestHandler, Request
 
@@ -298,9 +301,6 @@ class ScrapeEngine(QThread):
                                 img.close()
                             if 'de' in g.lower():
                                 break
-                            else:
-                                continue
-                            break      
                     if not len(fileName) == 0:
                         temp = {'summary':summary}
                         temp['caseid'] = extform[n_voi]['caseid']
