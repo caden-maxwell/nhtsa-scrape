@@ -26,7 +26,12 @@ class ScrapeMenu(QWidget):
         self.ui.imageSetCombo.addItems(["All", "F - Front", "FL - Front Left", "FR - Front Right", "B - Back", "BL - Back Left", "BR - Back Right", "L - Left", "R - Right"])
 
         self.logger = logging.getLogger(__name__)
+        self.loading_window = LoadingWindow()
+        self.loading_window.accepted.connect(self.open_data_viewer)
+        self.loading_window.rejected.connect(self.end_scrape)
+
         self.scrape_engine = ScrapeEngine()
+        self.scrape_engine.finished.connect(self.loading_window.accept)
 
         # Set up signals to update the scrape engine payload when the user changes any search criteria
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
@@ -41,9 +46,6 @@ class ScrapeMenu(QWidget):
         self.ui.casesSpin.valueChanged.connect(self.scrape_engine.set_case_limit)
         self.ui.imageSetCombo.currentTextChanged.connect(self.scrape_engine.change_image_set)
         
-        self.loading_window = LoadingWindow(self.scrape_engine)
-        self.loading_window.view_btn_clicked.connect(self.open_data_viewer)
-
         self.fetch_search()
         self.ui.casesSpin.setValue(self.scrape_engine.CASES_PER_PAGE)
 
@@ -123,14 +125,35 @@ class ScrapeMenu(QWidget):
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
+        self.ui.submitBtn.setEnabled(False)
+        if self.scrape_engine.isRunning():
+            self.logger.warning("Scrape engine is already running. Ignoring submission.")
+            return
         self.scrape_engine.start()
-        self.loading_window.exec()
+        self.loading_window.show()
 
     def open_data_viewer(self):
         """Opens the data viewer window, terminating the scrape engine if it is running."""
+        self.end_scrape()
+        self.logger.info("Opening data viewer.")
+        self.loading_window.close()
         if self.scrape_engine.isRunning():
             self.logger.info("Scrape engine is running. Terminating.")
             self.scrape_engine.requestInterruption()
-            self.scrape_engine.wait()
         self.data_viewer = DataView(True)
         self.data_viewer.show()
+
+    def end_scrape(self):
+        """Cancels the scrape engine if it is running."""
+        if self.scrape_engine.isRunning():
+            self.logger.warning("Scrape engine is running. Requesting interruption...")
+            # Block signals temporarily to prevent 'finished' signal from calling open_data_viewer
+            self.scrape_engine.blockSignals(True)
+            self.scrape_engine.requestInterruption()
+            self.scrape_engine.wait()
+            self.scrape_engine.blockSignals(False)
+            self.logger.info("Scrape stopped.")
+        else:
+            self.logger.debug("Scrape engine is not running. Ignoring request to end scrape.")
+        self.ui.submitBtn.setEnabled(True)
+        

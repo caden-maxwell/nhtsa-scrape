@@ -159,10 +159,6 @@ time.sleep(3)
 driver.quit()
 
 
-
-
-
-
 temp = {}
 
 if multi_analysis:
