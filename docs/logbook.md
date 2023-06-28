@@ -20,7 +20,8 @@
 | 6/20 | 8 | - Added necessary elements for request handling <br> - Added auto-scrape from website dropdown fields upon startup, along with automatic field population and updating the vehicle model when the vehicle make is changed. <br> - Started on main scraping engine. There should be some copy/paste from the old application, however a lot still needs to be refactored to fit into the new app. |
 | 6/21 | 2 | - Added dropdown 'values' to application. We need these, since the POST request to query the database uses these, not the literal make/model/etc names. |
 | 6/22 | 7 | - Querying the database can now be done. <br> - Added a bracketed rate limiting system. The larger the amount of requests, the more the requests are spaced out to reduce load on server. <br> - Added ability for user to limit the number of cases retrieved. <br> - Added ability for user to change the default image set to be requested. <br> - Scraper now searches through each requested page of cases and gets individual case IDs. <br> - Individual cases can now be requested but have yet to be parsed. I imagine that I will be able to use a lot of the old app's code for the rest of the parsing and for the creation of the csv files and scatterplots. |
-| Total | 68 | - |
+| 6/28 | 10 | - Added logging colors to make things stand out more. <br> - Figuring out how to parse the cases based on `old_app.py`... LOTS of manually sifting through XML to figure out how it is structured and TONS of refactoring to make the code more readable. |
+| Total | 78 | - |
 
 ---
 
