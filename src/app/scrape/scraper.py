@@ -179,43 +179,27 @@ class ScrapeEngine(QThread):
                     if voi in event['VehicleNumber'] and int(payload["ddlPrimaryDamage"]) == area_of_dmg:
                         if 'en' in tempevent:
 
-                            if tempevent.get('en') == int(event['EventNumber']):
-                                if int(contacted['value']) > num_vehicles:
-                                    tempevent['an'] = contacted.text
-                                else:
-                                    tempevent['an'] = contacted['value']
-
-                            else:
+                            if tempevent.get('en') != int(event['EventNumber']):
                                 keyevents.append(tempevent)
 
-                                tempevent['en'] = event['EventNumber']
-                                if int(contacted['value']) > num_vehicles:
-                                    tempevent['an'] = contacted.text
-                                else:
-                                    tempevent['an'] = contacted['value']
-
+                        if int(contacted['value']) > num_vehicles:
+                            tempevent['an'] = contacted.text
                         else:
-                            tempevent['en'] = event['EventNumber']
-                            if int(contacted['value']) > num_vehicles:
-                                tempevent['an'] = contacted.text
-                            else:
-                                tempevent['an'] = contacted['value']
+                            tempevent['an'] = contacted['value']
 
+                        tempevent['en'] = event['EventNumber']
                         tempevent['voi'] = voi
 
                     elif voi in contacted.text and int(payload["ddlPrimaryDamage"]) == contacted_aod:
                         if 'en' in tempevent:
-                            if tempevent.get('en') == int(event['EventNumber']):
-                                tempevent['an'] = event['VehicleNumber']
-                            else:
+                            if tempevent.get('en') != int(event['EventNumber']):
                                 keyevents.append(tempevent)
                                 tempevent['en'] = event['EventNumber']
-                                tempevent['an'] = event['VehicleNumber']
                         else:
                             tempevent['en'] = event['EventNumber']
-                            tempevent['an'] = event['VehicleNumber']
 
                         tempevent['voi'] = voi
+                        tempevent['an'] = event['VehicleNumber']
 
             keyevents.append(tempevent)
             print(keyevents)
