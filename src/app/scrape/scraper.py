@@ -106,14 +106,14 @@ class ScrapeEngine(QThread):
 
         temp = {}
         contents = []
-        file = payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + '_'  + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"] + '.csv'
+        file = f"{payload['ddlStartModelYear']}_{payload['ddlEndModelYear']}_{payload['ddlMake']}_{payload['ddlModel']}_{payload['ddlPrimaryDamage']}.csv"
         
         def add_event(tempevent, event, voi, chk):
             """Chk variable checks to see if voi is in vehiclenumber (1) or contacted (0)"""
             tempevent['en'] = event['eventnumber']
             tempevent['voi'] = voi
             if chk:
-                if int(event.contacted['value']) > int(numvehicles):
+                if int(event.contacted['value']) > num_vehicles:
                     tempevent['an'] = event.contacted.text
                 else:
                     tempevent['an'] = event.contacted['value']
@@ -123,7 +123,7 @@ class ScrapeEngine(QThread):
 
         for response in responses:
             caseid = response
-            vn = []
+            veh_num = []
             cdc = []
             cdcevents = []
             tot = []
@@ -136,21 +136,27 @@ class ScrapeEngine(QThread):
             tempevent = {}
             img_num = ''
             
-            page = BeautifulSoup(response.text,"lxml")
-            summary = page.summary.text
-            numevents = page.events.text
-            numvehicles = page.vehicles.numbervehicles.text
-            extform = page.vehicleexteriorforms.findAll("vehicleexteriorform")
-            genvehform = page.findAll("generalvehicleform")
-            eventforms = page.findAll("eventsum")
-            imgforms = page.imgform.findAll('vehicle')
-            vn = [genvehform[x]['vehiclenumber'] for x in range(len(genvehform)) if (payload["ddlMake"] in genvehform[x].make.text 
-                and payload["ddlModel"] in genvehform[x].model.text and payload["ddlStartModelYear"] <= int(genvehform[x].modelyear.text) <= payload["ddlEndModelYear"])]
-            if not vn: 
-                print('VN not found')
+            page = BeautifulSoup(response.text, "xml")
+            print(f"Case ID: {page.find('CaseForm').get('caseID')}")
+            summary = page.find("Summary").text
+            print(f"Summary: {summary}")
+            num_vehicles = int(page.find("NumberVehicles").text)
+            print(f"Number of vehicles: {num_vehicles}")
+            veh_ext_forms = page.findAll("VehicleExteriorForm")
+            print(f"Number of exterior forms: {len(veh_ext_forms)}")
+            gen_veh_forms = page.findAll("GeneralVehicleForm")
+            print(f"Number of general vehicle forms: {len(gen_veh_forms)}")
+            event_forms = page.findAll("EventSum")
+            print(f"Number of event forms: {len(event_forms)}")
+
+            ### Code works up to here ###
+            veh_num = [gen_veh_forms[x]['vehiclenumber'] for x in range(len(gen_veh_forms)) if (payload["ddlMake"] in gen_veh_forms[x].make.text 
+                and payload["ddlModel"] in gen_veh_forms[x].model.text and int(payload["ddlStartModelYear"]) <= int(gen_veh_forms[x].modelyear.text) <= int(payload["ddlEndModelYear"]))]
+            if not veh_num: 
+                print('Vehicle Number not found')
                 continue
-            for voi in vn:
-                for event in eventforms:
+            for voi in veh_num:
+                for event in event_forms:
                     if (voi in event['vehiclenumber'] and payload["ddlPrimaryDamage"] in event.areaofdamage.text):
                         if 'en' in tempevent:
                             if str(tempevent.get('en')) in event['eventnumber']:
@@ -173,11 +179,11 @@ class ScrapeEngine(QThread):
             for event in keyevents:
                 image_set = []
                 fileName = ''
-                for x in range(len(extform)):
-                    if event['voi'] in extform[x]['vehiclenumber']:
+                for x in range(len(veh_ext_forms)):
+                    if event['voi'] in veh_ext_forms[x]['vehiclenumber']:
                         n_voi = x
-                        cdcevents = extform[x].findAll("cdcevent")
-                        crushobjects = extform[x].findAll("crushobject")
+                        cdcevents = veh_ext_forms[x].findAll("cdcevent")
+                        crushobjects = veh_ext_forms[x].findAll("crushobject")
                         for cdc in cdcevents:
                             if event['en'] in cdc['eventnumber']:
                                 tot = cdc.total['value']
@@ -192,8 +198,8 @@ class ScrapeEngine(QThread):
                                     smash_l = crush.smashl['value']
                                 else:
                                     crush_test = float(crush.avg_c1['value'])
-                for x in range(len(genvehform)):
-                    if event['an'] in genvehform[x]['vehiclenumber']:
+                for x in range(len(gen_veh_forms)):
+                    if event['an'] in gen_veh_forms[x]['vehiclenumber']:
                         n_an = x
                 if crush_test<0: print('No crush in file')
                 if crush_test>=0:
@@ -303,16 +309,16 @@ class ScrapeEngine(QThread):
                                 break
                     if not len(fileName) == 0:
                         temp = {'summary':summary}
-                        temp['caseid'] = extform[n_voi]['caseid']
+                        temp['caseid'] = veh_ext_forms[n_voi]['caseid']
                         temp['casenum'] = page.case['casestr']
-                        temp['vehnum'] = extform[n_voi]['vehiclenumber']
-                        temp['year'] = extform[n_voi].modelyear.text
-                        temp['make'] = extform[n_voi].make.text
-                        temp['model'] = extform[n_voi].model.text
-                        temp['curbweight'] = float(extform[n_voi].curbweight.text)
-                        temp['damloc'] = extform[n_voi].deformationlocation.text
-                        temp['underride'] = extform[n_voi].overunderride.text
-                        temp['edr'] = extform[n_voi].edr.text
+                        temp['vehnum'] = veh_ext_forms[n_voi]['vehiclenumber']
+                        temp['year'] = veh_ext_forms[n_voi].modelyear.text
+                        temp['make'] = veh_ext_forms[n_voi].make.text
+                        temp['model'] = veh_ext_forms[n_voi].model.text
+                        temp['curbweight'] = float(veh_ext_forms[n_voi].curbweight.text)
+                        temp['damloc'] = veh_ext_forms[n_voi].deformationlocation.text
+                        temp['underride'] = veh_ext_forms[n_voi].overunderride.text
+                        temp['edr'] = veh_ext_forms[n_voi].edr.text
                         #Check correct CDC
                         temp['total_dv'] = float(tot)
                         temp['long_dv'] = float(lon)
@@ -321,14 +327,14 @@ class ScrapeEngine(QThread):
                         temp['crush'] = final_crush
                         #Alternate Vehicle Info
                         if event['an'].isnumeric():
-                            temp['a_vehnum'] = genvehform[n_an]['vehiclenumber']
-                            temp['a_year'] = genvehform[n_an].modelyear.text
-                            temp['a_make'] = genvehform[n_an].make.text
-                            temp['a_model'] = genvehform[n_an].model.text
-                            if 'Unk' in genvehform[n_an].curbweight.text:
+                            temp['a_vehnum'] = gen_veh_forms[n_an]['vehiclenumber']
+                            temp['a_year'] = gen_veh_forms[n_an].modelyear.text
+                            temp['a_make'] = gen_veh_forms[n_an].make.text
+                            temp['a_model'] = gen_veh_forms[n_an].model.text
+                            if 'Unk' in gen_veh_forms[n_an].curbweight.text:
                                 temp['a_curbweight'] = temp['curbweight']
                             else:
-                                temp['a_curbweight'] = float(genvehform[n_an].curbweight.text)
+                                temp['a_curbweight'] = float(gen_veh_forms[n_an].curbweight.text)
                         else:
                             temp['a_vehnum'] = event['an']
                             temp['a_year'] = '--'

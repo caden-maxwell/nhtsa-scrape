@@ -205,6 +205,7 @@ for caseid2 in list(enumerate(all_caseid)):
     numevents = page.events.text
     numvehicles = page.vehicles.numbervehicles.text
     extform = page.vehicleexteriorforms.findAll("vehicleexteriorform")
+    print(extform)
     genvehform = page.findAll("generalvehicleform")
     eventforms = page.findAll("eventsum")
     imgforms = page.imgform.findAll('vehicle')
@@ -238,6 +239,7 @@ for caseid2 in list(enumerate(all_caseid)):
         image_set = []
         fileName = ''
         for x in range(len(extform)):
+            print("Got here")
             if event['voi'] in extform[x]['vehiclenumber']:
                 n_voi = x
                 cdcevents = extform[x].findAll("cdcevent")
