@@ -169,16 +169,17 @@ class ScrapeEngine(QThread):
                 for event in event_forms:
                     print(f"Event number: {event['EventNumber']}")
 
-                    area_of_dmg = int(event.find('AreaOfDamage')['value'])
-                    contacted_aod = int(event.find('ContactedAreaOfDamage')['value'])
+                    # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
+                    area_of_dmg = int(event.find('AreaOfDamage')['value']) - 1
+                    contacted_aod = int(event.find('ContactedAreaOfDamage')['value']) - 1
+                    print(f"Area of damage: {area_of_dmg}, Contacted area of damage: {contacted_aod}")
+
                     contacted = event.find("Contacted")
 
                     if voi in event['VehicleNumber'] and int(payload["ddlPrimaryDamage"]) == area_of_dmg:
                         if 'en' in tempevent:
-                            if tempevent.get('en') == int(event['EventNumber']):
 
-                                tempevent['en'] = int(event['EventNumber'])
-                                tempevent['voi'] = voi
+                            if tempevent.get('en') == int(event['EventNumber']):
                                 if int(contacted['value']) > num_vehicles:
                                     tempevent['an'] = contacted.text
                                 else:
@@ -188,207 +189,207 @@ class ScrapeEngine(QThread):
                                 keyevents.append(tempevent)
 
                                 tempevent['en'] = event['EventNumber']
-                                tempevent['voi'] = voi
                                 if int(contacted['value']) > num_vehicles:
                                     tempevent['an'] = contacted.text
                                 else:
                                     tempevent['an'] = contacted['value']
+
                         else:
                             tempevent['en'] = event['EventNumber']
-                            tempevent['voi'] = voi
                             if int(contacted['value']) > num_vehicles:
                                 tempevent['an'] = contacted.text
                             else:
                                 tempevent['an'] = contacted['value']
 
+                        tempevent['voi'] = voi
+
                     elif voi in contacted.text and int(payload["ddlPrimaryDamage"]) == contacted_aod:
                         if 'en' in tempevent:
-                            if str(tempevent.get('en')) in event['EventNumber']:
-                                tempevent['en'] = event['EventNumber']
-                                tempevent['voi'] = voi
+                            if tempevent.get('en') == int(event['EventNumber']):
                                 tempevent['an'] = event['VehicleNumber']
                             else:
                                 keyevents.append(tempevent)
                                 tempevent['en'] = event['EventNumber']
-                                tempevent['voi'] = voi
                                 tempevent['an'] = event['VehicleNumber']
                         else:
                             tempevent['en'] = event['EventNumber']
-                            tempevent['voi'] = voi
                             tempevent['an'] = event['VehicleNumber']
+
+                        tempevent['voi'] = voi
+
             keyevents.append(tempevent)
             print(keyevents)
 
-            for event in keyevents:
-                image_set = []
-                fileName = ''
-                for x in range(len(veh_ext_forms)):
-                    if event['voi'] in veh_ext_forms[x]['vehiclenumber']:
-                        n_voi = x
-                        cdcevents = veh_ext_forms[x].findAll("cdcevent")
-                        crushobjects = veh_ext_forms[x].findAll("crushobject")
-                        for cdc in cdcevents:
-                            if event['en'] in cdc['eventnumber']:
-                                tot = cdc.total['value']
-                                lon = cdc.longitudinal['value']
-                                lat = cdc.lateral['value']
-                        for crush in crushobjects:
-                            if event['en'] in crush.eventnumber.text:
-                                #pdb.set_trace()
-                                if float(crush.avg_c1['value'])>=0:
-                                    final_crush = [float(crush.avg_c1['value']),float(crush.avg_c2['value']),float(crush.avg_c3['value']),
-                                                float(crush.avg_c4['value']),float(crush.avg_c5['value']),float(crush.avg_c6['value'])]
-                                    smash_l = crush.smashl['value']
-                                else:
-                                    crush_test = float(crush.avg_c1['value'])
-                for x in range(len(gen_veh_forms)):
-                    if event['an'] in gen_veh_forms[x]['vehiclenumber']:
-                        n_an = x
-                if crush_test<0: print('No crush in file')
-                if crush_test>=0:
-                    front_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).front.findAll('image')]
-                    frontleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontleftoblique.findAll('image')]
-                    left_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).left.findAll('image')]
-                    backleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backleftoblique.findAll('image')]
-                    back_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).back.findAll('image')]
-                    backright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backrightoblique.findAll('image')]
-                    right_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).right.findAll('image')]
-                    frontright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontrightoblique.findAll('image')]       
-                    # Need to make sure the right event/CDC is placed in the following variables. 
-                    #print(extform[n_voi]['caseid'])
-                    def check_image_set(image_set):
-                        if not image_set:
-                            if 'F' in payload["ddlPrimaryDamage"]:
-                                image_set = front_images
-                            elif 'R' in payload["ddlPrimaryDamage"]:
-                                image_set = right_images
-                            elif 'B' in payload["ddlPrimaryDamage"]:
-                                image_set = back_images
-                            elif 'L' in payload["ddlPrimaryDamage"]:
-                                image_set = left_images
-                            print('Empty Image Set')
-                            return image_set
-                        else: return image_set
-                    with requests.session() as s:
-                        if 'ft' in self.image_set.lower():
-                            image_set = front_images
-                        elif 'fr' in self.image_set.lower():
-                            image_set = frontright_images
-                        elif 'ri' in self.image_set.lower():
-                            image_set = right_images
-                        elif 'br' in self.image_set.lower():
-                            image_set = backright_images
-                        elif 'ba' in self.image_set.lower():
-                            image_set = back_images
-                        elif 'bl' in self.image_set.lower():
-                            image_set = backleft_images
-                        elif 'le' in self.image_set.lower():
-                            image_set = left_images
-                        elif 'fl' in self.image_set.lower():
-                            image_set = frontleft_images
-                        if not image_set:
-                            if 'F' in payload["ddlPrimaryDamage"]:
-                                image_set = front_images
-                            elif 'R' in payload["ddlPrimaryDamage"]:
-                                image_set = right_images
-                            elif 'B' in payload["ddlPrimaryDamage"]:
-                                image_set = back_images
-                            elif 'L' in payload["ddlPrimaryDamage"]:
-                                image_set = left_images  
-                        while True:
-                            for row in image_set:
-                                img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(row[0]) + '&CaseID='+ caseid + '&Version=' + str(row[1])
-                                response = s.get(img_url)
-                                img = Image.open(BytesIO(response.content))
-                                draw = ImageDraw.Draw(img)
-                                draw.rectangle(((0, 0), (300, 30)), fill="white")
-                                tot_mph = str(float(tot)*0.6214)
-                                img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
-                                draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
-                                img.show()
-                                g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
-                                        "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
-                                if 'sa' in g.lower():
-                                    caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
-                                    if not os.path.exists(caseid_path):
-                                        os.makedirs(caseid_path)
-                                    os.chdir(caseid_path)
+            # for event in keyevents:
+            #     image_set = []
+            #     fileName = ''
+            #     for x in range(len(veh_ext_forms)):
+            #         if event['voi'] in veh_ext_forms[x]['vehiclenumber']:
+            #             n_voi = x
+            #             cdcevents = veh_ext_forms[x].findAll("cdcevent")
+            #             crushobjects = veh_ext_forms[x].findAll("crushobject")
+            #             for cdc in cdcevents:
+            #                 if event['en'] in cdc['eventnumber']:
+            #                     tot = cdc.total['value']
+            #                     lon = cdc.longitudinal['value']
+            #                     lat = cdc.lateral['value']
+            #             for crush in crushobjects:
+            #                 if event['en'] in crush.eventnumber.text:
+            #                     #pdb.set_trace()
+            #                     if float(crush.avg_c1['value'])>=0:
+            #                         final_crush = [float(crush.avg_c1['value']),float(crush.avg_c2['value']),float(crush.avg_c3['value']),
+            #                                     float(crush.avg_c4['value']),float(crush.avg_c5['value']),float(crush.avg_c6['value'])]
+            #                         smash_l = crush.smashl['value']
+            #                     else:
+            #                         crush_test = float(crush.avg_c1['value'])
+            #     for x in range(len(gen_veh_forms)):
+            #         if event['an'] in gen_veh_forms[x]['vehiclenumber']:
+            #             n_an = x
+            #     if crush_test<0: print('No crush in file')
+            #     if crush_test>=0:
+            #         front_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).front.findAll('image')]
+            #         frontleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontleftoblique.findAll('image')]
+            #         left_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).left.findAll('image')]
+            #         backleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backleftoblique.findAll('image')]
+            #         back_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).back.findAll('image')]
+            #         backright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backrightoblique.findAll('image')]
+            #         right_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).right.findAll('image')]
+            #         frontright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontrightoblique.findAll('image')]       
+            #         # Need to make sure the right event/CDC is placed in the following variables. 
+            #         #print(extform[n_voi]['caseid'])
+            #         def check_image_set(image_set):
+            #             if not image_set:
+            #                 if 'F' in payload["ddlPrimaryDamage"]:
+            #                     image_set = front_images
+            #                 elif 'R' in payload["ddlPrimaryDamage"]:
+            #                     image_set = right_images
+            #                 elif 'B' in payload["ddlPrimaryDamage"]:
+            #                     image_set = back_images
+            #                 elif 'L' in payload["ddlPrimaryDamage"]:
+            #                     image_set = left_images
+            #                 print('Empty Image Set')
+            #                 return image_set
+            #             else: return image_set
+            #         with requests.session() as s:
+            #             if 'ft' in self.image_set.lower():
+            #                 image_set = front_images
+            #             elif 'fr' in self.image_set.lower():
+            #                 image_set = frontright_images
+            #             elif 'ri' in self.image_set.lower():
+            #                 image_set = right_images
+            #             elif 'br' in self.image_set.lower():
+            #                 image_set = backright_images
+            #             elif 'ba' in self.image_set.lower():
+            #                 image_set = back_images
+            #             elif 'bl' in self.image_set.lower():
+            #                 image_set = backleft_images
+            #             elif 'le' in self.image_set.lower():
+            #                 image_set = left_images
+            #             elif 'fl' in self.image_set.lower():
+            #                 image_set = frontleft_images
+            #             if not image_set:
+            #                 if 'F' in payload["ddlPrimaryDamage"]:
+            #                     image_set = front_images
+            #                 elif 'R' in payload["ddlPrimaryDamage"]:
+            #                     image_set = right_images
+            #                 elif 'B' in payload["ddlPrimaryDamage"]:
+            #                     image_set = back_images
+            #                 elif 'L' in payload["ddlPrimaryDamage"]:
+            #                     image_set = left_images  
+            #             while True:
+            #                 for row in image_set:
+            #                     img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(row[0]) + '&CaseID='+ caseid + '&Version=' + str(row[1])
+            #                     response = s.get(img_url)
+            #                     img = Image.open(BytesIO(response.content))
+            #                     draw = ImageDraw.Draw(img)
+            #                     draw.rectangle(((0, 0), (300, 30)), fill="white")
+            #                     tot_mph = str(float(tot)*0.6214)
+            #                     img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
+            #                     draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
+            #                     img.show()
+            #                     g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
+            #                             "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
+            #                     if 'sa' in g.lower():
+            #                         caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
+            #                         if not os.path.exists(caseid_path):
+            #                             os.makedirs(caseid_path)
+            #                         os.chdir(caseid_path)
         
-                                    img_num = str(row[0])
-                                    fileName = caseid_path + '//' + img_num + '.jpg'
-                                    img.save(fileName)
-                                    g = 'de'
-                                    break
-                                elif 'ne' in g.lower():
-                                    continue
-                                elif 'de' in g.lower():
-                                    break
-                                elif 'ft' in g.lower():
-                                    image_set = check_image_set(front_images)
-                                    break
-                                elif 'fr' in g.lower():
-                                    image_set = check_image_set(frontright_images)
-                                    break
-                                elif 'ri' in g.lower():
-                                    image_set = check_image_set(right_images)
-                                    break
-                                elif 'br' in g.lower():
-                                    image_set = check_image_set(backright_images) 
-                                    break
-                                elif 'ba' in g.lower():
-                                    image_set = check_image_set(back_images)
-                                    break
-                                elif 'bl' in g.lower():
-                                    image_set = check_image_set(backleft_images)
-                                    break
-                                elif 'le' in g.lower():
-                                    image_set = check_image_set(left_images)
-                                    break
-                                elif 'fl' in g.lower():
-                                    image_set = check_image_set(frontleft_images)
-                                    break
-                                img.close()
-                            if 'de' in g.lower():
-                                break
-                    if not len(fileName) == 0:
-                        temp = {'summary':summary}
-                        temp['caseid'] = veh_ext_forms[n_voi]['caseid']
-                        temp['casenum'] = page.case['casestr']
-                        temp['vehnum'] = veh_ext_forms[n_voi]['vehiclenumber']
-                        temp['year'] = veh_ext_forms[n_voi].modelyear.text
-                        temp['make'] = veh_ext_forms[n_voi].make.text
-                        temp['model'] = veh_ext_forms[n_voi].model.text
-                        temp['curbweight'] = float(veh_ext_forms[n_voi].curbweight.text)
-                        temp['damloc'] = veh_ext_forms[n_voi].deformationlocation.text
-                        temp['underride'] = veh_ext_forms[n_voi].overunderride.text
-                        temp['edr'] = veh_ext_forms[n_voi].edr.text
-                        #Check correct CDC
-                        temp['total_dv'] = float(tot)
-                        temp['long_dv'] = float(lon)
-                        temp['lateral_dv'] = float(lat)
-                        temp['smashl'] = float(smash_l)
-                        temp['crush'] = final_crush
-                        #Alternate Vehicle Info
-                        if event['an'].isnumeric():
-                            temp['a_vehnum'] = gen_veh_forms[n_an]['vehiclenumber']
-                            temp['a_year'] = gen_veh_forms[n_an].modelyear.text
-                            temp['a_make'] = gen_veh_forms[n_an].make.text
-                            temp['a_model'] = gen_veh_forms[n_an].model.text
-                            if 'Unk' in gen_veh_forms[n_an].curbweight.text:
-                                temp['a_curbweight'] = temp['curbweight']
-                            else:
-                                temp['a_curbweight'] = float(gen_veh_forms[n_an].curbweight.text)
-                        else:
-                            temp['a_vehnum'] = event['an']
-                            temp['a_year'] = '--'
-                            temp['a_make'] = '--'
-                            temp['a_model'] = '--'
-                            temp['a_curbweight'] = 99999.0
-                        temp['image'] = img_num
-                        #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
-                        contents.append(temp)
-                        print(temp)
-                        temp = {}
+            #                         img_num = str(row[0])
+            #                         fileName = caseid_path + '//' + img_num + '.jpg'
+            #                         img.save(fileName)
+            #                         g = 'de'
+            #                         break
+            #                     elif 'ne' in g.lower():
+            #                         continue
+            #                     elif 'de' in g.lower():
+            #                         break
+            #                     elif 'ft' in g.lower():
+            #                         image_set = check_image_set(front_images)
+            #                         break
+            #                     elif 'fr' in g.lower():
+            #                         image_set = check_image_set(frontright_images)
+            #                         break
+            #                     elif 'ri' in g.lower():
+            #                         image_set = check_image_set(right_images)
+            #                         break
+            #                     elif 'br' in g.lower():
+            #                         image_set = check_image_set(backright_images) 
+            #                         break
+            #                     elif 'ba' in g.lower():
+            #                         image_set = check_image_set(back_images)
+            #                         break
+            #                     elif 'bl' in g.lower():
+            #                         image_set = check_image_set(backleft_images)
+            #                         break
+            #                     elif 'le' in g.lower():
+            #                         image_set = check_image_set(left_images)
+            #                         break
+            #                     elif 'fl' in g.lower():
+            #                         image_set = check_image_set(frontleft_images)
+            #                         break
+            #                     img.close()
+            #                 if 'de' in g.lower():
+            #                     break
+            #         if not len(fileName) == 0:
+            #             temp = {'summary':summary}
+            #             temp['caseid'] = veh_ext_forms[n_voi]['caseid']
+            #             temp['casenum'] = page.case['casestr']
+            #             temp['vehnum'] = veh_ext_forms[n_voi]['vehiclenumber']
+            #             temp['year'] = veh_ext_forms[n_voi].modelyear.text
+            #             temp['make'] = veh_ext_forms[n_voi].make.text
+            #             temp['model'] = veh_ext_forms[n_voi].model.text
+            #             temp['curbweight'] = float(veh_ext_forms[n_voi].curbweight.text)
+            #             temp['damloc'] = veh_ext_forms[n_voi].deformationlocation.text
+            #             temp['underride'] = veh_ext_forms[n_voi].overunderride.text
+            #             temp['edr'] = veh_ext_forms[n_voi].edr.text
+            #             #Check correct CDC
+            #             temp['total_dv'] = float(tot)
+            #             temp['long_dv'] = float(lon)
+            #             temp['lateral_dv'] = float(lat)
+            #             temp['smashl'] = float(smash_l)
+            #             temp['crush'] = final_crush
+            #             #Alternate Vehicle Info
+            #             if event['an'].isnumeric():
+            #                 temp['a_vehnum'] = gen_veh_forms[n_an]['vehiclenumber']
+            #                 temp['a_year'] = gen_veh_forms[n_an].modelyear.text
+            #                 temp['a_make'] = gen_veh_forms[n_an].make.text
+            #                 temp['a_model'] = gen_veh_forms[n_an].model.text
+            #                 if 'Unk' in gen_veh_forms[n_an].curbweight.text:
+            #                     temp['a_curbweight'] = temp['curbweight']
+            #                 else:
+            #                     temp['a_curbweight'] = float(gen_veh_forms[n_an].curbweight.text)
+            #             else:
+            #                 temp['a_vehnum'] = event['an']
+            #                 temp['a_year'] = '--'
+            #                 temp['a_make'] = '--'
+            #                 temp['a_model'] = '--'
+            #                 temp['a_curbweight'] = 99999.0
+            #             temp['image'] = img_num
+            #             #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
+            #             contents.append(temp)
+            #             print(temp)
+            #             temp = {}
                 
     def get_case_ids(self, soup: BeautifulSoup):
         tables = soup.find_all("table")
