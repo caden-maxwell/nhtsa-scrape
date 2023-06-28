@@ -1,16 +1,17 @@
-from io import BytesIO
+# from io import BytesIO
 import json
 import logging
-import os
+# import os
 from pathlib import Path
-import requests
+import traceback
+# import requests
 
 from PyQt6.QtCore import QThread
 
 from bs4 import BeautifulSoup
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw 
+# from PIL import Image
+# from PIL import ImageFont
+# from PIL import ImageDraw 
 
 from .request_handler import WebRequestHandler, Request
 
@@ -108,22 +109,8 @@ class ScrapeEngine(QThread):
         contents = []
         file = f"{payload['ddlStartModelYear']}_{payload['ddlEndModelYear']}_{payload['ddlMake']}_{payload['ddlModel']}_{payload['ddlPrimaryDamage']}.csv"
         
-        def add_event(tempevent, event, voi, chk):
-            """Chk variable checks to see if voi is in vehiclenumber (1) or contacted (0)"""
-            tempevent['en'] = event['eventnumber']
-            tempevent['voi'] = voi
-            if chk:
-                if int(event.contacted['value']) > num_vehicles:
-                    tempevent['an'] = event.contacted.text
-                else:
-                    tempevent['an'] = event.contacted['value']
-            else:
-                tempevent['an'] = event['vehiclenumber']
-            return tempevent
-
         for response in responses:
             caseid = response
-            veh_num = []
             cdc = []
             cdcevents = []
             tot = []
@@ -132,8 +119,6 @@ class ScrapeEngine(QThread):
             final_crush = []
             crush_test = 1
             smash_l = []
-            keyevents = []
-            tempevent = {}
             img_num = ''
             
             page = BeautifulSoup(response.text, "xml")
@@ -143,39 +128,97 @@ class ScrapeEngine(QThread):
             num_vehicles = int(page.find("NumberVehicles").text)
             print(f"Number of vehicles: {num_vehicles}")
             veh_ext_forms = page.findAll("VehicleExteriorForm")
-            print(f"Number of exterior forms: {len(veh_ext_forms)}")
+            print(f"Number of vehicle exterior forms: {len(veh_ext_forms)}")
             gen_veh_forms = page.findAll("GeneralVehicleForm")
             print(f"Number of general vehicle forms: {len(gen_veh_forms)}")
             event_forms = page.findAll("EventSum")
             print(f"Number of event forms: {len(event_forms)}")
 
             ### Code works up to here ###
-            veh_num = [gen_veh_forms[x]['vehiclenumber'] for x in range(len(gen_veh_forms)) if (payload["ddlMake"] in gen_veh_forms[x].make.text 
-                and payload["ddlModel"] in gen_veh_forms[x].model.text and int(payload["ddlStartModelYear"]) <= int(gen_veh_forms[x].modelyear.text) <= int(payload["ddlEndModelYear"]))]
-            if not veh_num: 
-                print('Vehicle Number not found')
+
+            veh_nums = []
+            for gen_veh_form in gen_veh_forms:
+                print("=========================================")
+                print(f"General vehicle form: {gen_veh_form.get('VehicleNumber')}")
+
+                make = int(gen_veh_form.find("Make").get("value"))
+                model = int(gen_veh_form.find("Model").get("value"))
+                model_year = int(gen_veh_form.find("ModelYear").text)
+                print(f"Make: {make}, Model: {model}, Model Year: {model_year}")
+                print(f"Payload make: {payload['ddlMake']}, Payload model: {payload['ddlModel']}, Payload model year: {payload['ddlStartModelYear']} - {payload['ddlEndModelYear']}")
+
+                is_make = int(payload["ddlMake"]) == make
+                is_model = int(payload["ddlModel"]) == model
+                is_model_year = int(payload["ddlStartModelYear"]) <= model_year <= int(payload["ddlEndModelYear"])
+                print(f"Is make: {is_make}, Is model: {is_model}, Is model year: {is_model_year}")
+
+                if is_make and is_model and is_model_year:
+                    print(f"Adding vehicle number {gen_veh_form.get('VehicleNumber')} to veh_nums")
+                    veh_nums.append(gen_veh_form.get("VehicleNumber"))
+            print("=========================================")
+                    
+            if not veh_nums: 
+                print('No vehicle numbers found')
                 continue
-            for voi in veh_num:
+
+            tempevent = {}
+            keyevents = []
+            for voi in veh_nums:
+                print(f"Vehicle of interest: {voi}")
+
                 for event in event_forms:
-                    if (voi in event['vehiclenumber'] and payload["ddlPrimaryDamage"] in event.areaofdamage.text):
+                    print(f"Event number: {event['EventNumber']}")
+
+                    area_of_dmg = int(event.find('AreaOfDamage')['value'])
+                    contacted_aod = int(event.find('ContactedAreaOfDamage')['value'])
+                    contacted = event.find("Contacted")
+
+                    if voi in event['VehicleNumber'] and int(payload["ddlPrimaryDamage"]) == area_of_dmg:
                         if 'en' in tempevent:
-                            if str(tempevent.get('en')) in event['eventnumber']:
-                                tempevent = add_event(tempevent,event,voi,chk=1)
+                            if tempevent.get('en') == int(event['EventNumber']):
+
+                                tempevent['en'] = int(event['EventNumber'])
+                                tempevent['voi'] = voi
+                                if int(contacted['value']) > num_vehicles:
+                                    tempevent['an'] = contacted.text
+                                else:
+                                    tempevent['an'] = contacted['value']
+
                             else:
                                 keyevents.append(tempevent)
-                                tempevent = add_event(tempevent,event,voi,chk=1)
+
+                                tempevent['en'] = event['EventNumber']
+                                tempevent['voi'] = voi
+                                if int(contacted['value']) > num_vehicles:
+                                    tempevent['an'] = contacted.text
+                                else:
+                                    tempevent['an'] = contacted['value']
                         else:
-                            tempevent = add_event(tempevent,event,voi,chk=1)
-                    elif voi in event.contacted.text and payload["ddlPrimaryDamage"] in event.contactedareaofdamage.text:
+                            tempevent['en'] = event['EventNumber']
+                            tempevent['voi'] = voi
+                            if int(contacted['value']) > num_vehicles:
+                                tempevent['an'] = contacted.text
+                            else:
+                                tempevent['an'] = contacted['value']
+
+                    elif voi in contacted.text and int(payload["ddlPrimaryDamage"]) == contacted_aod:
                         if 'en' in tempevent:
-                            if str(tempevent.get('en')) in event['eventnumber']:
-                                tempevent = add_event(tempevent,event,voi,chk=0)
+                            if str(tempevent.get('en')) in event['EventNumber']:
+                                tempevent['en'] = event['EventNumber']
+                                tempevent['voi'] = voi
+                                tempevent['an'] = event['VehicleNumber']
                             else:
                                 keyevents.append(tempevent)
-                                tempevent = add_event(tempevent,event,voi,chk=0)
+                                tempevent['en'] = event['EventNumber']
+                                tempevent['voi'] = voi
+                                tempevent['an'] = event['VehicleNumber']
                         else:
-                            tempevent = add_event(tempevent,event,voi,chk=0)
+                            tempevent['en'] = event['EventNumber']
+                            tempevent['voi'] = voi
+                            tempevent['an'] = event['VehicleNumber']
             keyevents.append(tempevent)
+            print(keyevents)
+
             for event in keyevents:
                 image_set = []
                 fileName = ''
