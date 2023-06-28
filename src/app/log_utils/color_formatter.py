@@ -8,8 +8,8 @@ class ColorFormatter(logging.Formatter):
     level_colors = {
         'DEBUG': QColor(200, 200, 255), # light blue
         'INFO': QColor('white'), # light gray
-        'WARNING': QColor('yellow'),
-        'ERROR': QColor(255, 100, 100),
+        'WARNING': QColor(255, 255, 100), # light yellow
+        'ERROR': QColor(255, 100, 100), # light red
         'CRITICAL': QColor('red')
     }
 
