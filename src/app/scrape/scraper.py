@@ -122,6 +122,7 @@ class ScrapeEngine(QThread):
             img_num = ''
             
             page = BeautifulSoup(response.text, "xml")
+            print("=========================================")
             print(f"Case ID: {page.find('CaseForm').get('caseID')}")
             summary = page.find("Summary").text
             print(f"Summary: {summary}")
@@ -134,11 +135,9 @@ class ScrapeEngine(QThread):
             event_forms = page.findAll("EventSum")
             print(f"Number of event forms: {len(event_forms)}")
 
-            ### Code works up to here ###
-
             veh_nums = []
             for gen_veh_form in gen_veh_forms:
-                print("=========================================")
+                print("-----------------------------------------")
                 print(f"General vehicle form: {gen_veh_form.get('VehicleNumber')}")
 
                 make = int(gen_veh_form.find("Make").get("value"))
@@ -155,43 +154,43 @@ class ScrapeEngine(QThread):
                 if is_make and is_model and is_model_year:
                     print(f"Adding vehicle number {gen_veh_form.get('VehicleNumber')} to veh_nums")
                     veh_nums.append(gen_veh_form.get("VehicleNumber"))
-            print("=========================================")
+            print("-----------------------------------------")
                     
             if not veh_nums: 
                 print('No vehicle numbers found')
                 continue
 
-            tempevent = {}
             keyevents = []
             for voi in veh_nums:
-                print(f"Vehicle of interest: {voi}")
-
                 for event in event_forms:
-                    print(f"Event number: {event['EventNumber']}")
+                    tempevent = {}
 
                     # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
                     area_of_dmg = int(event.find('AreaOfDamage')['value']) - 1
                     contacted_aod = int(event.find('ContactedAreaOfDamage')['value']) - 1
-                    print(f"Area of damage: {area_of_dmg}, Contacted area of damage: {contacted_aod}")
 
                     contacted = event.find("Contacted")
-
-                    if tempevent.get('en') != None and tempevent.get('en') != int(event['EventNumber']):
-                        keyevents.append(tempevent)
-
+                    
+                    # Get alternate vehicle number
+                    an = None
                     if voi in event['VehicleNumber'] and int(payload["ddlPrimaryDamage"]) == area_of_dmg:
                         if int(contacted['value']) > num_vehicles:
-                            tempevent['an'] = contacted.text
+                            an = contacted.text
                         else:
-                            tempevent['an'] = contacted['value']
+                            an = contacted['value']
                     elif voi in contacted.text and int(payload["ddlPrimaryDamage"]) == contacted_aod:
-                        tempevent['an'] = event['VehicleNumber']
+                        an = event['VehicleNumber']
 
                     tempevent['en'] = event['EventNumber']
                     tempevent['voi'] = voi
+                    tempevent['an'] = an
 
-            keyevents.append(tempevent)
+                    if an:
+                        keyevents.append(tempevent)
+
             print(keyevents)
+
+            ### Code works up to here ###
 
             # for event in keyevents:
             #     image_set = []
