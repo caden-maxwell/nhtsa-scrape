@@ -221,6 +221,7 @@ for i, caseid in enumerate(all_caseid):
         for event in eventforms:
             print(f"Event Number: {event['eventnumber']}")
             if (voi in event['vehiclenumber'] and test_dl in event.areaofdamage.text):
+                print('Vehicle is primary')
                 if 'en' in tempevent:
                     if str(tempevent.get('en')) in event['eventnumber']:
                         tempevent = add_event(tempevent,event,voi,chk=1)
@@ -231,6 +232,7 @@ for i, caseid in enumerate(all_caseid):
                     tempevent = add_event(tempevent,event,voi,chk=1)
 
             elif voi in event.contacted.text and test_dl in event.contactedareaofdamage.text:
+                print('Vehicle is contacted')
                 if 'en' in tempevent:
                     if str(tempevent.get('en')) in event['eventnumber']:
                         tempevent = add_event(tempevent,event,voi,chk=0)
@@ -242,6 +244,7 @@ for i, caseid in enumerate(all_caseid):
     keyevents.append(tempevent)
     print(keyevents)
     for event in keyevents:
+        print(event)
         image_set = []
         fileName = ''
         for x in range(len(extform)):
@@ -256,7 +259,6 @@ for i, caseid in enumerate(all_caseid):
                         lat = cdc.lateral['value']
                 for crush in crushobjects:
                     if event['en'] in crush.eventnumber.text:
-                        #pdb.set_trace()
                         if float(crush.avg_c1['value'])>=0:
                             final_crush = [float(crush.avg_c1['value']),float(crush.avg_c2['value']),float(crush.avg_c3['value']),
                                            float(crush.avg_c4['value']),float(crush.avg_c5['value']),float(crush.avg_c6['value'])]
