@@ -114,7 +114,7 @@ class ScrapeEngine(QThread):
 
             caseid = case_xml.find('CaseForm').get('caseID')
             summary = case_xml.find("Summary").text
-            print("=========================================")
+            print("\n=========================================")
             print(f"Case ID: {caseid}")
             print(f"Summary: {summary}")
 
