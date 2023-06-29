@@ -226,25 +226,25 @@ class ScrapeEngine(QThread):
 
                 print(f"Image set lookup: {img_set_lookup}")
 
-                image_set = image_set.split(' ')[0]
-                img_elements = img_set_lookup.get(image_set, [])
-                
-                if not img_elements:
-                    print(f"No images found for image set {image_set}. Attempting to set to defaults...")
-                    veh_dmg_areas = {
-                        2: img_set_lookup['F'],
-                        5: img_set_lookup['B'],
-                        4: img_set_lookup['L'],
-                        3: img_set_lookup['R'],
-                    }
-                    img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
+                # Wait until data viewer is finished to do the images part
 
-                print(f"Images: {img_elements}")
+                # image_set = image_set.split(' ')[0]
+                # img_elements = img_set_lookup.get(image_set, [])
+                
+                # if not img_elements:
+                #     print(f"No images found for image set {image_set}. Attempting to set to defaults...")
+                #     veh_dmg_areas = {
+                #         2: img_set_lookup['F'],
+                #         5: img_set_lookup['B'],
+                #         4: img_set_lookup['L'],
+                #         3: img_set_lookup['R'],
+                #     }
+                #     img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
 
                 ### Code works up to here ###
 
-                fileName = ''
-                while True:
+                fileName = 'i'
+                while False:
                     for img_element in img_elements:
                         img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(img_element[0]) + '&CaseID='+ caseid + '&Version=' + str(img_element[1])
                         print(f"Image URL: {img_url}")
@@ -263,14 +263,15 @@ class ScrapeEngine(QThread):
                         
                         def check_image_set(image_set):
                             if not image_set:
+                                image_set = img_set_lookup['F']
                                 if 'F' in payload["ddlPrimaryDamage"]:
-                                    image_set = front_images
+                                    image_set = img_set_lookup['F']
                                 elif 'R' in payload["ddlPrimaryDamage"]:
-                                    image_set = right_images
+                                    image_set = img_set_lookup['R']
                                 elif 'B' in payload["ddlPrimaryDamage"]:
-                                    image_set = back_images
+                                    image_set = img_set_lookup['B']
                                 elif 'L' in payload["ddlPrimaryDamage"]:
-                                    image_set = left_images
+                                    image_set = img_set_lookup['L']
                                 print('Empty Image Set')
                                 return image_set
                             else: return image_set
@@ -318,51 +319,50 @@ class ScrapeEngine(QThread):
                     if 'de' in g.lower():
                         break
 
-
                 if len(fileName):
-                    temp = {'summary':summary}
-                    temp['caseid'] = veh_ext_form['caseid']
-                    temp['casenum'] = case_xml.case['casestr']
-                    temp['vehnum'] = veh_ext_form['vehiclenumber']
-                    temp['year'] = veh_ext_form.modelyear.text
-                    temp['make'] = veh_ext_form.make.text
-                    temp['model'] = veh_ext_form.model.text
-                    temp['curbweight'] = float(veh_ext_form.curbweight.text)
-                    temp['damloc'] = veh_ext_form.deformationlocation.text
-                    temp['underride'] = veh_ext_form.overunderride.text
-                    temp['edr'] = veh_ext_form.edr.text
-                    #Check correct CDC
-                    temp['total_dv'] = float(tot)
-                    temp['long_dv'] = float(lon)
-                    temp['lateral_dv'] = float(lat)
-                    temp['smashl'] = float(smash_l)
-                    temp['crush'] = final_crush
+                    temp = {
+                        'summary': summary,
+                        'caseid': caseid,
+                        'casenum': case_xml.find("Case")['CaseStr'],
+                        'vehnum': veh_ext_form['VehicleNumber'],
+                        'year': veh_ext_form.find("ModelYear").text,
+                        'make': veh_ext_form.find("Make").text,
+                        'model': veh_ext_form.find("Model").text,
+                        'curbweight': float(veh_ext_form.find("CurbWeight").text),
+                        'damloc': veh_ext_form.find("DeformationLocation").text,
+                        'underride': veh_ext_form.find("OverUnderride").text,
+                        'edr': veh_ext_form.find("EDR").text,
+                        'total_dv': float(tot),
+                        'long_dv': float(lon),
+                        'lateral_dv': float(lat),
+                        'smashl': float(smash_l),
+                        'crush': final_crush,
+                    }
                     #Alternate Vehicle Info
-                    if event['an'].isnumeric():
-                        temp['a_vehnum'] = alt_veh_form['vehiclenumber']
-                        temp['a_year'] = alt_veh_form.modelyear.text
-                        temp['a_make'] = alt_veh_form.make.text
-                        temp['a_model'] = alt_veh_form.model.text
-                        if 'Unk' in alt_veh_form.curbweight.text:
+                    if str(event['an']).isnumeric():
+                        temp['a_vehnum'] = alt_veh_form['VehicleNumber']
+                        temp['a_year'] = alt_veh_form.find("ModelYear").text
+                        temp['a_make'] = alt_veh_form.find("Make").text
+                        temp['a_model'] = alt_veh_form.find("Model").text
+                        if 'Unk' in alt_veh_form.find("CurbWeight").text:
                             temp['a_curbweight'] = temp['curbweight']
                         else:
-                            temp['a_curbweight'] = float(alt_veh_form.curbweight.text)
+                            temp['a_curbweight'] = float(alt_veh_form.find("CurbWeight").text)
                     else:
                         temp['a_vehnum'] = event['an']
                         temp['a_year'] = '--'
                         temp['a_make'] = '--'
                         temp['a_model'] = '--'
                         temp['a_curbweight'] = 99999.0
+                        temp['a_damloc'] = '--'
                     temp['image'] = img_num
-                    #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
                     contents.append(temp)
-                    print(temp)
-    
-        return
+        self.logger.info("\n" + json.dumps(contents, indent=4))
         x = []
         y_nass = []
         y_total = []
 
+        return
         for cse in contents:
             #average crush in inches
             c_bar = 0.393701*((cse['crush'][0]+cse['crush'][5])*0.5+sum(cse['crush'][1:4]))/5.0
