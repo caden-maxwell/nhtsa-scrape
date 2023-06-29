@@ -204,47 +204,62 @@ class ScrapeEngine(QThread):
                     continue
 
                 ### Code works up to here ###
+                img_form = case_xml.find('IMGForm')
+                if not img_form:
+                    print('No ImgForm found.')
+                    continue
 
-                image_set = []
+                front_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Front").findAll('image')]
+                frontleft_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Frontleftoblique").findAll('image')]
+                left_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Left").findAll('image')]
+                backleft_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Backleftoblique").findAll('image')]
+                back_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Back").findAll('image')]
+                backright_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Backrightoblique").findAll('image')]
+                right_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Right").findAll('image')]
+                frontright_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Frontrightoblique").findAll('image')]       
+
+                print(f"Front: {front_images}")
+                print(f"Frontleft: {frontleft_images}")
+                print(f"Left: {left_images}")
+                print(f"Backleft: {backleft_images}")
+                print(f"Back: {back_images}")
+                print(f"Backright: {backright_images}")
+                print(f"Right: {right_images}")
+                print(f"Frontright: {frontright_images}")
+
+                images = []
                 fileName = ''
-                front_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).front.findAll('image')]
-                frontleft_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontleftoblique.findAll('image')]
-                left_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).left.findAll('image')]
-                backleft_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backleftoblique.findAll('image')]
-                back_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).back.findAll('image')]
-                backright_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backrightoblique.findAll('image')]
-                right_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).right.findAll('image')]
-                frontright_images = [(row.text,row['version']) for row in case_xml.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontrightoblique.findAll('image')]       
-                # Need to make sure the right event/CDC is placed in the following variables. 
+
+                continue
 
                 with requests.session() as s:
-                    if 'ft' in self.image_set.lower():
-                        image_set = front_images
-                    elif 'fr' in self.image_set.lower():
-                        image_set = frontright_images
-                    elif 'ri' in self.image_set.lower():
-                        image_set = right_images
-                    elif 'br' in self.image_set.lower():
-                        image_set = backright_images
-                    elif 'ba' in self.image_set.lower():
-                        image_set = back_images
-                    elif 'bl' in self.image_set.lower():
-                        image_set = backleft_images
-                    elif 'le' in self.image_set.lower():
-                        image_set = left_images
-                    elif 'fl' in self.image_set.lower():
-                        image_set = frontleft_images
-                    if not image_set:
+                    if 'ft' in image_set.lower():
+                        images = front_images
+                    elif 'fr' in image_set.lower():
+                        images = frontright_images
+                    elif 'ri' in image_set.lower():
+                        images = right_images
+                    elif 'br' in image_set.lower():
+                        images = backright_images
+                    elif 'ba' in image_set.lower():
+                        images = back_images
+                    elif 'bl' in image_set.lower():
+                        images = backleft_images
+                    elif 'le' in image_set.lower():
+                        images = left_images
+                    elif 'fl' in image_set.lower():
+                        images = frontleft_images
+                    if not images:
                         if 'F' in payload["ddlPrimaryDamage"]:
-                            image_set = front_images
+                            images = front_images
                         elif 'R' in payload["ddlPrimaryDamage"]:
-                            image_set = right_images
+                            images = right_images
                         elif 'B' in payload["ddlPrimaryDamage"]:
-                            image_set = back_images
+                            images = back_images
                         elif 'L' in payload["ddlPrimaryDamage"]:
-                            image_set = left_images  
+                            images = left_images  
                     while True:
-                        for row in image_set:
+                        for row in images:
                             img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(row[0]) + '&CaseID='+ caseid + '&Version=' + str(row[1])
                             response = s.get(img_url)
                             img = Image.open(BytesIO(response.content))
@@ -287,28 +302,28 @@ class ScrapeEngine(QThread):
                             elif 'de' in g.lower():
                                 break
                             elif 'ft' in g.lower():
-                                image_set = check_image_set(front_images)
+                                images = check_image_set(front_images)
                                 break
                             elif 'fr' in g.lower():
-                                image_set = check_image_set(frontright_images)
+                                images = check_image_set(frontright_images)
                                 break
                             elif 'ri' in g.lower():
-                                image_set = check_image_set(right_images)
+                                images = check_image_set(right_images)
                                 break
                             elif 'br' in g.lower():
-                                image_set = check_image_set(backright_images) 
+                                images = check_image_set(backright_images) 
                                 break
                             elif 'ba' in g.lower():
-                                image_set = check_image_set(back_images)
+                                images = check_image_set(back_images)
                                 break
                             elif 'bl' in g.lower():
-                                image_set = check_image_set(backleft_images)
+                                images = check_image_set(backleft_images)
                                 break
                             elif 'le' in g.lower():
-                                image_set = check_image_set(left_images)
+                                images = check_image_set(left_images)
                                 break
                             elif 'fl' in g.lower():
-                                image_set = check_image_set(frontleft_images)
+                                images = check_image_set(frontleft_images)
                                 break
                             img.close()
                         if 'de' in g.lower():
