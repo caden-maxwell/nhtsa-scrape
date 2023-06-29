@@ -199,8 +199,6 @@ class ScrapeEngine(QThread):
                     continue
                 print(f"Crush: {final_crush}, Smash: {smash_l}")
 
-                alt_veh_form = gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
-
                 img_form = case_xml.find('IMGForm')
                 if not img_form:
                     print('No ImgForm found.')
@@ -220,8 +218,6 @@ class ScrapeEngine(QThread):
                 img_set_lookup = {}
                 for k,v in veh_img_areas.items():
                     img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).findAll('image')]
-
-                print(f"Image set lookup: {img_set_lookup}")
 
                 # Wait until data viewer is finished to do the images part
 
@@ -336,21 +332,28 @@ class ScrapeEngine(QThread):
                         'crush': final_crush,
                     }
                     #Alternate Vehicle Info
-                    if str(event['an']).isnumeric():
-                        temp['a_vehnum'] = alt_veh_form['VehicleNumber']
-                        temp['a_year'] = alt_veh_form.find("ModelYear").text
-                        temp['a_make'] = alt_veh_form.find("Make").text
-                        temp['a_model'] = alt_veh_form.find("Model").text
-                        if 'Unk' in alt_veh_form.find("CurbWeight").text:
-                            temp['a_curbweight'] = temp['curbweight']
-                        else:
-                            temp['a_curbweight'] = float(alt_veh_form.find("CurbWeight").text)
+                    temp['a_vehnum'] = event['an']
+                    alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
+                    alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
+
+                    if alt_ext_form:
+                        alt_temp = {
+                            'a_year': alt_ext_form.find("ModelYear").text,
+                            'a_make': alt_ext_form.find("Make").text,
+                            'a_model': alt_ext_form.find("Model").text,
+                            'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
+                        }
+                        damloc = alt_ext_form.find("DeformationLocation") 
+                        alt_temp['a_damloc'] = damloc.text if damloc else '--'
                     else:
-                        temp['a_vehnum'] = event['an']
-                        temp['a_year'] = '--'
-                        temp['a_make'] = '--'
-                        temp['a_model'] = '--'
-                        temp['a_curbweight'] = 99999.0
+                        alt_temp = {
+                            'a_year': '--',
+                            'a_make': '--',
+                            'a_model': '--',
+                            'a_curbweight': 99999.0,
+                            'a_damloc': '--'
+                        }
+                    temp.update(alt_temp)
                     temp['image'] = img_num
                     contents.append(temp)
         self.logger.info("\n" + json.dumps(contents, indent=4))
@@ -561,7 +564,7 @@ def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
     elif str(voi) in contacted.text and primary_damage == contacted_aod: # If the voi is the contacted vehicle, return the primary vehicle as the an
         return vehicle_number 
     
-    return 0
+    return 0 # voi not involved in this event
 
 def get_r2(x, y):
     slope, intercept = np.polyfit(x, y, 1)
