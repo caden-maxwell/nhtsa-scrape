@@ -72,9 +72,7 @@ class WebRequestHandler:
                 # Rate limiting with quick interruption response
                 start = time.time()
                 while time.time() - start < rand_time and not self.interrupted:
-                    print(f"Time until next request: {rand_time - (time.time() - start):.2f}s", end='\r')
                     time.sleep(0.01) # Sleep for 10ms to avoid busy waiting
-                    print(' '*50, end='\r')
 
                 self.logger.info(f"Waited for {time.time() - start:.2f}s.")
                 futures.append(future)

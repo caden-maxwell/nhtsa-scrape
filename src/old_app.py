@@ -178,8 +178,7 @@ def add_event(tempevent, event, voi, chk):
     return tempevent
 
 
-for caseid2 in list(enumerate(all_caseid)):
-    ind,caseid = caseid2
+for i, caseid in enumerate(all_caseid):
     vn = []
     en = []
     an = []
@@ -195,7 +194,7 @@ for caseid2 in list(enumerate(all_caseid)):
     keyevents = []
     tempevent = {}
     img_num = ''
-    print(caseid + ": " + str(ind+1) + "/" + str(len(all_caseid)))
+    print(caseid + ": " + str(i+1) + "/" + str(len(all_caseid)))
     #caseid = all_caseid[i]
     begin1 = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid='
     end1 = '&year=&transform=0&docInfo=0'
@@ -428,7 +427,6 @@ for caseid2 in list(enumerate(all_caseid)):
                 print(temp)
                 temp = {}
     
-#%%
 def get_r2(x, y):
     slope, intercept = np.polyfit(x, y, 1)
     r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * np.var(y, ddof=1)))
@@ -486,9 +484,9 @@ for cse in contents:
     #pdb.set_trace()
 slope, intercept = np.polyfit(x, y_nass, 1)
 
-ind = []
-[ind.append(cse['image']) for cse in contents]
-df_original = pd.DataFrame(contents,index = ind)
+i = []
+[i.append(cse['image']) for cse in contents]
+df_original = pd.DataFrame(contents,index = i)
 
 #field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
 #               "lateral_dv","smashl","crush","a_vehnum","a_year","a_make","a_model","a_curbweight", "image","c_bar","NASS_dv",
@@ -547,8 +545,6 @@ crush_est = np.array([0, 1.0])
 print(predict(crush_est))
 print(predict_e(crush_est))
 print(df)
-
-#%%
 
 # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 for i in df.index:
@@ -613,9 +609,6 @@ print(predict(crush_est))
 print(predict_e(crush_est))
 print(df)
 
-
-
-#%%
 df_original.to_csv(caseid_path + '//' + file)
 f = open(caseid_path + '//' + file,'a')
 writer = csv.writer(f)
@@ -643,5 +636,3 @@ writer.writerows([[],[par]])
 f.close()
 
 print(par)
-
-
