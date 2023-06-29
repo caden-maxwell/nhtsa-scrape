@@ -557,7 +557,7 @@ class ScrapeEngine(QThread):
         return super().requestInterruption()
 
 def get_img_ids(img_form: BeautifulSoup, image_name: str, voi: int):
-    return [(img.text, img['version']) for img in img_form.find('Vehicle', {image_name: voi}).find("Front").findAll('image')]
+    return [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": voi}).find(image_name).findAll('image')]
     
 
 def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
