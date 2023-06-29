@@ -49,13 +49,13 @@ warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
 
 # Default Image Set: [FT]ront, [FL]ront Left, [LE]ft, [BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right
 
-istartyear = '2008'
+istartyear = '2006'
 iendyear = '2016'
-imake = 'CHRYSLER'
-imodel = '300'
+imake = 'JEEP'
+imodel = 'CHEROKEE'
 idvfrom = "0"
-idvto = "159"
-ipdamage = 'L'
+idvto = "250"
+ipdamage = 'R'
 isdamage = 'ALL'
 default_imageset = 'All'
 multi_analysis = True

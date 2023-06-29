@@ -200,9 +200,6 @@ class ScrapeEngine(QThread):
                 print(f"Crush: {final_crush}, Smash: {smash_l}")
 
                 alt_veh_form = gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
-                if not alt_veh_form:
-                    print(f"No GeneralVehicleForm found for alternate vehicle {event['an']}.")
-                    continue
 
                 img_form = case_xml.find('IMGForm')
                 if not img_form:
@@ -354,7 +351,6 @@ class ScrapeEngine(QThread):
                         temp['a_make'] = '--'
                         temp['a_model'] = '--'
                         temp['a_curbweight'] = 99999.0
-                        temp['a_damloc'] = '--'
                     temp['image'] = img_num
                     contents.append(temp)
         self.logger.info("\n" + json.dumps(contents, indent=4))
@@ -557,15 +553,14 @@ def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
     vehicle_number = int(event['VehicleNumber'])
     primary_damage = int(payload["ddlPrimaryDamage"])
 
-    if voi == vehicle_number and primary_damage == area_of_dmg:
+    if voi == vehicle_number and primary_damage == area_of_dmg: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
         if int(contacted['value']) > num_vehicles:
             return contacted.text
         else:
             return int(contacted['value'])
-    elif str(voi) in contacted.text and primary_damage == contacted_aod:
+    elif str(voi) in contacted.text and primary_damage == contacted_aod: # If the voi is the contacted vehicle, return the primary vehicle as the an
         return vehicle_number 
     
-    # If the voi is not the primary vehicle nor the contacted vehicle, it was not involved in this event
     return 0
 
 def get_r2(x, y):
