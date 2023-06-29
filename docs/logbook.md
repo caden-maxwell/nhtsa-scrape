@@ -21,7 +21,8 @@
 | 6/21 | 2 | - Added dropdown 'values' to application. We need these, since the POST request to query the database uses these, not the literal make/model/etc names. |
 | 6/22 | 7 | - Querying the database can now be done. <br> - Added a bracketed rate limiting system. The larger the amount of requests, the more the requests are spaced out to reduce load on server. <br> - Added ability for user to limit the number of cases retrieved. <br> - Added ability for user to change the default image set to be requested. <br> - Scraper now searches through each requested page of cases and gets individual case IDs. <br> - Individual cases can now be requested but have yet to be parsed. I imagine that I will be able to use a lot of the old app's code for the rest of the parsing and for the creation of the csv files and scatterplots. |
 | 6/27 | 10 | - Added logging colors to make things stand out more. <br> - Figuring out how to parse the cases based on `old_app.py`... LOTS of manually sifting through XML to figure out how it is structured and TONS of refactoring to make the code more readable. |
-| Total | 78 | - |
+| 6/28 | 8 | - The main scraping process is finished! In fact, when comparing output from the old scrape and the new one and double-checking with the raw XML, the new scraper collects information from *all* events, whereas the old one misses a couple here and there because of the way the code was written. <br> - Now need to be able to add the data to the data viewer and run some calculations on it. |
+| Total | 86 | - |
 
 ---
 
