@@ -72,25 +72,41 @@ class ScrapeMenu(QWidget):
             options = dropdown.find_all('option')
             dropdown_data[dropdown['name']] = [(option.text,option.get('value')) for option in options]
         
-        # Block signals temporarily to prevent unnessesary call to handle_make_change while populating make dropdown
-        self.ui.makeCombo.blockSignals(True)
+        # Block signals temporarily to prevent unnessesary calls to handle_make_change while populating make dropdown
+        self.ui.makeCombo.currentTextChanged.disconnect(self.fetch_models)
+        self.ui.makeCombo.clear()
         for data in dropdown_data['ddlMake']:
             self.ui.makeCombo.addItem(*data)
-        self.ui.makeCombo.blockSignals(False)
+        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
 
         # Populate remaining dropdowns
+        self.ui.modelCombo.blockSignals(True)
+        self.ui.modelCombo.clear()
+        self.ui.modelCombo.blockSignals(False)
         for data in dropdown_data['ddlModel']:
             self.ui.modelCombo.addItem(*data)
 
+        self.ui.startYearCombo.blockSignals(True)
+        self.ui.startYearCombo.clear()
+        self.ui.startYearCombo.blockSignals(False)
         for data in dropdown_data['ddlStartModelYear']:
             self.ui.startYearCombo.addItem(*data)
         
+        self.ui.endYearCombo.blockSignals(True)
+        self.ui.endYearCombo.clear()
+        self.ui.endYearCombo.blockSignals(False)
         for data in dropdown_data['ddlEndModelYear']:
             self.ui.endYearCombo.addItem(*data)
 
+        self.ui.pDmgCombo.blockSignals(True)
+        self.ui.pDmgCombo.clear()
+        self.ui.pDmgCombo.blockSignals(False)
         for data in dropdown_data['ddlPrimaryDamage']:
             self.ui.pDmgCombo.addItem(*data)
             
+        self.ui.sDmgCombo.blockSignals(True)
+        self.ui.sDmgCombo.clear()
+        self.ui.sDmgCombo.blockSignals(False)
         for data in dropdown_data['lSecondaryDamage']:
             self.ui.sDmgCombo.addItem(*data)
         
@@ -112,12 +128,10 @@ class ScrapeMenu(QWidget):
             models.append((model['Value'], model['Key']))
         models.sort()
 
-        # Block signals temporarily to prevent unnessesary call to update_model while clearing dropdown
+        # Populate model dropdown
         self.ui.modelCombo.blockSignals(True)
         self.ui.modelCombo.clear()
         self.ui.modelCombo.blockSignals(False)
-
-        # Populate model dropdown
         self.ui.modelCombo.addItem("All", -1)
         for model in models:
             self.ui.modelCombo.addItem(*model)

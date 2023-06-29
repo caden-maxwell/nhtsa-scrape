@@ -108,8 +108,9 @@ class ScrapeEngine(QThread):
         file = f"{payload['ddlStartModelYear']}_{payload['ddlEndModelYear']}_{payload['ddlMake']}_{payload['ddlModel']}_{payload['ddlPrimaryDamage']}.csv"
 
         print(f"Cases found: {len(responses)}")
-        case_xmls = [BeautifulSoup(response.text, "xml") for response in responses]
-        for case_xml in case_xmls:
+
+        for response in responses:
+            case_xml = BeautifulSoup(response.text, "xml")
 
             caseid = case_xml.find('CaseForm').get('caseID')
             summary = case_xml.find("Summary").text
@@ -203,131 +204,121 @@ class ScrapeEngine(QThread):
                     print(f"No GeneralVehicleForm found for alternate vehicle {event['an']}.")
                     continue
 
-                ### Code works up to here ###
                 img_form = case_xml.find('IMGForm')
                 if not img_form:
                     print('No ImgForm found.')
                     continue
 
-                front_images = get_img_ids(img_form, 'Front', event['voi'])
-                back_images = get_img_ids(img_form, 'Back', event['voi'])
-                left_images = get_img_ids(img_form, 'Left', event['voi'])
-                right_images = get_img_ids(img_form, 'Right', event['voi'])
-                frontleft_images = get_img_ids(img_form, 'Frontleftoblique', event['voi'])
-                backleft_images = get_img_ids(img_form, 'Backleftoblique', event['voi'])
-                frontright_images = get_img_ids(img_form, 'Frontrightoblique', event['voi'])
-                backright_images = get_img_ids(img_form, 'Backrightoblique', event['voi'])
+                veh_img_areas = {
+                    'F': 'Front', 
+                    'B': 'Back', 
+                    'L': 'Left', 
+                    'R': 'Right', 
+                    'FL': 'Frontleftoblique', 
+                    'FR': 'Backleftoblique', 
+                    'BL': 'Frontrightoblique', 
+                    'BR': 'Backrightoblique'
+                }
 
-                print(f"Front: {front_images}")
-                print(f"Back: {back_images}")
-                print(f"Left: {left_images}")
-                print(f"Right: {right_images}")
-                print(f"Frontleft: {frontleft_images}")
-                print(f"Backleft: {backleft_images}")
-                print(f"Frontright: {frontright_images}")
-                print(f"Backright: {backright_images}")
+                img_set_lookup = {}
+                for k,v in veh_img_areas.items():
+                    img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).findAll('image')]
 
-                images = []
+                print(f"Image set lookup: {img_set_lookup}")
+
+                image_set = image_set.split(' ')[0]
+                img_elements = img_set_lookup.get(image_set, [])
+                
+                if not img_elements:
+                    print(f"No images found for image set {image_set}. Attempting to set to defaults...")
+                    veh_dmg_areas = {
+                        2: img_set_lookup['F'],
+                        5: img_set_lookup['B'],
+                        4: img_set_lookup['L'],
+                        3: img_set_lookup['R'],
+                    }
+                    img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
+
+                print(f"Images: {img_elements}")
+
+                ### Code works up to here ###
+
                 fileName = ''
+                while True:
+                    for img_element in img_elements:
+                        img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(img_element[0]) + '&CaseID='+ caseid + '&Version=' + str(img_element[1])
+                        print(f"Image URL: {img_url}")
 
-                continue
+                        cookie = {"Cookie": response.headers['Set-Cookie']}
+                        response = requests.get(img_url, headers=cookie)
+                        img = Image.open(BytesIO(response.content))
+                        draw = ImageDraw.Draw(img)
+                        draw.rectangle(((0, 0), (300, 30)), fill="white")
+                        tot_mph = str(float(tot)*0.6214)
+                        img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
+                        draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
+                        img.show()
+                        g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
+                                "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
+                        
+                        def check_image_set(image_set):
+                            if not image_set:
+                                if 'F' in payload["ddlPrimaryDamage"]:
+                                    image_set = front_images
+                                elif 'R' in payload["ddlPrimaryDamage"]:
+                                    image_set = right_images
+                                elif 'B' in payload["ddlPrimaryDamage"]:
+                                    image_set = back_images
+                                elif 'L' in payload["ddlPrimaryDamage"]:
+                                    image_set = left_images
+                                print('Empty Image Set')
+                                return image_set
+                            else: return image_set
 
-                with requests.session() as s:
-                    if 'ft' in image_set.lower():
-                        images = front_images
-                    elif 'fr' in image_set.lower():
-                        images = frontright_images
-                    elif 'ri' in image_set.lower():
-                        images = right_images
-                    elif 'br' in image_set.lower():
-                        images = backright_images
-                    elif 'ba' in image_set.lower():
-                        images = back_images
-                    elif 'bl' in image_set.lower():
-                        images = backleft_images
-                    elif 'le' in image_set.lower():
-                        images = left_images
-                    elif 'fl' in image_set.lower():
-                        images = frontleft_images
-                    if not images:
-                        if 'F' in payload["ddlPrimaryDamage"]:
-                            images = front_images
-                        elif 'R' in payload["ddlPrimaryDamage"]:
-                            images = right_images
-                        elif 'B' in payload["ddlPrimaryDamage"]:
-                            images = back_images
-                        elif 'L' in payload["ddlPrimaryDamage"]:
-                            images = left_images  
-                    while True:
-                        for row in images:
-                            img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(row[0]) + '&CaseID='+ caseid + '&Version=' + str(row[1])
-                            response = s.get(img_url)
-                            img = Image.open(BytesIO(response.content))
-                            draw = ImageDraw.Draw(img)
-                            draw.rectangle(((0, 0), (300, 30)), fill="white")
-                            tot_mph = str(float(tot)*0.6214)
-                            img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
-                            draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
-                            img.show()
-                            g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
-                                    "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
-                            
-                            def check_image_set(image_set):
-                                if not image_set:
-                                    if 'F' in payload["ddlPrimaryDamage"]:
-                                        image_set = front_images
-                                    elif 'R' in payload["ddlPrimaryDamage"]:
-                                        image_set = right_images
-                                    elif 'B' in payload["ddlPrimaryDamage"]:
-                                        image_set = back_images
-                                    elif 'L' in payload["ddlPrimaryDamage"]:
-                                        image_set = left_images
-                                    print('Empty Image Set')
-                                    return image_set
-                                else: return image_set
+                        if 'sa' in g.lower():
+                            caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
+                            if not os.path.exists(caseid_path):
+                                os.makedirs(caseid_path)
+                            os.chdir(caseid_path)
 
-                            if 'sa' in g.lower():
-                                caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
-                                if not os.path.exists(caseid_path):
-                                    os.makedirs(caseid_path)
-                                os.chdir(caseid_path)
-    
-                                img_num = str(row[0])
-                                fileName = caseid_path + '//' + img_num + '.jpg'
-                                img.save(fileName)
-                                g = 'de'
-                                break
-                            elif 'ne' in g.lower():
-                                continue
-                            elif 'de' in g.lower():
-                                break
-                            elif 'ft' in g.lower():
-                                images = check_image_set(front_images)
-                                break
-                            elif 'fr' in g.lower():
-                                images = check_image_set(frontright_images)
-                                break
-                            elif 'ri' in g.lower():
-                                images = check_image_set(right_images)
-                                break
-                            elif 'br' in g.lower():
-                                images = check_image_set(backright_images) 
-                                break
-                            elif 'ba' in g.lower():
-                                images = check_image_set(back_images)
-                                break
-                            elif 'bl' in g.lower():
-                                images = check_image_set(backleft_images)
-                                break
-                            elif 'le' in g.lower():
-                                images = check_image_set(left_images)
-                                break
-                            elif 'fl' in g.lower():
-                                images = check_image_set(frontleft_images)
-                                break
-                            img.close()
-                        if 'de' in g.lower():
+                            img_num = str(img_element[0])
+                            fileName = caseid_path + '//' + img_num + '.jpg'
+                            img.save(fileName)
+                            g = 'de'
                             break
+                        elif 'ne' in g.lower():
+                            continue
+                        elif 'de' in g.lower():
+                            break
+                        elif 'ft' in g.lower():
+                            img_elements = check_image_set(front_images)
+                            break
+                        elif 'fr' in g.lower():
+                            img_elements = check_image_set(frontright_images)
+                            break
+                        elif 'ri' in g.lower():
+                            img_elements = check_image_set(right_images)
+                            break
+                        elif 'br' in g.lower():
+                            img_elements = check_image_set(backright_images) 
+                            break
+                        elif 'ba' in g.lower():
+                            img_elements = check_image_set(back_images)
+                            break
+                        elif 'bl' in g.lower():
+                            img_elements = check_image_set(backleft_images)
+                            break
+                        elif 'le' in g.lower():
+                            img_elements = check_image_set(left_images)
+                            break
+                        elif 'fl' in g.lower():
+                            img_elements = check_image_set(frontleft_images)
+                            break
+                        img.close()
+                    if 'de' in g.lower():
+                        break
+
+
                 if len(fileName):
                     temp = {'summary':summary}
                     temp['caseid'] = veh_ext_form['caseid']
@@ -555,10 +546,6 @@ class ScrapeEngine(QThread):
     def requestInterruption(self):
         self.request_handler.stop()
         return super().requestInterruption()
-
-def get_img_ids(img_form: BeautifulSoup, image_name: str, voi: int):
-    return [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": voi}).find(image_name).findAll('image')]
-    
 
 def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
 
