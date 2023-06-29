@@ -209,23 +209,23 @@ class ScrapeEngine(QThread):
                     print('No ImgForm found.')
                     continue
 
-                front_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Front").findAll('image')]
-                frontleft_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Frontleftoblique").findAll('image')]
-                left_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Left").findAll('image')]
-                backleft_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Backleftoblique").findAll('image')]
-                back_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Back").findAll('image')]
-                backright_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Backrightoblique").findAll('image')]
-                right_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Right").findAll('image')]
-                frontright_images = [(img.text, img['version']) for img in img_form.find('Vehicle', {'VehicleNumber':event['voi']}).find("Frontrightoblique").findAll('image')]       
+                front_images = get_img_ids(img_form, 'Front', event['voi'])
+                back_images = get_img_ids(img_form, 'Back', event['voi'])
+                left_images = get_img_ids(img_form, 'Left', event['voi'])
+                right_images = get_img_ids(img_form, 'Right', event['voi'])
+                frontleft_images = get_img_ids(img_form, 'Frontleftoblique', event['voi'])
+                backleft_images = get_img_ids(img_form, 'Backleftoblique', event['voi'])
+                frontright_images = get_img_ids(img_form, 'Frontrightoblique', event['voi'])
+                backright_images = get_img_ids(img_form, 'Backrightoblique', event['voi'])
 
                 print(f"Front: {front_images}")
-                print(f"Frontleft: {frontleft_images}")
-                print(f"Left: {left_images}")
-                print(f"Backleft: {backleft_images}")
                 print(f"Back: {back_images}")
-                print(f"Backright: {backright_images}")
+                print(f"Left: {left_images}")
                 print(f"Right: {right_images}")
+                print(f"Frontleft: {frontleft_images}")
+                print(f"Backleft: {backleft_images}")
                 print(f"Frontright: {frontright_images}")
+                print(f"Backright: {backright_images}")
 
                 images = []
                 fileName = ''
@@ -555,6 +555,10 @@ class ScrapeEngine(QThread):
     def requestInterruption(self):
         self.request_handler.stop()
         return super().requestInterruption()
+
+def get_img_ids(img_form: BeautifulSoup, image_name: str, voi: int):
+    return [(img.text, img['version']) for img in img_form.find('Vehicle', {image_name: voi}).find("Front").findAll('image')]
+    
 
 def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
 
