@@ -76,20 +76,19 @@ class ScrapeEngine(QObject):
         self.running = False
         self.finished.emit()
         data = json.dumps(self.scrape_data, indent=4)
+        if self.success_cases + self.failed_cases < 1:
+            self.logger.info("No data was found. Scrape complete.")
+            return
+        total_cases = self.success_cases + self.failed_cases
         self.logger.debug(f"Scrape Data:\n{data}")
         self.logger.info(textwrap.dedent(f"""
             ---- Scrape Summary ----
-                Cases Successfully Parsed: {self.success_cases}
-                Cases Failed to Parse: {self.failed_cases}
-                Total Cases Requested: {self.success_cases + self.failed_cases}
-                Successful Parse Rate: {self.success_cases / (self.success_cases + self.failed_cases) * 100:.2f}%
-                Time Elapsed: {time.time() - self.start_time}s
+            - Total Cases Requested: {total_cases}
+                - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
+                - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
+            - Total Events Extracted: {len(self.scrape_data)}
+            - Time Elapsed: {time.time() - self.start_time:.2f}s
             -------------------------"""))
-        self.logger.info(f"Amount of Failed Parses: {self.failed_cases}")
-        self.logger.info(f"Amount Succeeded: {self.success_cases}")
-        total_cases = self.success_cases + self.failed_cases
-        self.logger.info(f"Total cases requested: {total_cases}")
-        self.logger.info(f"Scrape engine finished. {self.success_cases} cases parsed in {time.time() - self.start_time}s.")
 
     def limit_reached(self):
         return self.success_cases >= self.case_limit
@@ -163,10 +162,10 @@ class ScrapeEngine(QObject):
             self.final_page = True
             return
 
-        # Request each caseID on the current page
-        self.extra_cases = case_ids[self.case_limit:]
-        case_ids = case_ids[:self.case_limit]
-        self.logger.info(f"Requesting {len(case_ids)} cases from page {self.current_page}...")
+        # Number of needed cases is the case limit minus the number of cases already parsed. Anything extra will be parsed later if there are any failures
+        self.extra_cases = case_ids[self.case_limit - self.success_cases:]
+        case_ids = case_ids[:self.case_limit - self.success_cases]
+        self.logger.info(f"Requesting {len(case_ids)} case{'s'[:len(case_ids)^1]} from page {self.current_page}...")
         for case_id in case_ids:
             self.req_handler.enqueue_request(Request(f"{self.CASE_URL}{case_id}", priority=Priority.CASE.value))
 
@@ -653,8 +652,8 @@ class ScrapeEngine(QObject):
         vehicle_number = int(event['VehicleNumber'])
 
         primary_damage = int(self.search_payload["ddlPrimaryDamage"])
-        primary_dmg_match = primary_damage == area_of_dmg if primary_damage != -1 else True
-        contacted_dmg_match = primary_damage == contacted_aod if primary_damage != -1 else True
+        primary_dmg_match = primary_damage == area_of_dmg or primary_damage == -1
+        contacted_dmg_match = primary_damage == contacted_aod or primary_damage == -1
 
         if voi == vehicle_number and primary_dmg_match: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
             if int(contacted['value']) > num_vehicles:
