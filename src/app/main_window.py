@@ -4,6 +4,7 @@ import logging
 from PyQt6.QtWidgets import QWidget, QApplication
 
 from .pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
+from .scrape import RequestHandler
 
 from .ui.MainWindow_ui import Ui_MainWindow
 
@@ -14,6 +15,8 @@ class MainWindow(QWidget):
 
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        self.req_handler = RequestHandler()
 
         self.setup_logger()
         self.setup_ui()

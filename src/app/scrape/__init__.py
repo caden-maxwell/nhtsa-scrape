@@ -1,2 +1,2 @@
-from .request_handler import WebRequestHandler, Request, ModelUpdateWorker, SearchRefreshWorker
-from .scraper import ScrapeEngine
+from .new_request_handler import RequestHandler, Request
+from .scraper import ScrapeEngine, Priority

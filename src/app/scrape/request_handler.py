@@ -3,7 +3,6 @@ import random
 import requests
 import time
 
-from PyQt6.QtCore import QThread, pyqtSignal
 from concurrent.futures import ThreadPoolExecutor
 
 
@@ -110,34 +109,3 @@ class WebRequestHandler:
 
     def stop(self):
         self.interrupted = True
-
-
-class SearchRefreshWorker(QThread):
-    retrieved = pyqtSignal(str)
-    def __init__(self):
-        super().__init__()
-        self.url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search"
-        self.logger = logging.getLogger(__name__)
-
-    def run(self):
-        try:
-            response = requests.get(self.url, timeout=5)
-            self.retrieved.emit(response.text)
-        except Exception as e:
-            self.logger.error(e)
-
-
-class ModelUpdateWorker(QThread):
-    updated = pyqtSignal(str)
-    def __init__(self, make):
-        super().__init__()
-        self.url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/"
-        self.params= { "make": make }
-        self.logger = logging.getLogger(__name__)
-
-    def run(self):
-        try:
-            response = requests.post(self.url, params=self.params, timeout=5)
-            self.updated.emit(response.text)
-        except Exception as e:
-            self.logger.error(e)
