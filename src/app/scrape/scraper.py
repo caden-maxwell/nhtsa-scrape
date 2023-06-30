@@ -4,12 +4,14 @@ import json
 import logging
 import os
 from pathlib import Path
+import threading
 import time
 import requests
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, Qt
 
 from bs4 import BeautifulSoup
+
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
@@ -35,6 +37,8 @@ class ScrapeEngine(QObject):
         self.logger = logging.getLogger(__name__)
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
+        self.CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+        self.CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
 
         self.case_limit = case_limit
         self.image_set = image_set
@@ -48,28 +52,42 @@ class ScrapeEngine(QObject):
         self.running = False
         self.current_page = 1
         self.cases_parsed = 0
+        self.extra_cases = []
         self.final_page = False
         self.start_time = 0
         self.scrape_data = []
+        self.timer = None
 
     def start(self):
         self.running = True
         self.started.emit()
         self.scrape()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.check_complete, Qt.ConnectionType.QueuedConnection)
+        self.timer.start(1000) # Check every 1s if scrape is complete
 
     def stop(self):
-        self.req_handler.clear_queue(Priority.CASE.value)
+        # Order matters here, otherwise the request handler will start making unnecessary case list requests once the individual cases are cleared
         self.req_handler.clear_queue(Priority.CASE_LIST.value)
+        self.req_handler.clear_queue(Priority.CASE.value)
+
         self.running = False
         self.finished.emit()
+        self.logger.debug(f"Scrape Data:\n{self.scrape_data}")
         self.logger.info(f"Scrape engine finished. {self.cases_parsed} cases parsed in {time.time() - self.start_time}s.")
 
     def limit_reached(self):
         return self.cases_parsed >= self.case_limit
 
-    def check_completion(self):
+    def check_complete(self):
         if not self.req_handler.contains(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
             self.stop()
+    
+    def enqueue_extra_case(self):
+        if self.extra_cases:
+            caseid = self.extra_cases.pop()
+            self.logger.debug(f"Enqueuing extra case: {caseid}")
+            self.req_handler.enqueue_request(Request(f"{self.CASE_URL}{caseid}", priority=Priority.CASE.value))
 
     def scrape(self):
         self.start_time = time.time()
@@ -88,24 +106,24 @@ class ScrapeEngine(QObject):
 }}"""
         )
 
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value)
+        request = Request(self.CASE_LIST_URL, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value)
         self.req_handler.enqueue_request(request)
     
     @pyqtSlot(int, str, int, str, str)
     def handle_response(self, priority, url, status_code, response_text, cookie):
         if priority == Priority.CASE_LIST.value:
-            self.parse_case_list(url, status_code, response_text)
+            self.parse_case_list(url, response_text)
         elif priority == Priority.CASE.value:
-            self.parse_case(url, status_code, response_text, cookie)
+            self.parse_case(url, response_text, cookie)
         elif priority == Priority.IMAGE.value:
             self.parse_image(url, status_code, response_text, cookie)
         else:
             self.logger.error(f"Scrape engine received response with invalid priority: {priority}.")
     
-    def parse_case_list(self, url, status_code, response_text):
+    def parse_case_list(self, url, response_text):
         if not response_text:
             self.logger.error(f"Received empty response from {url}.")
-            self.check_completion()
+            self.final_page = True
             return
 
         if self.limit_reached():
@@ -117,7 +135,7 @@ class ScrapeEngine(QObject):
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
             self.logger.warning(f"No cases found on page {self.search_payload['currentPage']}.")
-            self.check_completion()
+            self.final_page = True
             return
 
         # Get all caseIDs on the current page
@@ -128,33 +146,34 @@ class ScrapeEngine(QObject):
             case_urls = [a["href"] for a in table.find_all("a")]
             case_ids = [url.split('=')[2] for url in case_urls]
         else:
-            self.logger.error(f"No cases found on page {self.search_payload['currentPage']}.")
-            self.check_completion()
+            self.logger.warning(f"No cases found on page {self.search_payload['currentPage']}.")
+            self.final_page = True
             return
 
         # Request each caseID on the current page
+        self.extra_cases = case_ids[self.case_limit:]
+        case_ids = case_ids[:self.case_limit]
         self.logger.info(f"Requesting {len(case_ids)} cases from page {self.current_page}...")
-        url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
         for case_id in case_ids:
-            self.req_handler.enqueue_request(Request(f"{url}{case_id}", priority=Priority.CASE.value))
+            self.req_handler.enqueue_request(Request(f"{self.CASE_URL}{case_id}", priority=Priority.CASE.value))
 
         total_pages = int(page_dropdown.find_all("option")[-1].text)
         if self.current_page == total_pages:
-            self.final_page = True
             self.logger.debug("Last page reached.")
+            self.final_page = True
             return
         
         self.current_page += 1
         self.search_payload["currentPage"] = self.current_page
         self.logger.debug(f"Queueing page {self.current_page}...")
 
-        url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-        self.req_handler.enqueue_request(Request(url, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value))
 
-    def parse_case(self, url, status_code, response_text, cookie):
+        self.req_handler.enqueue_request(Request(self.CASE_LIST_URL, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value))
+
+    def parse_case(self, url, response_text, cookie):
         if not response_text:
             self.logger.error(f"Received empty response from {url}.")
-            self.check_completion()
+            self.enqueue_extra_case()
             return
         
         if self.limit_reached():
@@ -181,13 +200,13 @@ class ScrapeEngine(QObject):
 
         vehicle_nums = [
             int(veh_summary.get("VehicleNumber"))
-            for veh_summary in case_xml.findAll("VehicleSum")
+            for veh_summary in case_xml.find_all("VehicleSum")
             if make_match(veh_summary) and model_match(veh_summary) and year_match(veh_summary)
         ]
 
         if not vehicle_nums: 
             print('No matching vehicles found.')
-            self.check_completion()
+            self.enqueue_extra_case()
             return
         print(f"Vehicle numbers: {vehicle_nums}")
 
@@ -199,7 +218,7 @@ class ScrapeEngine(QObject):
                 'an': an,
             }
             for voi in vehicle_nums
-            for event in case_xml.findAll("EventSum")
+            for event in case_xml.find_all("EventSum")
             if (an := self.get_an(voi, event, veh_amount)) # Add event to key_events only if 'an' is truthy.
         ]
         print(f"Key events: {key_events}")
@@ -209,12 +228,14 @@ class ScrapeEngine(QObject):
         veh_ext_forms = case_xml.find("VehicleExteriorForms")
         gen_veh_forms = case_xml.find("GeneralVehicleForms")
 
+        failed_events = 0
         for event in key_events:
             print(f"Event: {event}")
 
             veh_ext_form = veh_ext_forms.find("VehicleExteriorForm", {"VehicleNumber": event['voi']})
             if not veh_ext_form:
                 print(f"No VehicleExteriorForm found for vehicle {event['voi']}.")
+                failed_events += 1
                 continue
 
             cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event['en']})
@@ -230,13 +251,14 @@ class ScrapeEngine(QObject):
                 print(f"No CDCevent found for event {event['en']}.")
 
             crush_object = None
-            for obj in veh_ext_form.findAll("CrushObject"):
+            for obj in veh_ext_form.find_all("CrushObject"):
                 if event['en'] == int(obj.find("EventNumber").text):
                     crush_object = obj
                     break
 
             if not crush_object:
                 print(f"No CrushObject found for event {event['en']}.")
+                failed_events += 1
                 continue
 
             avg_c1 = float(crush_object.find("AVG_C1")['value'])
@@ -254,11 +276,11 @@ class ScrapeEngine(QObject):
                 smash_l = crush_object.find("SMASHL")['value']
             else:
                 print('No crush in file')
+                failed_events += 1
                 continue
             print(f"Crush: {final_crush}, Smash: {smash_l}")
 
-
-
+            # VOI Info
             temp = {
                 'summary': summary,
                 'caseid': caseid,
@@ -277,7 +299,8 @@ class ScrapeEngine(QObject):
                 'smashl': float(smash_l),
                 'crush': final_crush,
             }
-            #Alternate Vehicle Info
+
+            # Alternate Vehicle Info
             temp['a_vehnum'] = event['an']
             alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
             alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
@@ -303,8 +326,13 @@ class ScrapeEngine(QObject):
             temp['image'] = img_num
             self.scrape_data.append(temp)
 
+        if failed_events >= len(key_events):
+            print(f"Insufficient data for caseID {caseid}.")
+            self.enqueue_extra_case()
+            return
+
         self.cases_parsed += 1
-        self.check_completion()
+        self.check_complete()
 
     def parse_image(self, url, status_code, response_text, cookie):
         return
@@ -326,7 +354,7 @@ class ScrapeEngine(QObject):
 
         img_set_lookup = {}
         for k,v in veh_img_areas.items():
-            img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).findAll('image')]
+            img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).find_all('image')]
 
         image_set = image_set.split(' ')[0]
         img_elements = img_set_lookup.get(image_set, [])

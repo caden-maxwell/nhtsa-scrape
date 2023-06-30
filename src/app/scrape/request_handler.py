@@ -96,7 +96,7 @@ class RequestHandler(QObject, metaclass=Singleton):
             if request.priority == priority:
                 ongoing_requests.append(request)
         return ongoing_requests
-        
+
     def process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
@@ -132,11 +132,17 @@ class RequestHandler(QObject, metaclass=Singleton):
                 response = requests.get(request.url, params=request.params, headers=request.headers)
             elif request.method == "POST":
                 response = requests.post(request.url, data=request.params, headers=request.headers)
-            if response.status_code != 200:
-                self.logger.error(f"Request failed with status code {response.status_code}: {request}")
-                return
+            else:
+                raise ValueError(f"Invalid request method: {request.method}")
+            if not response:
+                raise TypeError(f"Invalid response: {response}")
+            elif response.status_code != 200:
+                raise ValueError(f"Invalid response code: {response.status_code}")
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Request Exception: {e}")
+            return
         except Exception as e:
-            self.logger.error(e)
+            self.logger.error(f"Exception: {e}")
             return
         self.ongoing_requests.remove(request)
         if response is not None:
