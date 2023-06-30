@@ -3,7 +3,7 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
 from app.ui.LogsWindow_ui import Ui_LogsWindow
@@ -28,6 +28,7 @@ class LogsWindow(QWidget):
         self.ui.logsEdit.verticalScrollBar().setValue(self.ui.logsEdit.verticalScrollBar().maximum())
         return super().showEvent(a0)
 
+    @pyqtSlot(str)
     def handle_logger_message(self, msg):
         self.ui.logsEdit.append(msg)
         self.ui.saveBtn.setEnabled(True)

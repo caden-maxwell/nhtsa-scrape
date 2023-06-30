@@ -1,7 +1,7 @@
 import json
 import logging
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
 from PyQt6.QtWidgets import QWidget
 
 from bs4 import BeautifulSoup
@@ -10,7 +10,6 @@ from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 from app.scrape import RequestHandler, ScrapeEngine, Request, Priority
 
 from .data_view import DataView
-from .loading_window import LoadingWindow
 
 
 class ScrapeMenu(QWidget):
@@ -27,19 +26,15 @@ class ScrapeMenu(QWidget):
         self.engine_thread = None
 
         self.req_handler = RequestHandler()
-        self.req_handler.started.connect(self.fetch_search)
         self.req_handler.response_received.connect(self.handle_response)
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
         self.ui.imageSetCombo.addItems(["All", "F - Front", "FL - Front Left", "FR - Front Right", "B - Back", "BL - Back Left", "BR - Back Right", "L - Left", "R - Right"])
 
-        self.loading_window = LoadingWindow()
-        # self.loading_window.accepted.connect(self.open_data_viewer)
-        # self.loading_window.rejected.connect(self.end_scrape)
-
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.ui.casesSpin.setValue(40)
+        self.engine_timer = QTimer()
 
     def fetch_search(self):
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
@@ -155,15 +150,30 @@ class ScrapeMenu(QWidget):
         
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
         self.scrape_engine.finished.connect(self.handle_scrape_done)
+        self.scrape_engine.event_parsed.connect(self.handle_event_parsed)
 
         self.engine_thread = QThread()
         self.scrape_engine.moveToThread(self.engine_thread)
         self.engine_thread.started.connect(self.scrape_engine.start)
         self.engine_thread.start()
 
-        self.loading_window.show()
+        self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
+        self.engine_timer.start(1000)
+
+    @pyqtSlot(dict)
+    def handle_event_parsed(self, event: dict):
+        print(event)
 
     def handle_scrape_done(self):
         self.engine_thread.quit()
         self.engine_thread.wait()
         self.ui.submitBtn.setEnabled(True)
+
+    def cleanup(self):
+        self.engine_timer.stop()
+        if self.scrape_engine and self.scrape_engine.running:
+            self.scrape_engine.finished.disconnect()
+            self.scrape_engine.stop()
+        if self.engine_thread and self.engine_thread.isRunning():
+            self.engine_thread.quit()
+            self.engine_thread.wait()
