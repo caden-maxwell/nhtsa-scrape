@@ -23,6 +23,7 @@ class ScrapeMenu(QWidget):
         self.ui.setupUi(self)
 
         self.logger = logging.getLogger(__name__)
+        self.scrape_engine = None
 
         self.req_handler = RequestHandler()
         self.req_handler.started.connect(self.fetch_search)
@@ -43,10 +44,9 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setEnabled(True)
 
     def fetch_search(self):
-        print("started")
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search")
-        self.req_handler.enqueue_request(request, priority=Priority.ALL_COMBOS.value)
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search", priority=Priority.ALL_COMBOS.value)
+        self.req_handler.enqueue_request(request)
 
     @pyqtSlot(int, str, int, str, str)
     def handle_response(self, priority, url, status_code, response_text, cookie):
@@ -110,8 +110,8 @@ class ScrapeMenu(QWidget):
 
     def fetch_models(self, make):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/", method='POST', params={'make': make})
-        self.req_handler.enqueue_request(request, priority=Priority.MODEL_COMBO.value)
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/", method='POST', params={'make': make}, priority=Priority.MODEL_COMBO.value)
+        self.req_handler.enqueue_request(request)
 
     def update_model_dropdown(self, response):
         """Populates the model dropdown with models from the response."""
@@ -135,7 +135,7 @@ class ScrapeMenu(QWidget):
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
-        if self.scrape_engine.running:
+        if self.scrape_engine and self.scrape_engine.running:
             self.logger.warning("Scrape engine is already running. Ignoring submission.")
             return
 

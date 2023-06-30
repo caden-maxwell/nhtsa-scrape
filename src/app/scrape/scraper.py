@@ -48,9 +48,7 @@ class ScrapeEngine(QObject):
         self.running = False
         self.current_page = 1
         self.cases_received = 0
-
-    def limit_reached(self):
-        return self.cases_received >= self.case_limit
+        self.scrape_data = []
 
     def start(self):
         self.running = True
@@ -61,6 +59,28 @@ class ScrapeEngine(QObject):
         self.running = False
         self.stopped.emit()
 
+    def limit_reached(self):
+        return self.cases_received >= self.case_limit
+
+    def scrape(self):
+        self.logger.debug( f"""Scrape engine started with these params:
+{{
+    Make: {self.search_payload['ddlMake']},
+    Model: {self.search_payload['ddlModel']},
+    Model Start Year: {self.search_payload['ddlStartModelYear']},
+    Model End Year: {self.search_payload['ddlEndModelYear']},
+    Min Delta V: {self.search_payload['tDeltaVFrom']},
+    Max Delta V: {self.search_payload['tDeltaVTo']},
+    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
+    Secondary Damage: {self.search_payload['lSecondaryDamage']},
+    Case Limit: {self.case_limit},
+    Image Set: {self.image_set}
+}}"""
+        )
+
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value)
+        self.req_handler.enqueue_request(request)
+    
     @pyqtSlot(int, str, int, str, str)
     def handle_response(self, priority, url, status_code, response_text, cookie):
         if priority == Priority.CASE_LIST.value:
@@ -79,6 +99,7 @@ class ScrapeEngine(QObject):
 
         if self.limit_reached():
             self.logger.debug("Case limit reached.")
+            self.req_handler.clear_queue()
             return
 
         soup = BeautifulSoup(response_text, "html.parser")
@@ -99,9 +120,10 @@ class ScrapeEngine(QObject):
             return
 
         # Request each caseID on the current page
+        print(f"Requesting {len(case_ids)} cases...")
         url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
         for case_id in case_ids:
-            self.req_handler.enqueue_request(Request(f"{url}{case_id}"), priority=Priority.CASE.value)
+            self.req_handler.enqueue_request(Request(f"{url}{case_id}", priority=Priority.CASE.value))
 
         total_pages = int(page_dropdown.find_all("option")[-1].text)
         if self.current_page == total_pages:
@@ -113,326 +135,270 @@ class ScrapeEngine(QObject):
         self.logger.debug(f"Requesting page {self.current_page}...")
 
         url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-        self.req_handler.enqueue_request(Request(url, method="POST", params=self.search_payload))
+        self.req_handler.enqueue_request(Request(url, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value))
 
     def parse_case(self, url, status_code, response_text, cookie):
-
-        pass
-
-    def parse_image(self, url, status_code, response_text, cookie):
-        pass
-    
-    def scrape(self):
-        self.logger.debug( f"""Scrape engine started with these params:
-{{
-    Make: {self.search_payload['ddlMake']},
-    Model: {self.search_payload['ddlModel']},
-    Model Start Year: {self.search_payload['ddlStartModelYear']},
-    Model End Year: {self.search_payload['ddlEndModelYear']},
-    Min Delta V: {self.search_payload['tDeltaVFrom']},
-    Max Delta V: {self.search_payload['tDeltaVTo']},
-    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
-    Secondary Damage: {self.search_payload['lSecondaryDamage']},
-    Case Limit: {self.case_limit},
-    Image Set: {self.image_set}
-}}"""
-        )
-
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload)
-        self.req_handler.enqueue_request(request, priority=Priority.CASE_LIST.value)
-
-        return
-        if not response:
+        if not response_text or status_code != 200:
+            self.logger.error(f"Error requesting case: {url}.")
             return
         
-        soup = BeautifulSoup(response.text, "html.parser")
-        page_dropdown = soup.find("select", id="ddlPage")
-        if not page_dropdown:
-            self.logger.error("No cases found.")
+        if self.limit_reached():
+            self.logger.debug("Case limit reached.")
+            self.req_handler.clear_queue()
             return
-        total_pages = int(page_dropdown.find_all("option")[-1].text)
-        remaining = self.case_limit
-        page_num = 1
-        responses = []
-        while len(responses) < self.case_limit:
-            remaining = self.case_limit - len(responses)
-            case_ids = self.get_case_ids(soup)[:remaining]
 
-            url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-            self.req_handler.clear()
-            self.req_handler.queue_requests([Request(url + case_id) for case_id in case_ids])
-            self.logger.debug(f"Requesting cases from page {page_num}...")
-            self.req_handler.send_requests()
-            responses.extend(self.req_handler.get_responses())
+        self.cases_received += 1
 
-            if self.isInterruptionRequested():
-                break
-
-            page_num += 1
-            if page_num > total_pages:
-                break
-
-            self.search_payload["currentPage"] = page_num
-            self.logger.debug(f"Requesting page {page_num}...")
-            url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-            response = self.req_handler.send_request(Request(url, method="POST", params=self.search_payload))
-            if not response:
-                break
-            soup = BeautifulSoup(response.text, "html.parser")
-        
-        self.logger.info(f"Received {len(responses)} cases.")
-
-        contents = []
         file = f"{self.search_payload['ddlStartModelYear']}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
 
-        print(f"Cases found: {len(responses)}")
+        case_xml = BeautifulSoup(response_text, "xml")
 
-        for response in responses:
-            case_xml = BeautifulSoup(response.text, "xml")
+        caseid = case_xml.find('CaseForm').get('caseID')
+        summary = case_xml.find("Summary").text
+        print("\n=========================================")
+        print(f"Case ID: {caseid}")
+        print(f"Summary: {summary}")
 
-            caseid = case_xml.find('CaseForm').get('caseID')
-            summary = case_xml.find("Summary").text
-            print("\n=========================================")
-            print(f"Case ID: {caseid}")
-            print(f"Summary: {summary}")
+        vehicle_nums = [
+            int(veh_summary.get("VehicleNumber"))
+            for veh_summary in case_xml.findAll("VehicleSum")
+            if (
+                int(self.search_payload["ddlMake"]) == int(veh_summary.find("Make").get("value")) \
+                and int(self.search_payload["ddlModel"]) == int(veh_summary.find("Model").get("value")) \
+                and int(self.search_payload["ddlStartModelYear"]) <= int(veh_summary.find("Year").text) <= int(self.search_payload["ddlEndModelYear"])
+            )
+        ]
 
-            vehicle_nums = [
-                int(veh_summary.get("VehicleNumber"))
-                for veh_summary in case_xml.findAll("VehicleSum")
-                if (
-                    int(self.search_payload["ddlMake"]) == int(veh_summary.find("Make").get("value")) \
-                    and int(self.search_payload["ddlModel"]) == int(veh_summary.find("Model").get("value")) \
-                    and int(self.search_payload["ddlStartModelYear"]) <= int(veh_summary.find("Year").text) <= int(self.search_payload["ddlEndModelYear"])
-                )
-            ]
+        if not vehicle_nums: 
+            print('No matching vehicles found.')
+            return
+        print(f"Vehicle numbers: {vehicle_nums}")
 
-            if not vehicle_nums: 
-                print('No matching vehicles found.')
+        veh_amount = int(case_xml.find("NumberVehicles").text)
+        key_events = [
+            {
+                'en': int(event['EventNumber']),
+                'voi': voi,
+                'an': an,
+            }
+            for voi in vehicle_nums
+            for event in case_xml.findAll("EventSum")
+            if (an := self.get_an(voi, event, veh_amount)) # Add event to key_events only if 'an' is truthy.
+        ]
+        print(f"Key events: {key_events}")
+
+        img_num = ''
+
+        veh_ext_forms = case_xml.find("VehicleExteriorForms")
+        gen_veh_forms = case_xml.find("GeneralVehicleForms")
+
+        for event in key_events:
+            print(f"Event: {event}")
+
+            veh_ext_form = veh_ext_forms.find("VehicleExteriorForm", {"VehicleNumber": event['voi']})
+            if not veh_ext_form:
+                print(f"No VehicleExteriorForm found for vehicle {event['voi']}.")
                 continue
-            print(f"Vehicle numbers: {vehicle_nums}")
 
-            veh_amount = int(case_xml.find("NumberVehicles").text)
-            key_events = [
-                {
-                    'en': int(event['EventNumber']),
-                    'voi': voi,
-                    'an': an,
+            cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event['en']})
+            tot = None
+            lat = None
+            lon = None
+            if cdc_event:
+                tot = int(cdc_event.find("Total")['value'])
+                lat = int(cdc_event.find("Lateral")['value'])
+                lon = int(cdc_event.find("Longitudinal")['value'])
+                print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
+            else:
+                print(f"No CDCevent found for event {event['en']}.")
+
+            crush_object = None
+            for obj in veh_ext_form.findAll("CrushObject"):
+                if event['en'] == int(obj.find("EventNumber").text):
+                    crush_object = obj
+                    break
+
+            if not crush_object:
+                print(f"No CrushObject found for event {event['en']}.")
+                continue
+
+            avg_c1 = float(crush_object.find("AVG_C1")['value'])
+            smash_l = None
+            final_crush = None
+            if avg_c1 >= 0:
+                final_crush = [
+                    avg_c1,
+                    float(crush_object.find("AVG_C2")['value']),
+                    float(crush_object.find("AVG_C3")['value']),
+                    float(crush_object.find("AVG_C4")['value']),
+                    float(crush_object.find("AVG_C5")['value']),
+                    float(crush_object.find("AVG_C6")['value'])
+                ]
+                smash_l = crush_object.find("SMASHL")['value']
+            else:
+                print('No crush in file')
+                continue
+            print(f"Crush: {final_crush}, Smash: {smash_l}")
+
+
+
+            temp = {
+                'summary': summary,
+                'caseid': caseid,
+                'casenum': case_xml.find("Case")['CaseStr'],
+                'vehnum': veh_ext_form['VehicleNumber'],
+                'year': veh_ext_form.find("ModelYear").text,
+                'make': veh_ext_form.find("Make").text,
+                'model': veh_ext_form.find("Model").text,
+                'curbweight': float(veh_ext_form.find("CurbWeight").text),
+                'damloc': veh_ext_form.find("DeformationLocation").text,
+                'underride': veh_ext_form.find("OverUnderride").text,
+                'edr': veh_ext_form.find("EDR").text,
+                'total_dv': float(tot),
+                'long_dv': float(lon),
+                'lateral_dv': float(lat),
+                'smashl': float(smash_l),
+                'crush': final_crush,
+            }
+            #Alternate Vehicle Info
+            temp['a_vehnum'] = event['an']
+            alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
+            alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
+
+            if alt_ext_form:
+                alt_temp = {
+                    'a_year': alt_ext_form.find("ModelYear").text,
+                    'a_make': alt_ext_form.find("Make").text,
+                    'a_model': alt_ext_form.find("Model").text,
+                    'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
                 }
-                for voi in vehicle_nums
-                for event in case_xml.findAll("EventSum")
-                if (an := get_an(voi, event, self.search_payload, veh_amount)) # Add event to key_events only if 'an' is truthy.
-            ]
-            print(f"Key events: {key_events}")
-
-            img_num = ''
-
-            veh_ext_forms = case_xml.find("VehicleExteriorForms")
-            gen_veh_forms = case_xml.find("GeneralVehicleForms")
-
-            for event in key_events:
-                print(f"Event: {event}")
-
-                veh_ext_form = veh_ext_forms.find("VehicleExteriorForm", {"VehicleNumber": event['voi']})
-                if not veh_ext_form:
-                    print(f"No VehicleExteriorForm found for vehicle {event['voi']}.")
-                    continue
-
-                cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event['en']})
-                tot = None
-                lat = None
-                lon = None
-                if cdc_event:
-                    tot = int(cdc_event.find("Total")['value'])
-                    lat = int(cdc_event.find("Lateral")['value'])
-                    lon = int(cdc_event.find("Longitudinal")['value'])
-                    print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
-                else:
-                    print(f"No CDCevent found for event {event['en']}.")
-
-                crush_object = None
-                for obj in veh_ext_form.findAll("CrushObject"):
-                    if event['en'] == int(obj.find("EventNumber").text):
-                        crush_object = obj
-                        break
-
-                if not crush_object:
-                    print(f"No CrushObject found for event {event['en']}.")
-                    continue
-
-                avg_c1 = float(crush_object.find("AVG_C1")['value'])
-                smash_l = None
-                final_crush = None
-                if avg_c1 >= 0:
-                    final_crush = [
-                        avg_c1,
-                        float(crush_object.find("AVG_C2")['value']),
-                        float(crush_object.find("AVG_C3")['value']),
-                        float(crush_object.find("AVG_C4")['value']),
-                        float(crush_object.find("AVG_C5")['value']),
-                        float(crush_object.find("AVG_C6")['value'])
-                    ]
-                    smash_l = crush_object.find("SMASHL")['value']
-                else:
-                    print('No crush in file')
-                    continue
-                print(f"Crush: {final_crush}, Smash: {smash_l}")
-
-                img_form = case_xml.find('IMGForm')
-                if not img_form:
-                    print('No ImgForm found.')
-                    continue
-
-                veh_img_areas = {
-                    'F': 'Front', 
-                    'B': 'Back', 
-                    'L': 'Left', 
-                    'R': 'Right', 
-                    'FL': 'Frontleftoblique', 
-                    'FR': 'Backleftoblique', 
-                    'BL': 'Frontrightoblique', 
-                    'BR': 'Backrightoblique'
+                damloc = alt_ext_form.find("DeformationLocation") 
+                alt_temp['a_damloc'] = damloc.text if damloc else '--'
+            else:
+                alt_temp = {
+                    'a_year': '--',
+                    'a_make': '--',
+                    'a_model': '--',
+                    'a_curbweight': 99999.0,
+                    'a_damloc': '--'
                 }
+            temp.update(alt_temp)
+            temp['image'] = img_num
+            self.scrape_data.append(temp)
 
-                img_set_lookup = {}
-                for k,v in veh_img_areas.items():
-                    img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).findAll('image')]
+    def parse_image(self, url, status_code, response_text, cookie):
+        return
+        img_form = case_xml.find('IMGForm')
+        if not img_form:
+            print('No ImgForm found.')
+            return
 
-                # Wait until data viewer is finished to do the images part
+        veh_img_areas = {
+            'F': 'Front', 
+            'B': 'Back', 
+            'L': 'Left', 
+            'R': 'Right', 
+            'FL': 'Frontleftoblique', 
+            'FR': 'Backleftoblique', 
+            'BL': 'Frontrightoblique', 
+            'BR': 'Backrightoblique'
+        }
 
-                # image_set = image_set.split(' ')[0]
-                # img_elements = img_set_lookup.get(image_set, [])
+        img_set_lookup = {}
+        for k,v in veh_img_areas.items():
+            img_set_lookup[k] = [(img.text, img['version']) for img in img_form.find('Vehicle', {"VehicleNumber": event['voi']}).find(v).findAll('image')]
+
+        image_set = image_set.split(' ')[0]
+        img_elements = img_set_lookup.get(image_set, [])
+        
+        if not img_elements:
+            print(f"No images found for image set {image_set}. Attempting to set to defaults...")
+            veh_dmg_areas = {
+                2: img_set_lookup['F'],
+                5: img_set_lookup['B'],
+                4: img_set_lookup['L'],
+                3: img_set_lookup['R'],
+            }
+            img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
+
+        fileName = 'i'
+        while True:
+            for img_element in img_elements:
+                img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(img_element[0]) + '&CaseID='+ caseid + '&Version=' + str(img_element[1])
+                print(f"Image URL: {img_url}")
+
+                cookie = {"Cookie": response.headers['Set-Cookie']}
+                response = requests.get(img_url, headers=cookie)
+                img = Image.open(BytesIO(response.content))
+                draw = ImageDraw.Draw(img)
+                draw.rectangle(((0, 0), (300, 30)), fill="white")
+                tot_mph = str(float(tot)*0.6214)
+                img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
+                draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
+                img.show()
+                g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
+                        "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
                 
-                # if not img_elements:
-                #     print(f"No images found for image set {image_set}. Attempting to set to defaults...")
-                #     veh_dmg_areas = {
-                #         2: img_set_lookup['F'],
-                #         5: img_set_lookup['B'],
-                #         4: img_set_lookup['L'],
-                #         3: img_set_lookup['R'],
-                #     }
-                #     img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
+                def check_image_set(image_set):
+                    if not self.image_set:
+                        self.image_set = img_set_lookup['F']
+                        if 'F' in self.search_payload["ddlPrimaryDamage"]:
+                            self.image_set = img_set_lookup['F']
+                        elif 'R' in self.search_payload["ddlPrimaryDamage"]:
+                            self.image_set = img_set_lookup['R']
+                        elif 'B' in self.search_payload["ddlPrimaryDamage"]:
+                            self.image_set = img_set_lookup['B']
+                        elif 'L' in self.search_payload["ddlPrimaryDamage"]:
+                            self.image_set = img_set_lookup['L']
+                        print('Empty Image Set')
+                        return self.image_set
+                    else: return self.image_set
 
-                ### Code works up to here ###
+                if 'sa' in g.lower():
+                    caseid_path = os.getcwd() + '/' +  self.search_payload["ddlStartModelYear"] + '_' + self.search_payload["ddlEndModelYear"] + '_' + self.search_payload["ddlMake"] + "_" + self.search_payload["ddlModel"] + '_' + self.search_payload["ddlPrimaryDamage"]
+                    if not os.path.exists(caseid_path):
+                        os.makedirs(caseid_path)
+                    os.chdir(caseid_path)
 
-                fileName = 'i'
-                while False:
-                    for img_element in img_elements:
-                        img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(img_element[0]) + '&CaseID='+ caseid + '&Version=' + str(img_element[1])
-                        print(f"Image URL: {img_url}")
+                    img_num = str(img_element[0])
+                    fileName = caseid_path + '//' + img_num + '.jpg'
+                    img.save(fileName)
+                    g = 'de'
+                    break
+                elif 'ne' in g.lower():
+                    continue
+                elif 'de' in g.lower():
+                    break
+                elif 'ft' in g.lower():
+                    img_elements = check_image_set(front_images)
+                    break
+                elif 'fr' in g.lower():
+                    img_elements = check_image_set(frontright_images)
+                    break
+                elif 'ri' in g.lower():
+                    img_elements = check_image_set(right_images)
+                    break
+                elif 'br' in g.lower():
+                    img_elements = check_image_set(backright_images) 
+                    break
+                elif 'ba' in g.lower():
+                    img_elements = check_image_set(back_images)
+                    break
+                elif 'bl' in g.lower():
+                    img_elements = check_image_set(backleft_images)
+                    break
+                elif 'le' in g.lower():
+                    img_elements = check_image_set(left_images)
+                    break
+                elif 'fl' in g.lower():
+                    img_elements = check_image_set(frontleft_images)
+                    break
+                img.close()
+            if 'de' in g.lower():
+                break
 
-                        cookie = {"Cookie": response.headers['Set-Cookie']}
-                        response = requests.get(img_url, headers=cookie)
-                        img = Image.open(BytesIO(response.content))
-                        draw = ImageDraw.Draw(img)
-                        draw.rectangle(((0, 0), (300, 30)), fill="white")
-                        tot_mph = str(float(tot)*0.6214)
-                        img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
-                        draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
-                        img.show()
-                        g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
-                                "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
-                        
-                        def check_image_set(self.image_set):
-                            if not self.image_set:
-                                self.image_set = img_set_lookup['F']
-                                if 'F' in self.search_payload["ddlPrimaryDamage"]:
-                                    self.image_set = img_set_lookup['F']
-                                elif 'R' in self.search_payload["ddlPrimaryDamage"]:
-                                    self.image_set = img_set_lookup['R']
-                                elif 'B' in self.search_payload["ddlPrimaryDamage"]:
-                                    self.image_set = img_set_lookup['B']
-                                elif 'L' in self.search_payload["ddlPrimaryDamage"]:
-                                    self.image_set = img_set_lookup['L']
-                                print('Empty Image Set')
-                                return self.image_set
-                            else: return self.image_set
-
-                        if 'sa' in g.lower():
-                            caseid_path = os.getcwd() + '/' +  self.search_payload["ddlStartModelYear"] + '_' + self.search_payload["ddlEndModelYear"] + '_' + self.search_payload["ddlMake"] + "_" + self.search_payload["ddlModel"] + '_' + self.search_payload["ddlPrimaryDamage"]
-                            if not os.path.exists(caseid_path):
-                                os.makedirs(caseid_path)
-                            os.chdir(caseid_path)
-
-                            img_num = str(img_element[0])
-                            fileName = caseid_path + '//' + img_num + '.jpg'
-                            img.save(fileName)
-                            g = 'de'
-                            break
-                        elif 'ne' in g.lower():
-                            continue
-                        elif 'de' in g.lower():
-                            break
-                        elif 'ft' in g.lower():
-                            img_elements = check_image_set(front_images)
-                            break
-                        elif 'fr' in g.lower():
-                            img_elements = check_image_set(frontright_images)
-                            break
-                        elif 'ri' in g.lower():
-                            img_elements = check_image_set(right_images)
-                            break
-                        elif 'br' in g.lower():
-                            img_elements = check_image_set(backright_images) 
-                            break
-                        elif 'ba' in g.lower():
-                            img_elements = check_image_set(back_images)
-                            break
-                        elif 'bl' in g.lower():
-                            img_elements = check_image_set(backleft_images)
-                            break
-                        elif 'le' in g.lower():
-                            img_elements = check_image_set(left_images)
-                            break
-                        elif 'fl' in g.lower():
-                            img_elements = check_image_set(frontleft_images)
-                            break
-                        img.close()
-                    if 'de' in g.lower():
-                        break
-
-                temp = {
-                    'summary': summary,
-                    'caseid': caseid,
-                    'casenum': case_xml.find("Case")['CaseStr'],
-                    'vehnum': veh_ext_form['VehicleNumber'],
-                    'year': veh_ext_form.find("ModelYear").text,
-                    'make': veh_ext_form.find("Make").text,
-                    'model': veh_ext_form.find("Model").text,
-                    'curbweight': float(veh_ext_form.find("CurbWeight").text),
-                    'damloc': veh_ext_form.find("DeformationLocation").text,
-                    'underride': veh_ext_form.find("OverUnderride").text,
-                    'edr': veh_ext_form.find("EDR").text,
-                    'total_dv': float(tot),
-                    'long_dv': float(lon),
-                    'lateral_dv': float(lat),
-                    'smashl': float(smash_l),
-                    'crush': final_crush,
-                }
-                #Alternate Vehicle Info
-                temp['a_vehnum'] = event['an']
-                alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
-                alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
-
-                if alt_ext_form:
-                    alt_temp = {
-                        'a_year': alt_ext_form.find("ModelYear").text,
-                        'a_make': alt_ext_form.find("Make").text,
-                        'a_model': alt_ext_form.find("Model").text,
-                        'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
-                    }
-                    damloc = alt_ext_form.find("DeformationLocation") 
-                    alt_temp['a_damloc'] = damloc.text if damloc else '--'
-                else:
-                    alt_temp = {
-                        'a_year': '--',
-                        'a_make': '--',
-                        'a_model': '--',
-                        'a_curbweight': 99999.0,
-                        'a_damloc': '--'
-                    }
-                temp.update(alt_temp)
-                temp['image'] = img_num
-                contents.append(temp)
+    def calculations(self):
+        return
         self.logger.info("\n" + json.dumps(contents, indent=4))
         x = []
         y_nass = []
@@ -611,28 +577,27 @@ class ScrapeEngine(QObject):
         writer.writerows([[],[par]])
         f.close()
 
-def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
+    def get_an(self, voi: int, event: BeautifulSoup, num_vehicles: int):
 
-    # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
-    area_of_dmg = int(event.find('AreaOfDamage')['value']) - 1
-    contacted_aod = int(event.find('ContactedAreaOfDamage')['value']) - 1
+        # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
+        area_of_dmg = int(event.find('AreaOfDamage')['value']) - 1
+        contacted_aod = int(event.find('ContactedAreaOfDamage')['value']) - 1
 
-    contacted = event.find("Contacted")
-    vehicle_number = int(event['VehicleNumber'])
-    primary_damage = int(payload["ddlPrimaryDamage"])
+        contacted = event.find("Contacted")
+        vehicle_number = int(event['VehicleNumber'])
+        primary_damage = int(self.search_payload["ddlPrimaryDamage"])
 
-    if voi == vehicle_number and primary_damage == area_of_dmg: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
-        if int(contacted['value']) > num_vehicles:
-            return contacted.text
-        else:
-            return int(contacted['value'])
-    elif str(voi) in contacted.text and primary_damage == contacted_aod: # If the voi is the contacted vehicle, return the primary vehicle as the an
-        return vehicle_number 
-    
-    return 0 # voi not involved in this event
+        if voi == vehicle_number and primary_damage == area_of_dmg: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
+            if int(contacted['value']) > num_vehicles:
+                return contacted.text
+            else:
+                return int(contacted['value'])
+        elif str(voi) in contacted.text and primary_damage == contacted_aod: # If the voi is the contacted vehicle, return the primary vehicle as the an
+            return vehicle_number 
+        
+        return 0 # voi not involved in this event
 
-def get_r2(x, y):
-    slope, intercept = np.polyfit(x, y, 1)
-    r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * np.var(y, ddof=1)))
-    return r_squared
-            
+# def get_r2(self, x, y):
+#     slope, intercept = np.polyfit(x, y, 1)
+#     r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * np.var(y, ddof=1)))
+#     return r_squared
