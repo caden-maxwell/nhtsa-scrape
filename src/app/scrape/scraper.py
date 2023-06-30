@@ -4,6 +4,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import time
 import requests
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
@@ -13,21 +14,20 @@ from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 
-from .new_request_handler import RequestHandler, Request
+from .request_handler import RequestHandler, Request
 
 
 class Priority(enum.Enum):
     '''Enum for request priorities. Lower integer is higher priority.'''
-    IMAGE = 0
-    CASE = 1
-    CASE_LIST = 2
-    ALL_COMBOS = 3
-    MODEL_COMBO = 4
+    ALL_COMBOS = 0
+    MODEL_COMBO = 1
+    IMAGE = 1
+    CASE = 2
+    CASE_LIST = 3
 
 
 class ScrapeEngine(QObject):
     started = pyqtSignal()
-    stopped = pyqtSignal()
     finished = pyqtSignal()
     
     def __init__(self, search_params, image_set, case_limit):
@@ -47,7 +47,9 @@ class ScrapeEngine(QObject):
 
         self.running = False
         self.current_page = 1
-        self.cases_received = 0
+        self.cases_parsed = 0
+        self.final_page = False
+        self.start_time = 0
         self.scrape_data = []
 
     def start(self):
@@ -56,13 +58,22 @@ class ScrapeEngine(QObject):
         self.scrape()
 
     def stop(self):
+        time.sleep(1)
+        self.req_handler.clear_queue(Priority.CASE.value)
+        self.req_handler.clear_queue(Priority.CASE_LIST.value)
         self.running = False
-        self.stopped.emit()
+        self.finished.emit()
+        self.logger.info(f"Scrape engine finished. {self.cases_parsed} cases parsed in {time.time() - self.start_time}s.")
 
     def limit_reached(self):
-        return self.cases_received >= self.case_limit
+        return self.cases_parsed >= self.case_limit
+
+    def check_completion(self):
+        if self.req_handler.is_empty(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
+            self.stop()
 
     def scrape(self):
+        self.start_time = time.time()
         self.logger.debug( f"""Scrape engine started with these params:
 {{
     Make: {self.search_payload['ddlMake']},
@@ -93,19 +104,21 @@ class ScrapeEngine(QObject):
             self.logger.error(f"Scrape engine received response with invalid priority: {priority}.")
     
     def parse_case_list(self, url, status_code, response_text):
-        if not response_text or status_code != 200:
-            self.logger.error(f"Error requesting page: {url}.")
+        if not response_text:
+            self.logger.error(f"Received empty response from {url}.")
+            self.check_completion()
             return
 
         if self.limit_reached():
             self.logger.debug("Case limit reached.")
-            self.req_handler.clear_queue()
+            self.stop()
             return
 
         soup = BeautifulSoup(response_text, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
             self.logger.warning(f"No cases found on page {self.search_payload['currentPage']}.")
+            self.check_completion()
             return
 
         # Get all caseIDs on the current page
@@ -117,39 +130,38 @@ class ScrapeEngine(QObject):
             case_ids = [url.split('=')[2] for url in case_urls]
         else:
             self.logger.error(f"No cases found on page {self.search_payload['currentPage']}.")
+            self.check_completion()
             return
 
         # Request each caseID on the current page
-        print(f"Requesting {len(case_ids)} cases...")
+        self.logger.info(f"Requesting {len(case_ids)} cases from page {self.current_page}...")
         url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
         for case_id in case_ids:
             self.req_handler.enqueue_request(Request(f"{url}{case_id}", priority=Priority.CASE.value))
 
         total_pages = int(page_dropdown.find_all("option")[-1].text)
         if self.current_page == total_pages:
+            self.final_page = True
             self.logger.debug("Last page reached.")
             return
         
         self.current_page += 1
         self.search_payload["currentPage"] = self.current_page
-        self.logger.debug(f"Requesting page {self.current_page}...")
+        self.logger.debug(f"Queueing page {self.current_page}...")
 
         url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
         self.req_handler.enqueue_request(Request(url, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value))
 
     def parse_case(self, url, status_code, response_text, cookie):
-        if not response_text or status_code != 200:
-            self.logger.error(f"Error requesting case: {url}.")
+        if not response_text:
+            self.logger.error(f"Received empty response from {url}.")
+            self.check_completion()
             return
         
         if self.limit_reached():
             self.logger.debug("Case limit reached.")
-            self.req_handler.clear_queue()
+            self.stop()
             return
-
-        self.cases_received += 1
-
-        file = f"{self.search_payload['ddlStartModelYear']}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
 
         case_xml = BeautifulSoup(response_text, "xml")
 
@@ -159,18 +171,19 @@ class ScrapeEngine(QObject):
         print(f"Case ID: {caseid}")
         print(f"Summary: {summary}")
 
+        make_match = (make := int(self.search_payload["ddlMake"])) == int(case_xml.find("Make").get("value")) or make == -1
+        model_match = (model := int(self.search_payload["ddlModel"])) == int(case_xml.find("Model").get("value")) or model == -1
+        end_year = 9999 if (year := int(self.search_payload["ddlEndModelYear"])) == -1 else year
+        year_match = int(self.search_payload["ddlStartModelYear"]) <= int(case_xml.find("Year").text) <= end_year
         vehicle_nums = [
             int(veh_summary.get("VehicleNumber"))
             for veh_summary in case_xml.findAll("VehicleSum")
-            if (
-                int(self.search_payload["ddlMake"]) == int(veh_summary.find("Make").get("value")) \
-                and int(self.search_payload["ddlModel"]) == int(veh_summary.find("Model").get("value")) \
-                and int(self.search_payload["ddlStartModelYear"]) <= int(veh_summary.find("Year").text) <= int(self.search_payload["ddlEndModelYear"])
-            )
+            if make_match and model_match and year_match
         ]
 
         if not vehicle_nums: 
             print('No matching vehicles found.')
+            self.check_completion()
             return
         print(f"Vehicle numbers: {vehicle_nums}")
 
@@ -270,7 +283,7 @@ class ScrapeEngine(QObject):
                     'a_year': alt_ext_form.find("ModelYear").text,
                     'a_make': alt_ext_form.find("Make").text,
                     'a_model': alt_ext_form.find("Model").text,
-                    'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
+                    'a_curbweight': float(curbweight) if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric() else temp['curbweight'],
                 }
                 damloc = alt_ext_form.find("DeformationLocation") 
                 alt_temp['a_damloc'] = damloc.text if damloc else '--'
@@ -285,6 +298,9 @@ class ScrapeEngine(QObject):
             temp.update(alt_temp)
             temp['image'] = img_num
             self.scrape_data.append(temp)
+
+        self.cases_parsed += 1
+        self.check_completion()
 
     def parse_image(self, url, status_code, response_text, cookie):
         return
@@ -399,6 +415,8 @@ class ScrapeEngine(QObject):
 
     def calculations(self):
         return
+        file = f"{self.search_payload['ddlStartModelYear']}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
+
         self.logger.info("\n" + json.dumps(contents, indent=4))
         x = []
         y_nass = []
@@ -585,14 +603,17 @@ class ScrapeEngine(QObject):
 
         contacted = event.find("Contacted")
         vehicle_number = int(event['VehicleNumber'])
-        primary_damage = int(self.search_payload["ddlPrimaryDamage"])
 
-        if voi == vehicle_number and primary_damage == area_of_dmg: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
+        primary_damage = int(self.search_payload["ddlPrimaryDamage"])
+        primary_dmg_match = primary_damage == area_of_dmg if primary_damage != -1 else True
+        contacted_dmg_match = primary_damage == contacted_aod if primary_damage != -1 else True
+
+        if voi == vehicle_number and primary_dmg_match: # If the voi is the primary vehicle, return the contacted vehicle/object as the an
             if int(contacted['value']) > num_vehicles:
                 return contacted.text
             else:
                 return int(contacted['value'])
-        elif str(voi) in contacted.text and primary_damage == contacted_aod: # If the voi is the contacted vehicle, return the primary vehicle as the an
+        elif str(voi) in contacted.text and contacted_dmg_match: # If the voi is the contacted vehicle, return the primary vehicle as the an
             return vehicle_number 
         
         return 0 # voi not involved in this event

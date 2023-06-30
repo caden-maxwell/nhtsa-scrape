@@ -237,6 +237,7 @@ class Ui_ScrapeMenu(object):
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
         self.bottomHLayout.addItem(spacerItem)
         self.submitBtn = QtWidgets.QPushButton(parent=ScrapeMenu)
+        self.submitBtn.setEnabled(False)
         self.submitBtn.setMinimumSize(QtCore.QSize(100, 0))
         self.submitBtn.setObjectName("submitBtn")
         self.bottomHLayout.addWidget(self.submitBtn)

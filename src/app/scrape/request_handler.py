@@ -1,111 +1,149 @@
+import concurrent.futures
 import logging
+import queue
 import random
 import requests
 import time
-
-from concurrent.futures import ThreadPoolExecutor
+from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class Request:
-    def __init__(self, url, method='GET', params={}, headers={}):
+    def __init__(self, url:str, method: str='GET', params:dict={}, headers:dict={}, priority=0):
         self.url = url
         self.params = params
         self.method = method
         self.headers = headers
+        self.priority = priority
 
     def __str__(self):
         return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
 
+    def __lt__(self, other):
+        return self.priority < other.priority
 
-class WebRequestHandler:
+    def __eq__(self, other):
+        return self.priority == other.priority
+
+class Singleton(type(QObject), type):
+    '''Singleton metaclass for QObjects: https://stackoverflow.com/questions/59459770/receiving-pyqtsignal-from-singleton.'''
+    def __init__(cls, name, bases, dict):
+        super().__init__(name, bases, dict)
+        cls._instance = None
+
+    def __call__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__call__(*args, **kwargs)
+        return cls._instance
+
+
+class RequestHandler(QObject, metaclass=Singleton):
+    started = pyqtSignal()
+    stopped = pyqtSignal()
+    response_received = pyqtSignal(int, str, int, str, str)
+    _instance = None
+
     def __init__(self):
+        super().__init__()
         self.logger = logging.getLogger(__name__)
-        self.requests = []
-        self.responses = []
-        self.timeout = 3.5
-        self.rate_limit = 5
-        self.interrupted = False
 
-    def queue_request(self, request):
-        self.requests.append(request)
+        self.request_queue = queue.PriorityQueue()
+        self.running = False
+        self.rate_limit = 2.5
+        self.ongoing_requests = []
 
-    def queue_requests(self, requests):
-        self.requests.extend(requests)
+    def start(self):
+        self.running = True
+        self.started.emit()
+        self.process_requests()
 
-    def get_responses(self):
-        return self.responses
+    def stop(self):
+        self.stopped.emit()
+        self.running = False
 
-    def clear(self):
-        self.responses = []
+    def enqueue_request(self, request: Request):
+        self.request_queue.put(request)
 
-    def send_requests(self):
-        num_requests = len(self.requests)
-
-        # Bracketed rate limiting: Larger # of requests = longer time between requests. Keeps load on server low.
-        if num_requests <= 10:
-            self.rate_limit = 0.10
-        elif num_requests <= 20:
-            self.rate_limit = 0.75
-        elif num_requests <= 30:
-            self.rate_limit = 1.50
-        elif num_requests <= 40:
-            self.rate_limit = 2.25
-        else:
-            self.rate_limit = 3.00
-
-        if num_requests < 1:
+    def clear_queue(self, priority=-1):
+        if priority == -1:
+            self.request_queue = queue.PriorityQueue()
             return
-        self.logger.info(f"Sending {num_requests} request{'s'[:num_requests^1]} at 1 request per {self.rate_limit}s.")
 
-        begin = time.time()
-        reqs_sent = 0
-        with ThreadPoolExecutor() as executor:
-            futures = []
-            for request in self.requests:
-                future = executor.submit(self.send_request, request)
+        print(f"Clearing requests of priority {priority}")
+        removed = 0
+        with self.request_queue.mutex:
+            for request in self.request_queue.queue:
+                print(f"Request priority: {request.priority}")
+                if request.priority == priority:
+                    removed += 1
+                    print(f"Removing request {request}")
+                    self.request_queue.queue.remove(request)
+        print(f"Removed {removed} requests")
+
+    def is_empty(self, priority=-1):
+        '''
+        Returns True if the request queue does not contain requests of the given priority.
+        Priority of -1 returns True if the request queue is completely empty.
+        '''
+        if priority == -1:
+            return self.request_queue.empty()
+
+        with self.request_queue.mutex:
+            for request in self.request_queue.queue:
+                if request.priority == priority:
+                    return False
+        return True
+
+    def get_ongoing_requests(self, priority=-1):
+        if priority == -1:
+            return self.ongoing_requests
+        
+        ongoing_requests = []
+        for request in self.ongoing_requests:
+            if request.priority == priority:
+                ongoing_requests.append(request)
+        return ongoing_requests
+        
+    def process_requests(self):
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            while self.running:
+                if self.request_queue.empty():
+                    time.sleep(0.1)
+                    continue
+
+                if self.request_queue.qsize() <= 10:
+                    self.rate_limit = 0.70
+                elif self.request_queue.qsize() <= 20:
+                    self.rate_limit = 0.85
+                elif self.request_queue.qsize() <= 30:
+                    self.rate_limit = 1.70
+                else:
+                    self.rate_limit = 3.40
 
                 # Randomize rate limit by +/- 33%
-                rand_time = self.rate_limit + random.uniform(-self.rate_limit / 3, self.rate_limit / 3)
+                rand_time = self.rate_limit + random.uniform(-self.rate_limit / 3, self.rate_limit / 2)
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
-                # Rate limiting with quick interruption response
+                request = self.request_queue.get()
+                executor.submit(self.send_request, request)
+
                 start = time.time()
-                while time.time() - start < rand_time and not self.interrupted:
-                    time.sleep(0.01) # Sleep for 10ms to avoid busy waiting
-
-                self.logger.info(f"Waited for {time.time() - start:.2f}s.")
-                futures.append(future)
-                reqs_sent += 1
-
-                if self.interrupted:
-                    self.interrupted = False
-                    self.logger.debug("Request handler interrupted. Canceled further requests.")
-                    break
-
-            # Wait for all requests to finish
-            for future in futures:
-                future.result()
-
-        self.logger.info(f"Sent {reqs_sent} request{'s'[:num_requests^1]} in {time.time() - begin:.2f}s.")
-        self.requests = []
+                while time.time() - start < rand_time:
+                    time.sleep(0.01)
 
     def send_request(self, request: Request):
         response = None
+        self.ongoing_requests.append(request)
         try:
-            if request.method == 'GET':
-                response = requests.get(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
-            elif request.method == 'POST':
-                response = requests.post(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
-            else:
-                self.logger.error(f"Invalid request method: {request.method}")
+            if request.method == "GET":
+                response = requests.get(request.url, params=request.params, headers=request.headers)
+            elif request.method == "POST":
+                response = requests.post(request.url, data=request.params, headers=request.headers)
             if response.status_code != 200:
                 self.logger.error(f"Request failed with status code {response.status_code}: {request}")
-                return None
+                return
         except Exception as e:
             self.logger.error(e)
-            return None
-        self.responses.append(response)
-        return response
-
-    def stop(self):
-        self.interrupted = True
+            return
+        self.ongoing_requests.remove(request)
+        if response is not None:
+            self.response_received.emit(request.priority, request.url, response.status_code, response.text, response.headers.get("Set-Cookie", ""))
