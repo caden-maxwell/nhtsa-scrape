@@ -31,7 +31,8 @@ class Priority(enum.Enum):
 class ScrapeEngine(QObject):
     event_parsed = pyqtSignal(dict)
     started = pyqtSignal()
-    finished = pyqtSignal()
+    completed = pyqtSignal() # Used to signal that the scrape is *complete*
+    finished = pyqtSignal() # Used to signal that the scrape has *stopped*
     
     def __init__(self, search_params, image_set, case_limit):
         super().__init__()
@@ -67,6 +68,10 @@ class ScrapeEngine(QObject):
         self.scrape()
 
     def stop(self):
+        self.running = False
+        self.finished.emit()
+
+    def complete(self):
         # Order matters here, otherwise the request handler will start making unnecessary case list requests once the individual cases are cleared
         self.req_handler.clear_queue(Priority.CASE_LIST.value)
         self.req_handler.clear_queue(Priority.CASE.value)
@@ -74,26 +79,26 @@ class ScrapeEngine(QObject):
         # data = json.dumps(self.scrape_data, indent=4)
         if self.success_cases + self.failed_cases < 1:
             self.logger.info("No data was found. Scrape complete.")
-            return
-        total_cases = self.success_cases + self.failed_cases
-        # self.logger.debug(f"Scrape Data:\n{data}")
-        self.logger.info(textwrap.dedent(f"""
-            ---- Scrape Summary ----
-            - Total Cases Requested: {total_cases}
-                - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
-                - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
-            - Total Events Extracted: {self.total_events}
-            - Time Elapsed: {time.time() - self.start_time:.2f}s
-            -------------------------"""))
-        self.running = False
-        self.finished.emit()
-
+        else:
+            total_cases = self.success_cases + self.failed_cases
+            # self.logger.debug(f"Scrape Data:\n{data}")
+            self.logger.info(textwrap.dedent(f"""
+                ---- Scrape Summary ----
+                - Total Cases Requested: {total_cases}
+                    - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
+                    - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
+                - Total Events Extracted: {self.total_events}
+                - Time Elapsed: {time.time() - self.start_time:.2f}s
+                -------------------------"""))
+        self.completed.emit()
+        self.stop()
+    
     def limit_reached(self):
         return self.success_cases >= self.case_limit
 
     def check_complete(self):
         if not self.req_handler.contains(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
-            self.stop()
+            self.complete()
     
     def enqueue_extra_case(self):
         if self.extra_cases:
@@ -131,6 +136,9 @@ class ScrapeEngine(QObject):
             self.logger.error(f"Scrape engine received response with invalid priority: {priority}.")
     
     def parse_case_list(self, url, response_text):
+        if not self.running:
+            return
+
         if not response_text:
             self.logger.error(f"Received empty response from {url}.")
             self.final_page = True
@@ -138,7 +146,7 @@ class ScrapeEngine(QObject):
 
         if self.limit_reached():
             self.logger.debug("Case limit reached.")
-            self.stop()
+            self.complete()
             return
 
         soup = BeautifulSoup(response_text, "html.parser")
@@ -181,6 +189,9 @@ class ScrapeEngine(QObject):
         self.req_handler.enqueue_request(Request(self.CASE_LIST_URL, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value))
 
     def parse_case(self, url, response_text, cookie):
+        if not self.running:
+            return
+
         if not response_text:
             self.logger.error(f"Received empty response from {url}.")
             self.enqueue_extra_case()
@@ -189,16 +200,16 @@ class ScrapeEngine(QObject):
         
         if self.limit_reached():
             self.logger.debug("Case limit reached.")
-            self.stop()
+            self.complete()
             return
 
         case_xml = BeautifulSoup(response_text, "xml")
 
-        caseid = case_xml.find('CaseForm').get('caseID')
+        case_id = case_xml.find('CaseForm').get('caseID')
         summary = case_xml.find("Summary").text
-        print("\n=========================================")
-        print(f"Case ID: {caseid}")
-        print(f"Summary: {summary}")
+        # print("\n=========================================")
+        # print(f"Case ID: {caseid}")
+        # print(f"Summary: {summary}")
 
         make = int(self.search_payload["ddlMake"])
         model = int(self.search_payload["ddlModel"])
@@ -216,11 +227,11 @@ class ScrapeEngine(QObject):
         ]
 
         if not vehicle_nums: 
-            print('No matching vehicles found.')
+            self.logger.warning(f"No matching vehicles found in case {case_id}.")
             self.enqueue_extra_case()
             self.failed_cases += 1
             return
-        print(f"Vehicle numbers: {vehicle_nums}")
+        # print(f"Vehicle numbers: {vehicle_nums}")
 
         veh_amount = int(case_xml.find("NumberVehicles").text)
         key_events = [
@@ -233,7 +244,7 @@ class ScrapeEngine(QObject):
             for event in case_xml.find_all("EventSum")
             if (an := self.get_an(voi, event, veh_amount)) # Add event to key_events only if 'an' is truthy.
         ]
-        print(f"Key events: {key_events}")
+        # print(f"Key events: {key_events}")
 
         img_num = ''
 
@@ -242,11 +253,11 @@ class ScrapeEngine(QObject):
 
         failed_events = 0
         for event in key_events:
-            print(f"Event: {event}")
+            # print(f"Event: {event}")
 
             veh_ext_form = veh_ext_forms.find("VehicleExteriorForm", {"VehicleNumber": event['voi']})
             if not veh_ext_form:
-                print(f"No VehicleExteriorForm found for vehicle {event['voi']}.")
+                self.logger.warning(f"No VehicleExteriorForm found for vehicle {event['voi']} in case {case_id}.")
                 failed_events += 1
                 continue
 
@@ -258,9 +269,9 @@ class ScrapeEngine(QObject):
                 tot = int(cdc_event.find("Total")['value'])
                 lat = int(cdc_event.find("Lateral")['value'])
                 lon = int(cdc_event.find("Longitudinal")['value'])
-                print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
+                # print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
             else:
-                print(f"No CDCevent found for event {event['en']}.")
+                self.logger.warning(f"No CDCevent found for event {event['en']} in case {case_id}.")
 
             crush_object = None
             for obj in veh_ext_form.find_all("CrushObject"):
@@ -269,7 +280,7 @@ class ScrapeEngine(QObject):
                     break
 
             if not crush_object:
-                print(f"No CrushObject found for event {event['en']}.")
+                self.logger.warning(f"No CrushObject found for event {event['en']} in case {case_id}.")
                 failed_events += 1
                 continue
 
@@ -287,15 +298,15 @@ class ScrapeEngine(QObject):
                 ]
                 smash_l = crush_object.find("SMASHL")['value']
             else:
-                print('No crush in file')
+                self.logger.warning(f"No crush in file for event {event['en']} in case {case_id}.")
                 failed_events += 1
                 continue
-            print(f"Crush: {final_crush}, Smash: {smash_l}")
+            # print(f"Crush: {final_crush}, Smash: {smash_l}")
 
             # VOI Info
             temp = {
                 'summary': summary,
-                'caseid': caseid,
+                'caseid': case_id,
                 'casenum': case_xml.find("Case")['CaseStr'],
                 'vehnum': veh_ext_form['VehicleNumber'],
                 'year': veh_ext_form.find("ModelYear").text,
@@ -341,7 +352,7 @@ class ScrapeEngine(QObject):
             # self.scrape_data.append(temp)
 
         if failed_events >= len(key_events):
-            print(f"Insufficient data for caseID {caseid}.")
+            self.logger.warning(f"Insufficient data for caseID {case_id}. Excluding from results.")
             self.enqueue_extra_case()
             self.failed_cases += 1
             return

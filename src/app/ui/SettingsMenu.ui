@@ -40,7 +40,15 @@
     </widget>
    </item>
    <item>
-    <layout class="QVBoxLayout" name="bodyVLayout"/>
+    <layout class="QVBoxLayout" name="bodyVLayout">
+     <item>
+      <widget class="QPushButton" name="debugBtn">
+       <property name="text">
+        <string>Turn on DEBUG mode for logger</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <spacer name="verticalSpacer">
