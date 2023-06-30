@@ -1,7 +1,7 @@
 import json
 import logging
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread 
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
 from PyQt6.QtWidgets import QWidget
 
 from bs4 import BeautifulSoup
@@ -24,6 +24,7 @@ class ScrapeMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.scrape_engine = None
+        self.engine_thread = None
 
         self.req_handler = RequestHandler()
         self.req_handler.started.connect(self.fetch_search)
@@ -34,28 +35,26 @@ class ScrapeMenu(QWidget):
         self.ui.imageSetCombo.addItems(["All", "F - Front", "FL - Front Left", "FR - Front Right", "B - Back", "BL - Back Left", "BR - Back Right", "L - Left", "R - Right"])
 
         self.loading_window = LoadingWindow()
-        self.loading_window.accepted.connect(self.open_data_viewer)
-        self.loading_window.rejected.connect(self.end_scrape)
+        # self.loading_window.accepted.connect(self.open_data_viewer)
+        # self.loading_window.rejected.connect(self.end_scrape)
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.ui.casesSpin.setValue(40)
 
-    def thread_ready(self):
-        self.ui.submitBtn.setEnabled(True)
-
     def fetch_search(self):
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search", priority=Priority.ALL_COMBOS.value)
-        self.req_handler.enqueue_request(request)
+        if self.req_handler.is_empty(priority=Priority.ALL_COMBOS.value): # We only ever need one of these requests at a time
+            request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search", priority=Priority.ALL_COMBOS.value)
+            self.req_handler.enqueue_request(request)
 
     @pyqtSlot(int, str, int, str, str)
     def handle_response(self, priority, url, status_code, response_text, cookie):
         if priority == Priority.ALL_COMBOS.value:
-            self.parse_search(response_text)
+            self.update_all_dropdowns(response_text)
         elif priority == Priority.MODEL_COMBO.value:
             self.update_model_dropdown(response_text)
 
-    def parse_search(self, response):
+    def update_all_dropdowns(self, response):
         """Parses the response from the NASS/CDS search website and populates the search fields."""
 
         # Parse response
@@ -106,11 +105,13 @@ class ScrapeMenu(QWidget):
         for data in dropdown_data['lSecondaryDamage']:
             self.ui.sDmgCombo.addItem(*data)
         
+        self.ui.submitBtn.setEnabled(True)
         self.logger.info("Search fields populated.")
 
     def fetch_models(self, make):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/", method='POST', params={'make': make}, priority=Priority.MODEL_COMBO.value)
+        self.req_handler.clear_queue(Priority.MODEL_COMBO.value)
         self.req_handler.enqueue_request(request)
 
     def update_model_dropdown(self, response):
@@ -153,7 +154,7 @@ class ScrapeMenu(QWidget):
         case_limit = self.ui.casesSpin.value()
         
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
-        self.scrape_engine.finished.connect(self.loading_window.accept)
+        self.scrape_engine.finished.connect(self.handle_scrape_done)
 
         self.engine_thread = QThread()
         self.scrape_engine.moveToThread(self.engine_thread)
@@ -162,28 +163,8 @@ class ScrapeMenu(QWidget):
 
         self.loading_window.show()
 
-    def open_data_viewer(self):
-        """Opens the data viewer window, terminating the scrape engine if it is running."""
-        self.end_scrape()
-        self.logger.info("Opening data viewer.")
-        self.loading_window.close()
-        if self.scrape_engine.running:
-            self.logger.info("Scrape engine is running. Terminating.")
-            # self.scrape_engine.requestInterruption()
-        self.data_viewer = DataView(True)
-        self.data_viewer.show()
-
-    def end_scrape(self):
-        """Cancels the scrape engine if it is running."""
-        if self.scrape_engine.running:
-            self.logger.warning("Scrape engine is running. Requesting interruption...")
-            # Block signals temporarily to prevent 'finished' signal from calling open_data_viewer
-            self.scrape_engine.blockSignals(True)
-            # self.scrape_engine.requestInterruption()
-            # self.scrape_engine.wait()
-            self.scrape_engine.blockSignals(False)
-            self.logger.info("Scrape stopped.")
-        else:
-            self.logger.debug("Scrape engine is not running. Ignoring request to end scrape.")
+    def handle_scrape_done(self):
+        self.engine_thread.quit()
+        self.engine_thread.wait()
         self.ui.submitBtn.setEnabled(True)
-        
+        self.logger.info("Scrape engine finished.")
