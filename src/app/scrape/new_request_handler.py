@@ -8,15 +8,21 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class Request:
-    def __init__(self, url:str, method: str='GET', params:dict={}, headers:dict={}):
+    def __init__(self, url:str, method: str='GET', params:dict={}, headers:dict={}, priority=0):
         self.url = url
         self.params = params
         self.method = method
         self.headers = headers
+        self.priority = priority
 
     def __str__(self):
         return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
 
+    def __lt__(self, other):
+        return self.priority < other.priority
+
+    def __eq__(self, other):
+        return self.priority == other.priority
 
 class Singleton(type(QObject), type):
     '''Singleton metaclass for QObjects: https://stackoverflow.com/questions/59459770/receiving-pyqtsignal-from-singleton.'''
@@ -52,21 +58,11 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.stopped.emit()
         self.running = False
 
-    def enqueue_request(self, request: Request, priority=9):
-        self.request_queue.put((priority, request))
+    def enqueue_request(self, request: Request):
+        self.request_queue.put(request)
 
-    def clear_queue(self, priority=-1):
-        '''Clears the request queue of a certain priority. If priority is -1, clears all requests.'''
-        if priority == -1:
-            self.request_queue = queue.PriorityQueue()
-            return
-
-        new_queue = queue.PriorityQueue()
-        while not self.request_queue.empty():
-            priority, request = self.request_queue.get()
-            if priority != priority:
-                new_queue.put((priority, request))
-        self.request_queue = new_queue
+    def clear_queue(self):
+        self.request_queue = queue.PriorityQueue()
         
     def process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -88,17 +84,14 @@ class RequestHandler(QObject, metaclass=Singleton):
                 rand_time = self.rate_limit + random.uniform(-self.rate_limit / 3, self.rate_limit / 2)
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
-                priority, request = self.request_queue.get()
-                executor.submit(self.send_request, priority, request)
+                request = self.request_queue.get()
+                executor.submit(self.send_request, request)
 
                 start = time.time()
                 while time.time() - start < rand_time:
-                    print(f"Time until next request: {rand_time - (time.time() - start):.2f}s", end="\r")
                     time.sleep(0.01)
-                    print(" " * 50, end="\r")
-                print(f"Waited {time.time() - start:.2f}s")
 
-    def send_request(self, priority: int, request: Request):
+    def send_request(self, request: Request):
         response = None
         try:
             if request.method == "GET":
@@ -108,4 +101,4 @@ class RequestHandler(QObject, metaclass=Singleton):
         except Exception as e:
             self.logger.error(e)
         if response is not None:
-            self.response_received.emit(priority, request.url, response.status_code, response.text, response.headers.get("Set-Cookie", ""))
+            self.response_received.emit(request.priority, request.url, response.status_code, response.text, response.headers.get("Set-Cookie", ""))
