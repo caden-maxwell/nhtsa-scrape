@@ -167,4 +167,3 @@ class ScrapeMenu(QWidget):
         self.engine_thread.quit()
         self.engine_thread.wait()
         self.ui.submitBtn.setEnabled(True)
-        self.logger.info("Scrape engine finished.")
