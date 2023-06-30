@@ -107,9 +107,9 @@ class RequestHandler(QObject, metaclass=Singleton):
                 if self.request_queue.qsize() <= 10:
                     self.rate_limit = 0.70
                 elif self.request_queue.qsize() <= 20:
-                    self.rate_limit = 0.85
+                    self.rate_limit = 1.15
                 elif self.request_queue.qsize() <= 30:
-                    self.rate_limit = 1.70
+                    self.rate_limit = 1.80
                 else:
                     self.rate_limit = 3.40
 
