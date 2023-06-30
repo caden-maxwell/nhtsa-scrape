@@ -74,18 +74,18 @@ class RequestHandler(QObject, metaclass=Singleton):
             if request.priority != priority:
                 self.request_queue.put(request)
 
-    def is_empty(self, priority=-1):
+    def contains(self, priority=-1):
         '''
-        Returns True if the request queue does not contain requests of the given priority.
-        Priority of -1 returns True if the request queue is completely empty.
+        Returns True if the request queue contains requests of the given priority.
+        Priority of -1 returns True if the queue is not empty.
         '''
         if priority == -1:
-            return self.request_queue.empty()
+            return not self.request_queue.empty()
 
         for request in self.request_queue.queue:
             if request.priority == priority:
-                return False
-        return True
+                return True
+        return False
 
     def get_ongoing_requests(self, priority=-1):
         if priority == -1:
