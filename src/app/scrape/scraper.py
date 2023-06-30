@@ -1,3 +1,4 @@
+import enum
 from io import BytesIO
 import json
 import logging
@@ -5,42 +6,123 @@ import os
 from pathlib import Path
 import requests
 
-from PyQt6.QtCore import QThread
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from bs4 import BeautifulSoup
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw 
 
-from .request_handler import WebRequestHandler, Request
+from .new_request_handler import RequestHandler, Request
 
-class ScrapeEngine(QThread):
-    def __init__(self):
+
+class Priority(enum.Enum):
+    '''Enum for request priorities. Lower integer is higher priority.'''
+    IMAGE = 0
+    CASE = 1
+    CASE_LIST = 2
+    ALL_COMBOS = 3
+    MODEL_COMBO = 4
+
+
+class ScrapeEngine(QObject):
+    started = pyqtSignal()
+    stopped = pyqtSignal()
+    finished = pyqtSignal()
+    
+    def __init__(self, search_params, image_set, case_limit):
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        self.CASES_PER_PAGE = 40
-        self.case_limit = self.CASES_PER_PAGE
-        self.image_set = "All"
-        self.request_handler = WebRequestHandler()
+        self.req_handler = RequestHandler()
+        self.req_handler.response_received.connect(self.handle_response)
 
-        # Get default search payload
+        self.case_limit = case_limit
+        self.image_set = image_set
+
+        # Get default search payload and update with user input
         payload_path = Path(__file__).parent / "payload.json"
         with open(payload_path, "r") as f:
-            self.search_payload = json.load(f)
+            self.search_payload = dict(json.load(f))
+        self.search_payload.update(search_params)
 
-    def update_payload(self, key, val):
-        self.search_payload[key] = val
-        self.logger.info(f"{key} updated to '{val}'.")
+        self.running = False
+        self.current_page = 1
+        self.cases_received = 0
 
-    def set_case_limit(self, limit):
-        self.case_limit = limit
-        self.logger.info(f"Case limit updated to '{limit}'.")
+    def limit_reached(self):
+        return self.cases_received >= self.case_limit
+
+    def start(self):
+        self.running = True
+        self.started.emit()
+        self.scrape()
+
+    def stop(self):
+        self.running = False
+        self.stopped.emit()
+
+    @pyqtSlot(int, str, int, str, str)
+    def handle_response(self, priority, url, status_code, response_text, cookie):
+        if priority == Priority.CASE_LIST.value:
+            self.parse_case_list(url, status_code, response_text)
+        elif priority == Priority.CASE.value:
+            self.parse_case(url, status_code, response_text, cookie)
+        elif priority == Priority.IMAGE.value:
+            self.parse_image(url, status_code, response_text, cookie)
+        else:
+            self.logger.error(f"Scrape engine received response with invalid priority: {priority}.")
+    
+    def parse_case_list(self, url, status_code, response_text):
+        if not response_text or status_code != 200:
+            self.logger.error(f"Error requesting page: {url}.")
+            return
+
+        if self.limit_reached():
+            self.logger.debug("Case limit reached.")
+            return
+
+        soup = BeautifulSoup(response_text, "html.parser")
+        page_dropdown = soup.find("select", id="ddlPage")
+        if not page_dropdown:
+            self.logger.warning(f"No cases found on page {self.search_payload['currentPage']}.")
+            return
+
+        # Get all caseIDs on the current page
+        case_ids = []
+        tables = soup.find_all("table")
+        if len(tables) > 1:
+            table = tables[1] # The second table should have all the case links
+            case_urls = [a["href"] for a in table.find_all("a")]
+            case_ids = [url.split('=')[2] for url in case_urls]
+        else:
+            self.logger.error(f"No cases found on page {self.search_payload['currentPage']}.")
+            return
+
+        # Request each caseID on the current page
+        url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+        for case_id in case_ids:
+            self.req_handler.enqueue_request(Request(f"{url}{case_id}"), priority=Priority.CASE.value)
+
+        total_pages = int(page_dropdown.find_all("option")[-1].text)
+        if self.current_page == total_pages:
+            self.logger.debug("Last page reached.")
+            return
         
-    def change_image_set(self, image_set):
-        self.image_set = image_set
-        self.logger.info(f"Image set updated to '{image_set}'.")
+        self.current_page += 1
+        self.search_payload["currentPage"] = self.current_page
+        self.logger.debug(f"Requesting page {self.current_page}...")
 
-    def run(self):
+        url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
+        self.req_handler.enqueue_request(Request(url, method="POST", params=self.search_payload))
+
+    def parse_case(self, url, status_code, response_text, cookie):
+
+        pass
+
+    def parse_image(self, url, status_code, response_text, cookie):
+        pass
+    
+    def scrape(self):
         self.logger.debug( f"""Scrape engine started with these params:
 {{
     Make: {self.search_payload['ddlMake']},
@@ -56,14 +138,10 @@ class ScrapeEngine(QThread):
 }}"""
         )
 
-        self.request_handler.clear()
-        payload = self.search_payload.copy() # Copy payload to avoid modifying while scraping
-        case_limit = self.case_limit
-        image_set = self.image_set
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=self.search_payload)
+        self.req_handler.enqueue_request(request, priority=Priority.CASE_LIST.value)
 
-        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS", method="POST", params=payload)
-        response = self.request_handler.send_request(request)
-
+        return
         if not response:
             return
         
@@ -73,19 +151,19 @@ class ScrapeEngine(QThread):
             self.logger.error("No cases found.")
             return
         total_pages = int(page_dropdown.find_all("option")[-1].text)
-        remaining = case_limit
+        remaining = self.case_limit
         page_num = 1
         responses = []
-        while len(responses) < case_limit:
-            remaining = case_limit - len(responses)
+        while len(responses) < self.case_limit:
+            remaining = self.case_limit - len(responses)
             case_ids = self.get_case_ids(soup)[:remaining]
 
             url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-            self.request_handler.clear()
-            self.request_handler.queue_requests([Request(url + case_id) for case_id in case_ids])
+            self.req_handler.clear()
+            self.req_handler.queue_requests([Request(url + case_id) for case_id in case_ids])
             self.logger.debug(f"Requesting cases from page {page_num}...")
-            self.request_handler.send_requests()
-            responses.extend(self.request_handler.get_responses())
+            self.req_handler.send_requests()
+            responses.extend(self.req_handler.get_responses())
 
             if self.isInterruptionRequested():
                 break
@@ -94,10 +172,10 @@ class ScrapeEngine(QThread):
             if page_num > total_pages:
                 break
 
-            payload["currentPage"] = page_num
+            self.search_payload["currentPage"] = page_num
             self.logger.debug(f"Requesting page {page_num}...")
             url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-            response = self.request_handler.send_request(Request(url, method="POST", params=payload))
+            response = self.req_handler.send_request(Request(url, method="POST", params=self.search_payload))
             if not response:
                 break
             soup = BeautifulSoup(response.text, "html.parser")
@@ -105,7 +183,7 @@ class ScrapeEngine(QThread):
         self.logger.info(f"Received {len(responses)} cases.")
 
         contents = []
-        file = f"{payload['ddlStartModelYear']}_{payload['ddlEndModelYear']}_{payload['ddlMake']}_{payload['ddlModel']}_{payload['ddlPrimaryDamage']}.csv"
+        file = f"{self.search_payload['ddlStartModelYear']}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
 
         print(f"Cases found: {len(responses)}")
 
@@ -122,9 +200,9 @@ class ScrapeEngine(QThread):
                 int(veh_summary.get("VehicleNumber"))
                 for veh_summary in case_xml.findAll("VehicleSum")
                 if (
-                    int(payload["ddlMake"]) == int(veh_summary.find("Make").get("value")) \
-                    and int(payload["ddlModel"]) == int(veh_summary.find("Model").get("value")) \
-                    and int(payload["ddlStartModelYear"]) <= int(veh_summary.find("Year").text) <= int(payload["ddlEndModelYear"])
+                    int(self.search_payload["ddlMake"]) == int(veh_summary.find("Make").get("value")) \
+                    and int(self.search_payload["ddlModel"]) == int(veh_summary.find("Model").get("value")) \
+                    and int(self.search_payload["ddlStartModelYear"]) <= int(veh_summary.find("Year").text) <= int(self.search_payload["ddlEndModelYear"])
                 )
             ]
 
@@ -142,7 +220,7 @@ class ScrapeEngine(QThread):
                 }
                 for voi in vehicle_nums
                 for event in case_xml.findAll("EventSum")
-                if (an := get_an(voi, event, payload, veh_amount)) # Add event to key_events only if 'an' is truthy.
+                if (an := get_an(voi, event, self.search_payload, veh_amount)) # Add event to key_events only if 'an' is truthy.
             ]
             print(f"Key events: {key_events}")
 
@@ -254,23 +332,23 @@ class ScrapeEngine(QThread):
                         g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                                 "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
                         
-                        def check_image_set(image_set):
-                            if not image_set:
-                                image_set = img_set_lookup['F']
-                                if 'F' in payload["ddlPrimaryDamage"]:
-                                    image_set = img_set_lookup['F']
-                                elif 'R' in payload["ddlPrimaryDamage"]:
-                                    image_set = img_set_lookup['R']
-                                elif 'B' in payload["ddlPrimaryDamage"]:
-                                    image_set = img_set_lookup['B']
-                                elif 'L' in payload["ddlPrimaryDamage"]:
-                                    image_set = img_set_lookup['L']
+                        def check_image_set(self.image_set):
+                            if not self.image_set:
+                                self.image_set = img_set_lookup['F']
+                                if 'F' in self.search_payload["ddlPrimaryDamage"]:
+                                    self.image_set = img_set_lookup['F']
+                                elif 'R' in self.search_payload["ddlPrimaryDamage"]:
+                                    self.image_set = img_set_lookup['R']
+                                elif 'B' in self.search_payload["ddlPrimaryDamage"]:
+                                    self.image_set = img_set_lookup['B']
+                                elif 'L' in self.search_payload["ddlPrimaryDamage"]:
+                                    self.image_set = img_set_lookup['L']
                                 print('Empty Image Set')
-                                return image_set
-                            else: return image_set
+                                return self.image_set
+                            else: return self.image_set
 
                         if 'sa' in g.lower():
-                            caseid_path = os.getcwd() + '/' +  payload["ddlStartModelYear"] + '_' + payload["ddlEndModelYear"] + '_' + payload["ddlMake"] + "_" + payload["ddlModel"] + '_' + payload["ddlPrimaryDamage"]
+                            caseid_path = os.getcwd() + '/' +  self.search_payload["ddlStartModelYear"] + '_' + self.search_payload["ddlEndModelYear"] + '_' + self.search_payload["ddlMake"] + "_" + self.search_payload["ddlModel"] + '_' + self.search_payload["ddlPrimaryDamage"]
                             if not os.path.exists(caseid_path):
                                 os.makedirs(caseid_path)
                             os.chdir(caseid_path)
@@ -312,50 +390,49 @@ class ScrapeEngine(QThread):
                     if 'de' in g.lower():
                         break
 
-                if len(fileName):
-                    temp = {
-                        'summary': summary,
-                        'caseid': caseid,
-                        'casenum': case_xml.find("Case")['CaseStr'],
-                        'vehnum': veh_ext_form['VehicleNumber'],
-                        'year': veh_ext_form.find("ModelYear").text,
-                        'make': veh_ext_form.find("Make").text,
-                        'model': veh_ext_form.find("Model").text,
-                        'curbweight': float(veh_ext_form.find("CurbWeight").text),
-                        'damloc': veh_ext_form.find("DeformationLocation").text,
-                        'underride': veh_ext_form.find("OverUnderride").text,
-                        'edr': veh_ext_form.find("EDR").text,
-                        'total_dv': float(tot),
-                        'long_dv': float(lon),
-                        'lateral_dv': float(lat),
-                        'smashl': float(smash_l),
-                        'crush': final_crush,
-                    }
-                    #Alternate Vehicle Info
-                    temp['a_vehnum'] = event['an']
-                    alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
-                    alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
+                temp = {
+                    'summary': summary,
+                    'caseid': caseid,
+                    'casenum': case_xml.find("Case")['CaseStr'],
+                    'vehnum': veh_ext_form['VehicleNumber'],
+                    'year': veh_ext_form.find("ModelYear").text,
+                    'make': veh_ext_form.find("Make").text,
+                    'model': veh_ext_form.find("Model").text,
+                    'curbweight': float(veh_ext_form.find("CurbWeight").text),
+                    'damloc': veh_ext_form.find("DeformationLocation").text,
+                    'underride': veh_ext_form.find("OverUnderride").text,
+                    'edr': veh_ext_form.find("EDR").text,
+                    'total_dv': float(tot),
+                    'long_dv': float(lon),
+                    'lateral_dv': float(lat),
+                    'smashl': float(smash_l),
+                    'crush': final_crush,
+                }
+                #Alternate Vehicle Info
+                temp['a_vehnum'] = event['an']
+                alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
+                alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
 
-                    if alt_ext_form:
-                        alt_temp = {
-                            'a_year': alt_ext_form.find("ModelYear").text,
-                            'a_make': alt_ext_form.find("Make").text,
-                            'a_model': alt_ext_form.find("Model").text,
-                            'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
-                        }
-                        damloc = alt_ext_form.find("DeformationLocation") 
-                        alt_temp['a_damloc'] = damloc.text if damloc else '--'
-                    else:
-                        alt_temp = {
-                            'a_year': '--',
-                            'a_make': '--',
-                            'a_model': '--',
-                            'a_curbweight': 99999.0,
-                            'a_damloc': '--'
-                        }
-                    temp.update(alt_temp)
-                    temp['image'] = img_num
-                    contents.append(temp)
+                if alt_ext_form:
+                    alt_temp = {
+                        'a_year': alt_ext_form.find("ModelYear").text,
+                        'a_make': alt_ext_form.find("Make").text,
+                        'a_model': alt_ext_form.find("Model").text,
+                        'a_curbweight': float(alt_ext_form.find("CurbWeight").text),
+                    }
+                    damloc = alt_ext_form.find("DeformationLocation") 
+                    alt_temp['a_damloc'] = damloc.text if damloc else '--'
+                else:
+                    alt_temp = {
+                        'a_year': '--',
+                        'a_make': '--',
+                        'a_model': '--',
+                        'a_curbweight': 99999.0,
+                        'a_damloc': '--'
+                    }
+                temp.update(alt_temp)
+                temp['image'] = img_num
+                contents.append(temp)
         self.logger.info("\n" + json.dumps(contents, indent=4))
         x = []
         y_nass = []
@@ -533,18 +610,6 @@ class ScrapeEngine(QThread):
         par = csestr + dvstr
         writer.writerows([[],[par]])
         f.close()
-
-    def get_case_ids(self, soup: BeautifulSoup):
-        tables = soup.find_all("table")
-        if len(tables) > 1:
-            table = tables[1] # The second table should have all the case links
-            case_urls = [a["href"] for a in table.find_all("a")]
-            return [url.split('=')[2] for url in case_urls]
-        return []
-
-    def requestInterruption(self):
-        self.request_handler.stop()
-        return super().requestInterruption()
 
 def get_an(voi: int, event: BeautifulSoup, payload: dict, num_vehicles: int):
 

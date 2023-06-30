@@ -1,13 +1,13 @@
 import json
 import logging
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread 
 from PyQt6.QtWidgets import QWidget
 
 from bs4 import BeautifulSoup
 
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
-from app.scrape import ModelUpdateWorker, SearchRefreshWorker, ScrapeEngine
+from app.scrape import RequestHandler, ScrapeEngine, Request, Priority
 
 from .data_view import DataView
 from .loading_window import LoadingWindow
@@ -21,43 +21,39 @@ class ScrapeMenu(QWidget):
 
         self.ui = Ui_ScrapeMenu()
         self.ui.setupUi(self)
+
+        self.logger = logging.getLogger(__name__)
+
+        self.req_handler = RequestHandler()
+        self.req_handler.started.connect(self.fetch_search)
+        self.req_handler.response_received.connect(self.handle_response)
+
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
         self.ui.imageSetCombo.addItems(["All", "F - Front", "FL - Front Left", "FR - Front Right", "B - Back", "BL - Back Left", "BR - Back Right", "L - Left", "R - Right"])
 
-        self.logger = logging.getLogger(__name__)
         self.loading_window = LoadingWindow()
         self.loading_window.accepted.connect(self.open_data_viewer)
         self.loading_window.rejected.connect(self.end_scrape)
 
-        self.scrape_engine = ScrapeEngine()
-        self.scrape_engine.finished.connect(self.loading_window.accept)
-
-        # Set up signals to update the scrape engine payload when the user changes any search criteria
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
-        self.ui.makeCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlMake', self.ui.makeCombo.currentData()))
-        self.ui.modelCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlModel', self.ui.modelCombo.currentData()))
-        self.ui.startYearCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlStartModelYear', self.ui.startYearCombo.currentData()))
-        self.ui.endYearCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlEndModelYear', self.ui.endYearCombo.currentData()))
-        self.ui.pDmgCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('ddlPrimaryDamage', self.ui.pDmgCombo.currentData()))
-        self.ui.sDmgCombo.currentTextChanged.connect(lambda: self.scrape_engine.update_payload('lSecondaryDamage', self.ui.sDmgCombo.currentData()))
-        self.ui.dvMinSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVFrom', self.ui.dvMinSpin.value()))
-        self.ui.dvMaxSpin.valueChanged.connect(lambda: self.scrape_engine.update_payload('tDeltaVTo', self.ui.dvMaxSpin.value()))
-        self.ui.casesSpin.valueChanged.connect(self.scrape_engine.set_case_limit)
-        self.ui.imageSetCombo.currentTextChanged.connect(self.scrape_engine.change_image_set)
-        
-        self.fetch_search()
-        self.ui.casesSpin.setValue(self.scrape_engine.CASES_PER_PAGE)
+        self.ui.casesSpin.setValue(40)
 
-    def showEvent(self, event):
-        self.fetch_search()
-        return super().showEvent(event)
+    def thread_ready(self):
+        self.ui.submitBtn.setEnabled(True)
 
     def fetch_search(self):
+        print("started")
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
-        self.refresh_worker = SearchRefreshWorker()
-        self.refresh_worker.retrieved.connect(self.parse_search)
-        self.refresh_worker.start()
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search")
+        self.req_handler.enqueue_request(request, priority=Priority.ALL_COMBOS.value)
+
+    @pyqtSlot(int, str, int, str, str)
+    def handle_response(self, priority, url, status_code, response_text, cookie):
+        if priority == Priority.ALL_COMBOS.value:
+            self.parse_search(response_text)
+        elif priority == Priority.MODEL_COMBO.value:
+            self.update_model_dropdown(response_text)
 
     def parse_search(self, response):
         """Parses the response from the NASS/CDS search website and populates the search fields."""
@@ -114,9 +110,8 @@ class ScrapeMenu(QWidget):
 
     def fetch_models(self, make):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
-        self.update_worker = ModelUpdateWorker(make)
-        self.update_worker.updated.connect(self.update_model_dropdown)
-        self.update_worker.start()
+        request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/", method='POST', params={'make': make})
+        self.req_handler.enqueue_request(request, priority=Priority.MODEL_COMBO.value)
 
     def update_model_dropdown(self, response):
         """Populates the model dropdown with models from the response."""
@@ -140,10 +135,31 @@ class ScrapeMenu(QWidget):
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
-        if self.scrape_engine.isRunning():
+        if self.scrape_engine.running:
             self.logger.warning("Scrape engine is already running. Ignoring submission.")
             return
-        self.scrape_engine.start()
+
+        search_params = {
+            'ddlMake': self.ui.makeCombo.currentData(),
+            'ddlModel': self.ui.modelCombo.currentData(),
+            'ddlStartModelYear': self.ui.startYearCombo.currentData(),
+            'ddlEndModelYear': self.ui.endYearCombo.currentData(),
+            'ddlPrimaryDamage': self.ui.pDmgCombo.currentData(),
+            'lSecondaryDamage': self.ui.sDmgCombo.currentData(),
+            'tDeltaVFrom': self.ui.dvMinSpin.value(),
+            'tDeltaVTo': self.ui.dvMaxSpin.value(),
+        }
+        image_set = self.ui.imageSetCombo.currentText()
+        case_limit = self.ui.casesSpin.value()
+        
+        self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
+        self.scrape_engine.finished.connect(self.loading_window.accept)
+
+        self.engine_thread = QThread()
+        self.scrape_engine.moveToThread(self.engine_thread)
+        self.engine_thread.started.connect(self.scrape_engine.start)
+        self.engine_thread.start()
+
         self.loading_window.show()
 
     def open_data_viewer(self):
@@ -151,20 +167,20 @@ class ScrapeMenu(QWidget):
         self.end_scrape()
         self.logger.info("Opening data viewer.")
         self.loading_window.close()
-        if self.scrape_engine.isRunning():
+        if self.scrape_engine.running:
             self.logger.info("Scrape engine is running. Terminating.")
-            self.scrape_engine.requestInterruption()
+            # self.scrape_engine.requestInterruption()
         self.data_viewer = DataView(True)
         self.data_viewer.show()
 
     def end_scrape(self):
         """Cancels the scrape engine if it is running."""
-        if self.scrape_engine.isRunning():
+        if self.scrape_engine.running:
             self.logger.warning("Scrape engine is running. Requesting interruption...")
             # Block signals temporarily to prevent 'finished' signal from calling open_data_viewer
             self.scrape_engine.blockSignals(True)
-            self.scrape_engine.requestInterruption()
-            self.scrape_engine.wait()
+            # self.scrape_engine.requestInterruption()
+            # self.scrape_engine.wait()
             self.scrape_engine.blockSignals(False)
             self.logger.info("Scrape stopped.")
         else:
