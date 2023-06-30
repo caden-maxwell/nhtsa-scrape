@@ -8,7 +8,7 @@ import textwrap # To make multiline strings look nice in the code
 import time
 import requests
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from bs4 import BeautifulSoup
 
@@ -29,6 +29,7 @@ class Priority(enum.Enum):
 
 
 class ScrapeEngine(QObject):
+    event_parsed = pyqtSignal(dict)
     started = pyqtSignal()
     finished = pyqtSignal()
     
@@ -51,44 +52,41 @@ class ScrapeEngine(QObject):
 
         self.running = False
         self.start_time = 0
-        self.timer = None
 
         self.current_page = 1
         self.final_page = False
         self.extra_cases = []
         self.success_cases = 0
         self.failed_cases = 0
-        self.scrape_data = []
+        self.total_events = 0
+        # self.scrape_data = []
 
     def start(self):
         self.running = True
         self.started.emit()
         self.scrape()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.check_complete)
-        self.timer.start(1000) # Check every 1s if scrape is complete
 
     def stop(self):
         # Order matters here, otherwise the request handler will start making unnecessary case list requests once the individual cases are cleared
         self.req_handler.clear_queue(Priority.CASE_LIST.value)
         self.req_handler.clear_queue(Priority.CASE.value)
 
-        self.running = False
-        self.finished.emit()
-        data = json.dumps(self.scrape_data, indent=4)
+        # data = json.dumps(self.scrape_data, indent=4)
         if self.success_cases + self.failed_cases < 1:
             self.logger.info("No data was found. Scrape complete.")
             return
         total_cases = self.success_cases + self.failed_cases
-        self.logger.debug(f"Scrape Data:\n{data}")
+        # self.logger.debug(f"Scrape Data:\n{data}")
         self.logger.info(textwrap.dedent(f"""
             ---- Scrape Summary ----
             - Total Cases Requested: {total_cases}
                 - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
                 - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
-            - Total Events Extracted: {len(self.scrape_data)}
+            - Total Events Extracted: {self.total_events}
             - Time Elapsed: {time.time() - self.start_time:.2f}s
             -------------------------"""))
+        self.running = False
+        self.finished.emit()
 
     def limit_reached(self):
         return self.success_cases >= self.case_limit
@@ -338,7 +336,9 @@ class ScrapeEngine(QObject):
                 }
             temp.update(alt_temp)
             temp['image'] = img_num
-            self.scrape_data.append(temp)
+            self.total_events += 1
+            self.event_parsed.emit(temp)
+            # self.scrape_data.append(temp)
 
         if failed_events >= len(key_events):
             print(f"Insufficient data for caseID {caseid}.")

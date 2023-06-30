@@ -121,7 +121,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                 executor.submit(self.send_request, request)
 
                 start = time.time()
-                while time.time() - start < rand_time:
+                while time.time() - start < rand_time and self.running:
                     time.sleep(0.01)
 
     def send_request(self, request: Request):
