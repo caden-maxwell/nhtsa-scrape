@@ -131,6 +131,7 @@ class ScrapeMenu(QWidget):
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
+        self.ui.submitBtn.setText("Scraping...")
         if self.scrape_engine and self.scrape_engine.running:
             self.logger.warning("Scrape engine is already running. Ignoring submission.")
             return
@@ -149,7 +150,7 @@ class ScrapeMenu(QWidget):
         case_limit = self.ui.casesSpin.value()
         
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
-        self.scrape_engine.finished.connect(self.handle_scrape_done)
+        self.scrape_engine.completed.connect(self.handle_scrape_done)
         self.scrape_engine.event_parsed.connect(self.handle_event_parsed)
 
         self.engine_thread = QThread()
@@ -168,11 +169,11 @@ class ScrapeMenu(QWidget):
         self.engine_thread.quit()
         self.engine_thread.wait()
         self.ui.submitBtn.setEnabled(True)
+        self.ui.submitBtn.setText("Scrape")
 
     def cleanup(self):
         self.engine_timer.stop()
         if self.scrape_engine and self.scrape_engine.running:
-            self.scrape_engine.finished.disconnect()
             self.scrape_engine.stop()
         if self.engine_thread and self.engine_thread.isRunning():
             self.engine_thread.quit()

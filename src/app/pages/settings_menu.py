@@ -18,3 +18,14 @@ class SettingsMenu(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.ui.backBtn.clicked.connect(self.back.emit)
+        self.ui.debugBtn.clicked.connect(self.toggle_debug)
+        self.ui.debugBtn.setText("Disable debug mode")
+
+    def toggle_debug(self):
+        root_logger = logging.getLogger()
+        if root_logger.level == logging.DEBUG:
+            root_logger.setLevel(logging.INFO)
+            self.ui.debugBtn.setText("Enable debug mode")
+        else:
+            root_logger.setLevel(logging.DEBUG)
+            self.ui.debugBtn.setText("Disable debug mode")
