@@ -23,7 +23,7 @@
 | 6/27 | 10 | - Added logging colors to make things stand out more. <br> - Figuring out how to parse the cases based on `old_app.py`... LOTS of manually sifting through XML to figure out how it is structured and TONS of refactoring to make the code more readable. |
 | 6/28 | 8 | - The main scraping process is finished! In fact, when comparing output from the old scrape and the new one and double-checking with the raw XML, the new scraper collects information from *all* events, whereas the old one misses a couple here and there because of the way the code was written. <br> - Now need to be able to add the data to the data viewer and run some calculations on it. |
 | 6/29 | 6 | - Moved to a different request handler that works 10x better and is more flexible than the last. <br> - Modularized the main scrape engine to be more readable and easy to debug. |
-| 6/30 | n/a | n/a |
+| 6/30 | n/a | - Extra cases that are above the max case limit will be put on a list to be enqueued if the current cases fail to obtain sufficient data. This way we can get as many cases as possible under the max case limit. <br> -  |
 | Total | 92 | - |
 
 ---

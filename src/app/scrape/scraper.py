@@ -4,11 +4,11 @@ import json
 import logging
 import os
 from pathlib import Path
-import threading
+import textwrap # To make multiline strings look nice in the code
 import time
 import requests
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer, Qt
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 
 from bs4 import BeautifulSoup
 
@@ -50,20 +50,22 @@ class ScrapeEngine(QObject):
         self.search_payload.update(search_params)
 
         self.running = False
-        self.current_page = 1
-        self.cases_parsed = 0
-        self.extra_cases = []
-        self.final_page = False
         self.start_time = 0
-        self.scrape_data = []
         self.timer = None
+
+        self.current_page = 1
+        self.final_page = False
+        self.extra_cases = []
+        self.success_cases = 0
+        self.failed_cases = 0
+        self.scrape_data = []
 
     def start(self):
         self.running = True
         self.started.emit()
         self.scrape()
         self.timer = QTimer()
-        self.timer.timeout.connect(self.check_complete, Qt.ConnectionType.QueuedConnection)
+        self.timer.timeout.connect(self.check_complete)
         self.timer.start(1000) # Check every 1s if scrape is complete
 
     def stop(self):
@@ -73,11 +75,24 @@ class ScrapeEngine(QObject):
 
         self.running = False
         self.finished.emit()
-        self.logger.debug(f"Scrape Data:\n{self.scrape_data}")
-        self.logger.info(f"Scrape engine finished. {self.cases_parsed} cases parsed in {time.time() - self.start_time}s.")
+        data = json.dumps(self.scrape_data, indent=4)
+        self.logger.debug(f"Scrape Data:\n{data}")
+        self.logger.info(textwrap.dedent(f"""
+            ---- Scrape Summary ----
+                Cases Successfully Parsed: {self.success_cases}
+                Cases Failed to Parse: {self.failed_cases}
+                Total Cases Requested: {self.success_cases + self.failed_cases}
+                Successful Parse Rate: {self.success_cases / (self.success_cases + self.failed_cases) * 100:.2f}%
+                Time Elapsed: {time.time() - self.start_time}s
+            -------------------------"""))
+        self.logger.info(f"Amount of Failed Parses: {self.failed_cases}")
+        self.logger.info(f"Amount Succeeded: {self.success_cases}")
+        total_cases = self.success_cases + self.failed_cases
+        self.logger.info(f"Total cases requested: {total_cases}")
+        self.logger.info(f"Scrape engine finished. {self.success_cases} cases parsed in {time.time() - self.start_time}s.")
 
     def limit_reached(self):
-        return self.cases_parsed >= self.case_limit
+        return self.success_cases >= self.case_limit
 
     def check_complete(self):
         if not self.req_handler.contains(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
@@ -91,21 +106,19 @@ class ScrapeEngine(QObject):
 
     def scrape(self):
         self.start_time = time.time()
-        self.logger.debug( f"""Scrape engine started with these params:
-{{
-    Make: {self.search_payload['ddlMake']},
-    Model: {self.search_payload['ddlModel']},
-    Model Start Year: {self.search_payload['ddlStartModelYear']},
-    Model End Year: {self.search_payload['ddlEndModelYear']},
-    Min Delta V: {self.search_payload['tDeltaVFrom']},
-    Max Delta V: {self.search_payload['tDeltaVTo']},
-    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
-    Secondary Damage: {self.search_payload['lSecondaryDamage']},
-    Case Limit: {self.case_limit},
-    Image Set: {self.image_set}
-}}"""
-        )
-
+        self.logger.debug(textwrap.dedent(f"""Scrape engine started with these params:
+            {{
+                Make: {self.search_payload['ddlMake']},
+                Model: {self.search_payload['ddlModel']},
+                Model Start Year: {self.search_payload['ddlStartModelYear']},
+                Model End Year: {self.search_payload['ddlEndModelYear']},
+                Min Delta V: {self.search_payload['tDeltaVFrom']},
+                Max Delta V: {self.search_payload['tDeltaVTo']},
+                Primary Damage: {self.search_payload['ddlPrimaryDamage']},
+                Secondary Damage: {self.search_payload['lSecondaryDamage']},
+                Case Limit: {self.case_limit},
+                Image Set: {self.image_set}
+            }}"""))
         request = Request(self.CASE_LIST_URL, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value)
         self.req_handler.enqueue_request(request)
     
@@ -174,6 +187,7 @@ class ScrapeEngine(QObject):
         if not response_text:
             self.logger.error(f"Received empty response from {url}.")
             self.enqueue_extra_case()
+            self.failed_cases += 1
             return
         
         if self.limit_reached():
@@ -207,6 +221,7 @@ class ScrapeEngine(QObject):
         if not vehicle_nums: 
             print('No matching vehicles found.')
             self.enqueue_extra_case()
+            self.failed_cases += 1
             return
         print(f"Vehicle numbers: {vehicle_nums}")
 
@@ -329,9 +344,10 @@ class ScrapeEngine(QObject):
         if failed_events >= len(key_events):
             print(f"Insufficient data for caseID {caseid}.")
             self.enqueue_extra_case()
+            self.failed_cases += 1
             return
 
-        self.cases_parsed += 1
+        self.success_cases += 1
         self.check_complete()
 
     def parse_image(self, url, status_code, response_text, cookie):
