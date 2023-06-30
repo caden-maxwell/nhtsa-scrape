@@ -68,16 +68,11 @@ class RequestHandler(QObject, metaclass=Singleton):
             self.request_queue = queue.PriorityQueue()
             return
 
-        print(f"Clearing requests of priority {priority}")
-        removed = 0
-        with self.request_queue.mutex:
-            for request in self.request_queue.queue:
-                print(f"Request priority: {request.priority}")
-                if request.priority == priority:
-                    removed += 1
-                    print(f"Removing request {request}")
-                    self.request_queue.queue.remove(request)
-        print(f"Removed {removed} requests")
+        requests = self.request_queue.queue
+        self.request_queue.queue = []
+        for request in requests:
+            if request.priority != priority:
+                self.request_queue.put(request)
 
     def is_empty(self, priority=-1):
         '''
@@ -87,10 +82,9 @@ class RequestHandler(QObject, metaclass=Singleton):
         if priority == -1:
             return self.request_queue.empty()
 
-        with self.request_queue.mutex:
-            for request in self.request_queue.queue:
-                if request.priority == priority:
-                    return False
+        for request in self.request_queue.queue:
+            if request.priority == priority:
+                return False
         return True
 
     def get_ongoing_requests(self, priority=-1):

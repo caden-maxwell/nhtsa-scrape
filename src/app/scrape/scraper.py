@@ -58,7 +58,6 @@ class ScrapeEngine(QObject):
         self.scrape()
 
     def stop(self):
-        time.sleep(1)
         self.req_handler.clear_queue(Priority.CASE.value)
         self.req_handler.clear_queue(Priority.CASE_LIST.value)
         self.running = False
