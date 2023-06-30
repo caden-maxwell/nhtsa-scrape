@@ -43,7 +43,7 @@ class ScrapeMenu(QWidget):
 
     def fetch_search(self):
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
-        if self.req_handler.is_empty(priority=Priority.ALL_COMBOS.value): # We only ever need one of these requests at a time
+        if not self.req_handler.contains(priority=Priority.ALL_COMBOS.value): # We only ever need one of these requests at a time
             request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search", priority=Priority.ALL_COMBOS.value)
             self.req_handler.enqueue_request(request)
 

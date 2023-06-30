@@ -68,7 +68,7 @@ class ScrapeEngine(QObject):
         return self.cases_parsed >= self.case_limit
 
     def check_completion(self):
-        if self.req_handler.is_empty(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
+        if not self.req_handler.contains(Priority.CASE.value) and not self.req_handler.get_ongoing_requests(Priority.CASE.value) and self.final_page:
             self.stop()
 
     def scrape(self):
@@ -170,14 +170,19 @@ class ScrapeEngine(QObject):
         print(f"Case ID: {caseid}")
         print(f"Summary: {summary}")
 
-        make_match = (make := int(self.search_payload["ddlMake"])) == int(case_xml.find("Make").get("value")) or make == -1
-        model_match = (model := int(self.search_payload["ddlModel"])) == int(case_xml.find("Model").get("value")) or model == -1
+        make = int(self.search_payload["ddlMake"])
+        model = int(self.search_payload["ddlModel"])
+        start_year = int(self.search_payload["ddlStartModelYear"])
         end_year = 9999 if (year := int(self.search_payload["ddlEndModelYear"])) == -1 else year
-        year_match = int(self.search_payload["ddlStartModelYear"]) <= int(case_xml.find("Year").text) <= end_year
+
+        make_match = lambda veh_sum: make == int(veh_sum.find("Make").get("value")) or make == -1
+        model_match = lambda veh_sum: model == int(veh_sum.find("Model").get("value")) or model == -1
+        year_match = lambda veh_sum: start_year <= int(veh_sum.find("Year").text) <= end_year
+
         vehicle_nums = [
             int(veh_summary.get("VehicleNumber"))
             for veh_summary in case_xml.findAll("VehicleSum")
-            if make_match and model_match and year_match
+            if make_match(veh_summary) and model_match(veh_summary) and year_match(veh_summary)
         ]
 
         if not vehicle_nums: 
