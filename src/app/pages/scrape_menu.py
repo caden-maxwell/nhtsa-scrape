@@ -35,6 +35,8 @@ class ScrapeMenu(QWidget):
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.ui.casesSpin.setValue(40)
         self.engine_timer = QTimer()
+        
+        self.data_viewer = DataView(True)
 
     def fetch_search(self):
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
@@ -42,8 +44,8 @@ class ScrapeMenu(QWidget):
             request = Request("https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search", priority=Priority.ALL_COMBOS.value)
             self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, int, str, str)
-    def handle_response(self, priority, url, status_code, response_text, cookie):
+    @pyqtSlot(int, str, str, str)
+    def handle_response(self, priority, url, response_text, cookie):
         if priority == Priority.ALL_COMBOS.value:
             self.update_all_dropdowns(response_text)
         elif priority == Priority.MODEL_COMBO.value:

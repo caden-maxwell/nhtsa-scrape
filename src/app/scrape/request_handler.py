@@ -39,7 +39,7 @@ class Singleton(type(QObject), type):
 class RequestHandler(QObject, metaclass=Singleton):
     started = pyqtSignal()
     stopped = pyqtSignal()
-    response_received = pyqtSignal(int, str, int, str, str)
+    response_received = pyqtSignal(int, str, str, str)
     _instance = None
 
     def __init__(self):
@@ -146,4 +146,4 @@ class RequestHandler(QObject, metaclass=Singleton):
             return
         self.ongoing_requests.remove(request)
         if response is not None:
-            self.response_received.emit(request.priority, request.url, response.status_code, response.text, response.headers.get("Set-Cookie", ""))
+            self.response_received.emit(request.priority, request.url, response.text, response.headers.get("Set-Cookie", ""))

@@ -124,14 +124,14 @@ class ScrapeEngine(QObject):
         request = Request(self.CASE_LIST_URL, method="POST", params=self.search_payload, priority=Priority.CASE_LIST.value)
         self.req_handler.enqueue_request(request)
     
-    @pyqtSlot(int, str, int, str, str)
-    def handle_response(self, priority, url, status_code, response_text, cookie):
+    @pyqtSlot(int, str, str, str)
+    def handle_response(self, priority, url, response_text, cookie):
         if priority == Priority.CASE_LIST.value:
             self.parse_case_list(url, response_text)
         elif priority == Priority.CASE.value:
             self.parse_case(url, response_text, cookie)
         elif priority == Priority.IMAGE.value:
-            self.parse_image(url, status_code, response_text, cookie)
+            self.parse_image(url, response_text, cookie)
         else:
             self.logger.error(f"Scrape engine received response with invalid priority: {priority}.")
     
@@ -360,7 +360,7 @@ class ScrapeEngine(QObject):
         self.success_cases += 1
         self.check_complete()
 
-    def parse_image(self, url, status_code, response_text, cookie):
+    def parse_image(self, url, response_text, cookie):
         return
         img_form = case_xml.find('IMGForm')
         if not img_form:
