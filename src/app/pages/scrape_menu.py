@@ -36,7 +36,7 @@ class ScrapeMenu(QWidget):
         self.ui.casesSpin.setValue(40)
         self.engine_timer = QTimer()
         
-        self.data_viewer = DataView(True)
+        self.data_viewer = None
 
     def fetch_search(self):
         """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
@@ -153,7 +153,11 @@ class ScrapeMenu(QWidget):
         
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
         self.scrape_engine.completed.connect(self.handle_scrape_done)
-        self.scrape_engine.event_parsed.connect(self.handle_event_parsed)
+
+        self.data_viewer = DataView(True)
+        self.data_viewer.show()
+
+        self.scrape_engine.event_parsed.connect(self.data_viewer.add_event)
 
         self.engine_thread = QThread()
         self.scrape_engine.moveToThread(self.engine_thread)
@@ -162,10 +166,6 @@ class ScrapeMenu(QWidget):
 
         self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
         self.engine_timer.start(1000)
-
-    @pyqtSlot(dict)
-    def handle_event_parsed(self, event: dict):
-        print(event)
 
     def handle_scrape_done(self):
         self.engine_thread.quit()
