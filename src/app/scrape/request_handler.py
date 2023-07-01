@@ -50,6 +50,7 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.running = False
         self.rate_limit = 2.5
         self.ongoing_requests = []
+        self.timeout = 4
 
     def start(self):
         self.running = True
@@ -129,9 +130,9 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.ongoing_requests.append(request)
         try:
             if request.method == "GET":
-                response = requests.get(request.url, params=request.params, headers=request.headers)
+                response = requests.get(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
             elif request.method == "POST":
-                response = requests.post(request.url, data=request.params, headers=request.headers)
+                response = requests.post(request.url, data=request.params, headers=request.headers, timeout=self.timeout)
             else:
                 raise ValueError(f"Invalid request method: {request.method}")
             if not response:
@@ -144,6 +145,7 @@ class RequestHandler(QObject, metaclass=Singleton):
         except Exception as e:
             self.logger.error(f"Exception: {e}")
             return
-        self.ongoing_requests.remove(request)
+        finally:
+            self.ongoing_requests.remove(request)
         if response is not None:
             self.response_received.emit(request.priority, request.url, response.text, response.headers.get("Set-Cookie", ""))
