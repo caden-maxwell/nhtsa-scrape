@@ -49,7 +49,6 @@ class DataView(QWidget):
     @pyqtSlot(dict)
     def add_event(self, event): 
         self.model.add_data(event)
-        
 
 
 class ExitDataViewDialog(QDialog):
