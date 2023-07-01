@@ -1,6 +1,5 @@
 import logging
 from datetime import datetime
-from PyQt6 import QtGui
 
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QMessageBox
@@ -17,11 +16,12 @@ class ProfileMenu(QWidget):
     def __init__(self):
         super().__init__()
 
+        self.logger = logging.getLogger(__name__)
+        self.model = CaseProfiles()
+
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
 
-        self.logger = logging.getLogger(__name__)
-        self.model = CaseProfiles()
         self.ui.listView.setModel(self.model)
         self.ui.listView.selectionModel().selectionChanged.connect(self.handle_selection_changed)
         self.ui.listView.clearSelection()

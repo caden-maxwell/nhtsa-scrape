@@ -10,8 +10,8 @@
     - **Description:** Represents a CrashViewer case from the NASS/CDS database
     - **Attributes:** Case ID, case number, summary, case profiles that this case might be associated with
     - **Relationships:** Has a many-to-many relationship with Case Profiles. Has a one-to-many relationship with Vehicles.
-2. **Vehicles**
-    - **Description:** Represents a vehicle in a CrashViewer case from the NASS/CDS database
+2. **Event**
+    - **Description:** Represents an event in a CrashViewer case from the NASS/CDS database
     - **Attributes:** Case id, vehicle number, year, make, model, curb weight, damage location, underride, EDR report, total delta-v (kmph), longitudinal delta-v, lateral delta-v, smash l, crush, alt vehicle number, alt vehicle year, alt vehicle make, alt vehicle model, alt vehicle curb weight, average crush in inches, total delta-v (mph), NASS_vc, e, tot_dv (I am unsure of what NASS_vc, e, and tot_dv actually mean as of now)
     - **Relationships:** Has a many-to-one relationship with Cases. Has a one-to-many relationship with Case Images.
 2. **Case Profiles**
@@ -32,8 +32,9 @@ CREATE TABLE Cases (
     summary TEXT
 );
 
-CREATE TABLE Vehicles (
+CREATE TABLE Events (
     case_id INTEGER,
+    event_num INTEGER.
     vehicle_num INTEGER,
     year INTEGER,
     make TEXT,
@@ -61,7 +62,7 @@ CREATE TABLE Vehicles (
     NASS_vc INTEGER,
     e INTEGER,
     TOT_dv INTEGER,
-    PRIMARY KEY (case_id, vehicle_num),
+    PRIMARY KEY (case_id, event_num, vehicle_num),
     FOREIGN KEY (case_id) REFERENCES Cases(case_id)
 );
 
@@ -81,7 +82,7 @@ CREATE TABLE CaseImages (
     image_path TEXT,
     date_created TEXT,
     date_modified TEXT,
-    FOREIGN KEY (vehicle_num, case_id) REFERENCES Vehicles(vehicle_num, case_id)
+    FOREIGN KEY (case_id) REFERENCES Cases(case_id)
 );
 
 CREATE TABLE CaseProfileCasesMapping (

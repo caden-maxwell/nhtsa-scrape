@@ -306,14 +306,15 @@ class ScrapeEngine(QObject):
             # VOI Info
             temp = {
                 'summary': summary,
-                'caseid': case_id,
-                'casenum': case_xml.find("Case")['CaseStr'],
-                'vehnum': veh_ext_form['VehicleNumber'],
-                'year': veh_ext_form.find("ModelYear").text,
+                'case_id': case_id,
+                'event_num': event['en'],
+                'case_num': case_xml.find("Case")['CaseStr'],
+                'veh_num': veh_ext_form['VehicleNumber'],
                 'make': veh_ext_form.find("Make").text,
                 'model': veh_ext_form.find("Model").text,
-                'curbweight': float(veh_ext_form.find("CurbWeight").text),
-                'damloc': veh_ext_form.find("DeformationLocation").text,
+                'model_year': veh_ext_form.find("ModelYear").text,
+                'curb_weight': float(veh_ext_form.find("CurbWeight").text),
+                'dam_loc': veh_ext_form.find("DeformationLocation").text,
                 'underride': veh_ext_form.find("OverUnderride").text,
                 'edr': veh_ext_form.find("EDR").text,
                 'total_dv': float(tot),
@@ -333,7 +334,7 @@ class ScrapeEngine(QObject):
                     'a_year': alt_ext_form.find("ModelYear").text,
                     'a_make': alt_ext_form.find("Make").text,
                     'a_model': alt_ext_form.find("Model").text,
-                    'a_curbweight': float(curbweight) if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric() else temp['curbweight'],
+                    'a_curbweight': float(curbweight) if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric() else temp['curb_weight'],
                 }
                 damloc = alt_ext_form.find("DeformationLocation") 
                 alt_temp['a_damloc'] = damloc.text if damloc else '--'

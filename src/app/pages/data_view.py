@@ -1,29 +1,56 @@
 import logging
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QDialog
 
+from app.models.case_events import CaseEvents
 from app.ui.ExitDataViewDialog_ui import Ui_ExitDialog
 from app.ui.DataView_ui import Ui_DataView
 
+        
 class DataView(QWidget):
     exited = pyqtSignal()
 
     def __init__(self, new_profile):
         super().__init__()
 
+        self.logger = logging.getLogger(__name__)
+        self.model = CaseEvents()
+
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
+
         self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
 
-        self.logger = logging.getLogger(__name__)
         self.modified = False
         self.new_profile = new_profile
+
+        self.ui.listView.doubleClicked.connect(self.open_item_details)
+
+    def showEvent(self, event):
+        if self.new_profile:
+            ### TODO: Create new case profile ###
+            pass
+        else:
+            ### TODO: Get all events from a certain case profile
+            pass
+        self.model.refresh_data()
+        self.ui.listView.clearSelection()
+        return super().showEvent(event)
 
     def handle_exit_button_clicked(self):
         self.exit_dialog_controller = ExitDataViewDialog()
         self.exit_dialog_controller.exec()
         self.exited.emit()
+
+    def open_item_details(self, index):
+        print(index + " was double clicked")
+        
+    @pyqtSlot(dict)
+    def add_event(self, event): 
+        self.model.add_data(event)
+        
+
 
 class ExitDataViewDialog(QDialog):
     def __init__(self):
