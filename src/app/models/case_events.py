@@ -77,9 +77,9 @@ class CaseEvents(QAbstractListModel):
             )
             self.db.commit()
             if self.cursor.rowcount > 0:
-                self.logger.debug(f"Record added to db: case_id={case_id}, event_num={event_num}, veh_num{event_num}")
+                self.logger.debug(f"Record added to db: case_id={case_id}, event_num={event_num}, veh_num={event_num}")
             else:
-                self.logger.warning(f"Record already exists: case_id={case_id}, event_num={event_num}, veh_num{event_num}")
+                self.logger.warning(f"Record already exists: case_id={case_id}, event_num={event_num}, veh_num={event_num}")
         except sqlite3.Error as e:
             self.logger.error("Error adding record:", e)
 
