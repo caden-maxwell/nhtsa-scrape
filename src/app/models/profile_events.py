@@ -6,9 +6,12 @@ from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
 
 
 class ProfileEvents(QAbstractListModel):
-    def __init__(self):
+    def __init__(self, profile_id):
         super().__init__()
         self.logger = logging.getLogger(__name__)
+
+        self.db = None
+        self.cursor = None
         try:
             db_path = Path(__file__).parent / "db_saves.sqlite3"
             self.db = sqlite3.connect(db_path)
@@ -38,21 +41,30 @@ class ProfileEvents(QAbstractListModel):
             )
             self.cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS scrape_profile_cases (
+                CREATE TABLE IF NOT EXISTS scrape_profile_events (
                     profile_id INTEGER,
                     case_id INTEGER,
-                    PRIMARY KEY (profile_id, case_id),
+                    event_num INTEGER,
+                    vehicle_num INTEGER,
+                    PRIMARY KEY (profile_id, case_id, event_num, vehicle_num),
                     FOREIGN KEY (profile_id) REFERENCES scrape_profiles(profile_id),
-                    FOREIGN KEY (case_id) REFERENCES cases(case_id)
+                    FOREIGN KEY (case_id, event_num, vehicle_num) REFERENCES case_events(case_id, event_num, vehicle_num)
                 );
                 """
             )
             self.db.commit()
-        except sqlite3.Error as e:
+            self.profile = self.cursor.execute(
+                """
+                SELECT * FROM scrape_profiles WHERE profile_id = ?
+                """,
+                (profile_id,)
+            ).fetchone()
+            if self.profile is None:
+                raise ValueError(f"Profile ID {profile_id} does not exist.")
+            
+        except (ValueError, sqlite3.Error) as e:
             self.logger.error(e)
-            self.db = None
-            self.cursor = None
-        
+
         self.data_list = []
 
     def close_database(self):
@@ -70,10 +82,10 @@ class ProfileEvents(QAbstractListModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
-            return str(data)
+            return f"Case {data[1]} Event {data[2]} Vehicle {data[3]}"
         return None
     
-    def add_data(self, event, profile_id):
+    def add_data(self, event):
         try:
             case_id = event["case_id"]
             case_num = event["case_num"]
@@ -86,10 +98,10 @@ class ProfileEvents(QAbstractListModel):
 
             self.cursor.execute(
                 """
-                INSERT OR IGNORE INTO scrape_profile_cases (profile_id, case_id)
-                VALUES (?, ?)
+                INSERT OR IGNORE INTO scrape_profile_events (profile_id, case_id, event_num, vehicle_num)
+                VALUES (?, ?, ?, ?)
                 """,
-                (profile_id, case_id)
+                (self.profile[0], case_id, event_num, vehicle_num)
             )
             self.cursor.execute(
                 """
@@ -116,7 +128,8 @@ class ProfileEvents(QAbstractListModel):
         except (sqlite3.Error, KeyError) as e:
             self.logger.error("Error adding case:", e)
             return
-        self.logger.debug(f"Added case event {event_num} from case {case_id} to scrape profile {profile_id}.")
+        self.logger.debug(f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}.")
+        self.refresh_data()
 
     def delete_data(self, index):
         try:
@@ -139,7 +152,13 @@ class ProfileEvents(QAbstractListModel):
 
     def refresh_data(self):
         try:
-            self.cursor.execute('SELECT * FROM case_events')
+            self.cursor.execute(
+                """
+                SELECT * FROM scrape_profile_events
+                WHERE profile_id = ?
+                """,
+                (self.profile[0],)
+            )
             self.data_list = self.cursor.fetchall()
             self.layoutChanged.emit()
         except sqlite3.Error as e:
