@@ -6,7 +6,7 @@ from sqlite3 import Error
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
 
 
-class CaseProfiles(QAbstractListModel):
+class ScrapeProfiles(QAbstractListModel):
     def __init__(self):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -18,6 +18,19 @@ class CaseProfiles(QAbstractListModel):
             self.logger.error(e)
             self.db = None
         
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS scrape_profiles (
+                profile_id INTEGER PRIMARY KEY,
+                name TEXT,
+                description TEXT,
+                date_created TEXT,
+                date_modified TEXT
+                );
+            """
+        )
+        self.db.commit()
+
         self.data_list = []
 
     def check_connection(msg=None):
@@ -46,57 +59,50 @@ class CaseProfiles(QAbstractListModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
-            ### TODO: Change this later to display the data in a format that makes sense ###
-            data = str(data[0]) + " - " + str(data[1]) + " - " + str(data[2]) + " - " + str(data[3])
+            name = data[1]
+            time = data[3]
+            data = str(name) + " - " + str(time)
             return str(data)
-            ### TODO ###
+        elif role == Qt.ItemDataRole.UserRole:
+            return self.data_list[index.row()]
         return None
     
     @check_connection("Cannot add data")
-    def add_data(self, data):
+    def add_data(self, data: dict):
+        name = data["name"]
+        description = data["description"]
+        date_created = data["created"]
+        date_modified = data["modified"]
         self.cursor.execute(
             """
-            INSERT INTO case_profiles (name, description, date_created, date_modified)
+            INSERT INTO scrape_profiles (name, description, date_created, date_modified)
             VALUES (?, ?, ?, ?)
             """,
-            data
+            (name, description, date_created, date_modified)
         )
         self.db.commit()
-        self.logger.debug("Added profile: " + str(data[0]))
+        self.logger.debug(f"Added profile: {name}")
         self.refresh_data()
+        return self.cursor.lastrowid
 
     @check_connection("Cannot delete data")
-    def delete_data(self, index):
+    def delete_data(self, index: QModelIndex):
         data = self.data_list[index.row()]
+        profile_id = data[0]
         self.cursor.execute(
             """
-            DELETE FROM case_profiles WHERE profile_id = ?
+            DELETE FROM scrape_profiles WHERE profile_id = ?
             """,
-            (data[0],)
+            (profile_id,)
         )
         self.db.commit()
-        self.logger.debug("Deleted profile: " + str(data[1]))
+        name = data[1]
+        self.logger.debug(f"Deleted profile: '{name}'")
         self.refresh_data()
 
     @check_connection("Cannot refresh data")
     def refresh_data(self):
-
-        # If the table doesn't exists, create it
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS case_profiles (
-                profile_id INTEGER PRIMARY KEY,
-                name TEXT,
-                description TEXT,
-                date_created TEXT,
-                date_modified TEXT
-                );
-            """
-        )
-        self.db.commit()
-
-        # Get all the data from the table
-        self.cursor.execute('SELECT * FROM case_profiles')
+        self.cursor.execute('SELECT * FROM scrape_profiles')
         self.data_list = self.cursor.fetchall()
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data")
