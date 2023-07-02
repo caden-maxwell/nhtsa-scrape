@@ -48,7 +48,7 @@ class Ui_DataView(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):

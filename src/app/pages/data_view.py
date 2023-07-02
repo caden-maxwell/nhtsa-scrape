@@ -17,15 +17,14 @@ class DataView(QWidget):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
-        self.model = ProfileEvents()
+        self.model = ProfileEvents(profile_id)
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
         self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
+        self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
-
-        self.profile_id = profile_id
 
     def showEvent(self, event):
         self.model.refresh_data()
@@ -38,11 +37,11 @@ class DataView(QWidget):
         self.exited.emit()
 
     def open_item_details(self, index):
-        print(index + " was double clicked")
+        print(f"Opening item details for index {index.row()}")
         
     @pyqtSlot(dict)
     def add_event(self, event): 
-        self.model.add_data(event, self.profile_id)
+        self.model.add_data(event)
 
 
 class ExitDataViewDialog(QDialog):
