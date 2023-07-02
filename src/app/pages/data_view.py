@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
+import sqlite3
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QDialog
 
-from app.models.case_events import CaseEvents
+from app.models import ProfileEvents
 from app.ui.ExitDataViewDialog_ui import Ui_ExitDialog
 from app.ui.DataView_ui import Ui_DataView
 
@@ -11,29 +13,21 @@ from app.ui.DataView_ui import Ui_DataView
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, new_profile):
+    def __init__(self, profile_id):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
-        self.model = CaseEvents()
+        self.model = ProfileEvents()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
         self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
-
-        self.modified = False
-        self.new_profile = new_profile
-
         self.ui.listView.doubleClicked.connect(self.open_item_details)
 
+        self.profile_id = profile_id
+
     def showEvent(self, event):
-        if self.new_profile:
-            ### TODO: Create new case profile ###
-            pass
-        else:
-            ### TODO: Get all events from a certain case profile
-            pass
         self.model.refresh_data()
         self.ui.listView.clearSelection()
         return super().showEvent(event)
@@ -48,7 +42,7 @@ class DataView(QWidget):
         
     @pyqtSlot(dict)
     def add_event(self, event): 
-        self.model.add_data(event)
+        self.model.add_data(event, self.profile_id)
 
 
 class ExitDataViewDialog(QDialog):

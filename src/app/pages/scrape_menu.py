@@ -1,13 +1,15 @@
 import json
 import logging
+import time
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
 from PyQt6.QtWidgets import QWidget
 
 from bs4 import BeautifulSoup
 
-from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
+from app.models.scrape_profiles import ScrapeProfiles
 from app.scrape import RequestHandler, ScrapeEngine, Request, Priority
+from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 
 from .data_view import DataView
 
@@ -154,7 +156,27 @@ class ScrapeMenu(QWidget):
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
         self.scrape_engine.completed.connect(self.handle_scrape_done)
 
-        self.data_viewer = DataView(True)
+        profile_model = ScrapeProfiles()
+
+        make = self.ui.makeCombo.currentText().upper()
+        model = self.ui.modelCombo.currentText().upper()
+        start_year = self.ui.startYearCombo.currentText().upper()
+        end_year = self.ui.endYearCombo.currentText().upper()
+        p_dmg = self.ui.pDmgCombo.currentText().upper()
+        dv_min = self.ui.dvMinSpin.value() if self.ui.dvMinSpin.value() else "0"
+        dv_max = self.ui.dvMaxSpin.value() if self.ui.dvMaxSpin.value() else "INF"
+
+        name = f"{make}_{model}_{start_year},{end_year}_{p_dmg}_dv{dv_min},{dv_max}"
+        name = name.replace(' ', '')
+        new_profile = {
+            'name': name,
+            'description': '',
+            'created': time.time(),
+            'modified': time.time(),
+        }
+
+        profile_id = profile_model.add_data(new_profile)
+        self.data_viewer = DataView(profile_id)
         self.data_viewer.show()
 
         self.scrape_engine.event_parsed.connect(self.data_viewer.add_event)

@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
-from app.models.case_profiles import CaseProfiles
+from app.models.scrape_profiles import ScrapeProfiles
 
 from .data_view import DataView
 
@@ -17,7 +17,7 @@ class ProfileMenu(QWidget):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
-        self.model = CaseProfiles()
+        self.model = ScrapeProfiles()
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
@@ -33,17 +33,15 @@ class ProfileMenu(QWidget):
     def showEvent(self, event):
         self.model.refresh_data()
         self.ui.listView.clearSelection()
-
-        ### TODO: Remove this later ###
-        current_datetime = datetime.now()
-        formatted_datetime = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
-
-        self.model.add_data(('Test', 'Some description', formatted_datetime, formatted_datetime))
-        ### TODO ###
         return super().showEvent(event)
 
     def handle_open(self):
-        self.data_viewer = DataView(False)
+        selected = self.ui.listView.selectedIndexes()
+        if not selected:
+            return
+        profile_id = selected.pop().data(role=Qt.ItemDataRole.UserRole)[0]
+        self.logger.debug(f"Opening profile {profile_id}")
+        self.data_viewer = DataView(profile_id)
         self.data_viewer.show()
         
     def handle_delete(self):
@@ -66,4 +64,3 @@ class ProfileMenu(QWidget):
             button.setEnabled(False)
             if self.ui.listView.selectedIndexes():
                 button.setEnabled(True)
-        self.logger.debug(f"Selected: {selected}, Deselected: {deselected}")

@@ -304,7 +304,7 @@ class ScrapeEngine(QObject):
             # print(f"Crush: {final_crush}, Smash: {smash_l}")
 
             # VOI Info
-            temp = {
+            data = {
                 'summary': summary,
                 'case_id': case_id,
                 'event_num': event['en'],
@@ -325,7 +325,7 @@ class ScrapeEngine(QObject):
             }
 
             # Alternate Vehicle Info
-            temp['a_vehnum'] = event['an']
+            data['a_vehnum'] = event['an']
             alt_ext_form = veh_ext_forms.find('VehicleExteriorForm', {'VehicleNumber': event['an']})
             alt_ext_form = alt_ext_form if alt_ext_form else gen_veh_forms.find('GeneralVehicleForm', {'VehicleNumber': event['an']})
 
@@ -334,7 +334,7 @@ class ScrapeEngine(QObject):
                     'a_year': alt_ext_form.find("ModelYear").text,
                     'a_make': alt_ext_form.find("Make").text,
                     'a_model': alt_ext_form.find("Model").text,
-                    'a_curbweight': float(curbweight) if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric() else temp['curb_weight'],
+                    'a_curbweight': float(curbweight) if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric() else data['curb_weight'],
                 }
                 damloc = alt_ext_form.find("DeformationLocation") 
                 alt_temp['a_damloc'] = damloc.text if damloc else '--'
@@ -346,11 +346,11 @@ class ScrapeEngine(QObject):
                     'a_curbweight': 99999.0,
                     'a_damloc': '--'
                 }
-            temp.update(alt_temp)
-            temp['image'] = img_num
+            data.update(alt_temp)
+            data['image'] = img_num
             self.total_events += 1
-            self.event_parsed.emit(temp)
-            # self.scrape_data.append(temp)
+            self.event_parsed.emit(data)
+            # self.scrape_data.append(data)
 
         if failed_events >= len(key_events):
             self.logger.warning(f"Insufficient data for caseID {case_id}. Excluding from results.")
@@ -359,7 +359,6 @@ class ScrapeEngine(QObject):
             return
 
         self.success_cases += 1
-        self.check_complete()
 
     def parse_image(self, url, response_text, cookie):
         return
