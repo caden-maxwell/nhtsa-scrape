@@ -46,7 +46,6 @@ class ProfileEvents(QAbstractListModel):
                     case_id INTEGER,
                     event_num INTEGER,
                     vehicle_num INTEGER,
-                    PRIMARY KEY (profile_id, case_id, event_num, vehicle_num),
                     FOREIGN KEY (profile_id) REFERENCES scrape_profiles(profile_id),
                     FOREIGN KEY (case_id, event_num, vehicle_num) REFERENCES case_events(case_id, event_num, vehicle_num)
                 );
