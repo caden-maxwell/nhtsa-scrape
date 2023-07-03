@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_DataView(object):
     def setupUi(self, DataView):
         DataView.setObjectName("DataView")
-        DataView.resize(712, 513)
+        DataView.resize(880, 609)
         self.verticalLayout = QtWidgets.QVBoxLayout(DataView)
         self.verticalLayout.setObjectName("verticalLayout")
         self.topHLayout = QtWidgets.QHBoxLayout()
@@ -23,6 +23,8 @@ class Ui_DataView(object):
         self.mainTitle = QtWidgets.QLabel(parent=DataView)
         self.mainTitle.setObjectName("mainTitle")
         self.topHLayout.addWidget(self.mainTitle)
+        self.topHLayout.setStretch(0, 1)
+        self.topHLayout.setStretch(1, 4)
         self.verticalLayout.addLayout(self.topHLayout)
         self.tabWidget = QtWidgets.QTabWidget(parent=DataView)
         self.tabWidget.setObjectName("tabWidget")
@@ -44,11 +46,24 @@ class Ui_DataView(object):
         self.listView = QtWidgets.QListView(parent=self.casesTab)
         self.listView.setObjectName("listView")
         self.gridLayout_2.addWidget(self.listView, 0, 0, 1, 1)
+        self.eventViewLayout = QtWidgets.QGridLayout()
+        self.eventViewLayout.setObjectName("eventViewLayout")
+        self.eventLabel = QtWidgets.QLabel(parent=self.casesTab)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.eventLabel.sizePolicy().hasHeightForWidth())
+        self.eventLabel.setSizePolicy(sizePolicy)
+        self.eventLabel.setObjectName("eventLabel")
+        self.eventViewLayout.addWidget(self.eventLabel, 0, 0, 1, 1)
+        self.gridLayout_2.addLayout(self.eventViewLayout, 0, 1, 1, 1)
+        self.gridLayout_2.setColumnStretch(0, 1)
+        self.gridLayout_2.setColumnStretch(1, 2)
         self.tabWidget.addTab(self.casesTab, "")
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):
@@ -56,9 +71,6 @@ class Ui_DataView(object):
         DataView.setWindowTitle(_translate("DataView", "Form"))
         self.exitBtn.setText(_translate("DataView", "Exit"))
         self.mainTitle.setText(_translate("DataView", "Data Viewer"))
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data")
-        )
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
-        )
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data"))
+        self.eventLabel.setText(_translate("DataView", "Some event"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases"))
