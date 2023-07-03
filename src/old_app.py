@@ -533,8 +533,7 @@ for cse in contents:
     # pdb.set_trace()
 slope, intercept = np.polyfit(x, y_nass, 1)
 
-i = []
-[i.append(cse["image"]) for cse in contents]
+i = [cse["image"] for cse in contents]
 df_original = pd.DataFrame(contents, index=i)
 
 # field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
