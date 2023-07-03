@@ -9,7 +9,7 @@ class MainMenu(QWidget):
     existing = pyqtSignal()
     logs = pyqtSignal()
     settings = pyqtSignal()
-    
+
     def __init__(self):
         super().__init__()
 

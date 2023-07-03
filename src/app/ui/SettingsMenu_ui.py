@@ -36,7 +36,12 @@ class Ui_SettingsMenu(object):
         self.debugBtn.setObjectName("debugBtn")
         self.bodyVLayout.addWidget(self.debugBtn)
         self.verticalLayout.addLayout(self.bodyVLayout)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.verticalLayout.addItem(spacerItem)
 
         self.retranslateUi(SettingsMenu)
@@ -47,4 +52,6 @@ class Ui_SettingsMenu(object):
         SettingsMenu.setWindowTitle(_translate("SettingsMenu", "Form"))
         self.backBtn.setText(_translate("SettingsMenu", "Back"))
         self.mainTitle.setText(_translate("SettingsMenu", "Scrape Settings"))
-        self.debugBtn.setText(_translate("SettingsMenu", "Turn on DEBUG mode for logger"))
+        self.debugBtn.setText(
+            _translate("SettingsMenu", "Turn on DEBUG mode for logger")
+        )

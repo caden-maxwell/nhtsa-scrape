@@ -50,6 +50,8 @@ class Ui_ProfileMenu(object):
         _translate = QtCore.QCoreApplication.translate
         ProfileMenu.setWindowTitle(_translate("ProfileMenu", "Form"))
         self.backBtn.setText(_translate("ProfileMenu", "Back"))
-        self.mainTitle.setText(_translate("ProfileMenu", "Open Existing Case Profile..."))
+        self.mainTitle.setText(
+            _translate("ProfileMenu", "Open Existing Case Profile...")
+        )
         self.deleteBtn.setText(_translate("ProfileMenu", "Delete"))
         self.openBtn.setText(_translate("ProfileMenu", "Open"))

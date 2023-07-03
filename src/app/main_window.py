@@ -33,7 +33,9 @@ class MainWindow(QWidget):
         self.logs_window = LogsWindow()
 
         self.log_handler = QtLogHandler()
-        self.log_handler.setFormatter(ColorFormatter('%(levelname)s - %(name)s - %(message)s'))
+        self.log_handler.setFormatter(
+            ColorFormatter("%(levelname)s - %(name)s - %(message)s")
+        )
         self.log_handler.setLevel(logging.DEBUG)
         self.log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[self.log_handler])
@@ -59,7 +61,7 @@ class MainWindow(QWidget):
             menu = self.ui.stackedWidget.widget(idx)
             if getattr(menu, "back", None):
                 menu.back.connect(lambda: self.switch_page(self.main_menu))
-        
+
         self.main_menu.new.connect(lambda: self.switch_page(self.scrape_menu))
         self.main_menu.existing.connect(lambda: self.switch_page(self.profile_menu))
         self.main_menu.settings.connect(lambda: self.switch_page(self.settings_menu))
@@ -69,8 +71,8 @@ class MainWindow(QWidget):
         self.ui.stackedWidget.setCurrentWidget(page)
 
     def closeEvent(self, event):
-        '''Safely close all threads/processes'''
-        
+        """Safely close all threads/processes"""
+
         # Logger
         self.logger.removeHandler(self.log_handler)
         self.log_handler.threadpool.waitForDone()

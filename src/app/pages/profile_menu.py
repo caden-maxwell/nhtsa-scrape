@@ -12,7 +12,7 @@ from .data_view import DataView
 
 class ProfileMenu(QWidget):
     back = pyqtSignal()
-    
+
     def __init__(self):
         super().__init__()
 
@@ -23,7 +23,9 @@ class ProfileMenu(QWidget):
         self.ui.setupUi(self)
 
         self.ui.listView.setModel(self.model)
-        self.ui.listView.selectionModel().selectionChanged.connect(self.handle_selection_changed)
+        self.ui.listView.selectionModel().selectionChanged.connect(
+            self.handle_selection_changed
+        )
         self.ui.listView.clearSelection()
 
         self.ui.backBtn.clicked.connect(self.back.emit)
@@ -43,21 +45,26 @@ class ProfileMenu(QWidget):
         self.logger.debug(f"Opening profile {profile_id}")
         self.data_viewer = DataView(profile_id)
         self.data_viewer.show()
-        
+
     def handle_delete(self):
         selected = self.ui.listView.selectedIndexes()
         if not selected:
             return
 
-        dialog = QMessageBox(QMessageBox.Icon.Warning, "Delete Profile", "Are you sure you want to delete this profile?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        dialog = QMessageBox(
+            QMessageBox.Icon.Warning,
+            "Delete Profile",
+            "Are you sure you want to delete this profile?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
         dialog.setDefaultButton(QMessageBox.StandardButton.No)
         response = dialog.exec()
         if response == QMessageBox.StandardButton.No:
             return
-        
+
         self.model.delete_data(selected.pop())
         self.ui.listView.clearSelection()
-    
+
     def handle_selection_changed(self, selected, deselected):
         # Enable/disable buttons based on if a profile is selected
         for button in [self.ui.openBtn, self.ui.deleteBtn]:

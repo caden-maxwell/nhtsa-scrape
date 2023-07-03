@@ -56,5 +56,9 @@ class Ui_DataView(object):
         DataView.setWindowTitle(_translate("DataView", "Form"))
         self.exitBtn.setText(_translate("DataView", "Exit"))
         self.mainTitle.setText(_translate("DataView", "Data Viewer"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data")
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
+        )
