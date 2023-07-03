@@ -46,7 +46,8 @@ class ProfileEvents(QAbstractListModel):
                     case_id INTEGER,
                     event_num INTEGER,
                     vehicle_num INTEGER,
-                    FOREIGN KEY (profile_id) REFERENCES scrape_profiles(profile_id),
+                    FOREIGN KEY (profile_id)
+                        REFERENCES scrape_profiles(profile_id),
                     FOREIGN KEY (case_id, event_num, vehicle_num)
                         REFERENCES case_events(case_id, event_num, vehicle_num)
                 );
@@ -108,15 +109,11 @@ class ProfileEvents(QAbstractListModel):
                 )
                 VALUES (?, ?, ?, ?)
                 """,
-                (self.profile[0], case_id, event_num, vehicle_num)
-            )
-            self.cursor.execute(
-                """
+                (self.profile[0], case_id, event_num, vehicle_num))
+            self.cursor.execute("""
                 INSERT OR IGNORE INTO cases (case_id, case_num, summary)
                 VALUES (?, ?, ?)
-                """,
-                (case_id, case_num, summary)
-            )
+                """, (case_id, case_num, summary))
             self.cursor.execute(
                 """
                 INSERT OR IGNORE INTO case_events (
@@ -141,12 +138,10 @@ class ProfileEvents(QAbstractListModel):
     def delete_data(self, index):
         try:
             data = self.data_list[index.row()]
-            self.cursor.execute(
-                """
-                DELETE FROM case_events WHERE (case_id, event_num, vehicle_num) = ?
-                """,
-                (data[0],)
-            )
+            self.cursor.execute("""
+                DELETE FROM case_events
+                WHERE (case_id, event_num, vehicle_num) = ?
+                """, (data[0],))
             self.db.commit()
         except sqlite3.Error as e:
             self.logger.error("Error deleting case:", e)
@@ -159,13 +154,10 @@ class ProfileEvents(QAbstractListModel):
 
     def refresh_data(self):
         try:
-            self.cursor.execute(
-                """
+            self.cursor.execute("""
                 SELECT * FROM scrape_profile_events
                 WHERE profile_id = ?
-                """,
-                (self.profile[0],)
-            )
+                """, (self.profile[0],))
             self.data_list = self.cursor.fetchall()
             self.layoutChanged.emit()
         except sqlite3.Error as e:

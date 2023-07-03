@@ -8,7 +8,14 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class Request:
-    def __init__(self, url:str, method: str='GET', params:dict={}, headers:dict={}, priority=0):
+    def __init__(
+        self,
+        url: str,
+        method: str = "GET",
+        params: dict = {},
+        headers: dict = {},
+        priority=0,
+    ):
         self.url = url
         self.params = params
         self.method = method
@@ -24,8 +31,10 @@ class Request:
     def __eq__(self, other):
         return self.priority == other.priority
 
+
 class Singleton(type(QObject), type):
-    '''Singleton metaclass for QObjects: https://stackoverflow.com/questions/59459770/receiving-pyqtsignal-from-singleton.'''
+    """Singleton metaclass for QObjects: https://stackoverflow.com/questions/59459770/receiving-pyqtsignal-from-singleton."""
+
     def __init__(cls, name, bases, dict):
         super().__init__(name, bases, dict)
         cls._instance = None
@@ -76,10 +85,10 @@ class RequestHandler(QObject, metaclass=Singleton):
                 self.request_queue.put(request)
 
     def contains(self, priority=-1):
-        '''
+        """
         Returns True if the request queue contains requests of the given priority.
         Priority of -1 returns True if the queue is not empty.
-        '''
+        """
         if priority == -1:
             return not self.request_queue.empty()
 
@@ -91,7 +100,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def get_ongoing_requests(self, priority=-1):
         if priority == -1:
             return self.ongoing_requests
-        
+
         ongoing_requests = []
         for request in self.ongoing_requests:
             if request.priority == priority:
@@ -115,7 +124,9 @@ class RequestHandler(QObject, metaclass=Singleton):
                     self.rate_limit = 3.40
 
                 # Randomize rate limit by +/- 33%
-                rand_time = self.rate_limit + random.uniform(-self.rate_limit / 3, self.rate_limit / 2)
+                rand_time = self.rate_limit + random.uniform(
+                    -self.rate_limit / 3, self.rate_limit / 2
+                )
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
                 request = self.request_queue.get()
@@ -130,9 +141,19 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.ongoing_requests.append(request)
         try:
             if request.method == "GET":
-                response = requests.get(request.url, params=request.params, headers=request.headers, timeout=self.timeout)
+                response = requests.get(
+                    request.url,
+                    params=request.params,
+                    headers=request.headers,
+                    timeout=self.timeout,
+                )
             elif request.method == "POST":
-                response = requests.post(request.url, data=request.params, headers=request.headers, timeout=self.timeout)
+                response = requests.post(
+                    request.url,
+                    data=request.params,
+                    headers=request.headers,
+                    timeout=self.timeout,
+                )
             else:
                 raise ValueError(f"Invalid request method: {request.method}")
             if not response:
@@ -148,4 +169,9 @@ class RequestHandler(QObject, metaclass=Singleton):
         finally:
             self.ongoing_requests.remove(request)
         if response is not None:
-            self.response_received.emit(request.priority, request.url, response.text, response.headers.get("Set-Cookie", ""))
+            self.response_received.emit(
+                request.priority,
+                request.url,
+                response.text,
+                response.headers.get("Set-Cookie", ""),
+            )

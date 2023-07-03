@@ -17,7 +17,7 @@ class ScrapeProfiles(QAbstractListModel):
         except Error as e:
             self.logger.error(e)
             self.db = None
-        
+
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS scrape_profiles (
@@ -52,7 +52,7 @@ class ScrapeProfiles(QAbstractListModel):
         elif role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None
-    
+
     def add_data(self, data: dict):
         try:
             name = data["name"]
@@ -69,7 +69,7 @@ class ScrapeProfiles(QAbstractListModel):
                 )
                 VALUES (?, ?, ?, ?)
                 """,
-                (name, description, date_created, date_modified)
+                (name, description, date_created, date_modified),
             )
             self.db.commit()
             self.logger.debug(f"Added profile: {name}")
@@ -84,14 +84,16 @@ class ScrapeProfiles(QAbstractListModel):
             data = self.data_list[index.row()]
             profile_id = data[0]
 
-            # Delete all case events that belong to this profile 
-                # and are not referred to by another profile
+            # Delete all case events that belong to this profile
+            # and are not referred to by another profile
             self.cursor.execute(
                 """
                 SELECT case_id, event_num, vehicle_num
                 FROM scrape_profile_events
                 WHERE profile_id = ?;
-                """, (profile_id,))
+                """,
+                (profile_id,),
+            )
             case_events = self.cursor.fetchall()
             for case_event in case_events:
                 case_id, event_num, vehicle_num = case_event
@@ -103,7 +105,9 @@ class ScrapeProfiles(QAbstractListModel):
                         AND event_num = ?
                         AND vehicle_num = ?
                         AND profile_id != ?;
-                    """, (case_id, event_num, vehicle_num, profile_id))
+                    """,
+                    (case_id, event_num, vehicle_num, profile_id),
+                )
                 count = self.cursor.fetchone()[0]
 
                 if count < 1:
@@ -113,19 +117,26 @@ class ScrapeProfiles(QAbstractListModel):
                         WHERE case_id = ?
                             AND event_num = ?
                             AND vehicle_num = ?;
-                        """, (case_id, event_num, vehicle_num))
+                        """,
+                        (case_id, event_num, vehicle_num),
+                    )
 
-            # Delete all scrape_profile_events belonging to this profile and the profile itself
+            # Delete all scrape_profile_events belonging to this profile
+            # and the profile itself
             self.cursor.execute(
                 """
                 DELETE FROM scrape_profile_events
                 WHERE profile_id = ?;
-                """, (profile_id,))
+                """,
+                (profile_id,),
+            )
             self.cursor.execute(
                 """
                 DELETE FROM scrape_profiles
                 WHERE profile_id = ?
-                """, (profile_id,))
+                """,
+                (profile_id,),
+            )
             self.db.commit()
             self.logger.debug(f"Deleted profile: '{data[1]}'")
         except (IndexError, sqlite3.Error) as e:

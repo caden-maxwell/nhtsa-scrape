@@ -1,6 +1,4 @@
 import logging
-from pathlib import Path
-import sqlite3
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QDialog
