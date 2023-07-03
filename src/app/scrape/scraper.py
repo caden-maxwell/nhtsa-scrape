@@ -314,13 +314,13 @@ class ScrapeEngine(QObject):
                 continue
 
             cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event["en"]})
-            tot = None
-            lat = None
-            lon = None
+            total_dv = None
+            lat_dv = None
+            long_dv = None
             if cdc_event:
-                tot = int(cdc_event.find("Total")["value"])
-                lat = int(cdc_event.find("Lateral")["value"])
-                lon = int(cdc_event.find("Longitudinal")["value"])
+                total_dv = int(cdc_event.find("Total")["value"])
+                lat_dv = int(cdc_event.find("Lateral")["value"])
+                long_dv = int(cdc_event.find("Longitudinal")["value"])
                 # print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
             else:
                 self.logger.warning(
@@ -342,9 +342,9 @@ class ScrapeEngine(QObject):
 
             avg_c1 = float(crush_object.find("AVG_C1")["value"])
             smash_l = None
-            final_crush = []
+            crush = []
             if avg_c1 >= 0:
-                final_crush = [
+                crush = [
                     avg_c1,
                     float(crush_object.find("AVG_C2")["value"]),
                     float(crush_object.find("AVG_C3")["value"]),
@@ -362,7 +362,7 @@ class ScrapeEngine(QObject):
             # print(f"Crush: {final_crush}, Smash: {smash_l}")
 
             # VOI Info
-            data = {
+            event_data = {
                 "summary": summary,
                 "case_id": case_id,
                 "event_num": event["en"],
@@ -375,15 +375,15 @@ class ScrapeEngine(QObject):
                 "dmg_loc": veh_ext_form.find("DeformationLocation").text,
                 "underride": veh_ext_form.find("OverUnderride").text,
                 "edr": veh_ext_form.find("EDR").text,
-                "total_dv": float(tot),
-                "long_dv": float(lon),
-                "lat_dv": float(lat),
+                "total_dv": float(total_dv),
+                "long_dv": float(long_dv),
+                "lat_dv": float(lat_dv),
                 "smashl": float(smash_l),
-                "crush": final_crush,
+                "crush": crush,
             }
 
             # Alternate Vehicle Info
-            data["a_veh_num"] = event["an"]
+            event_data["a_veh_num"] = event["an"]
             alt_ext_form = veh_ext_forms.find(
                 "VehicleExteriorForm", {"VehicleNumber": event["an"]}
             )
@@ -396,51 +396,55 @@ class ScrapeEngine(QObject):
             )
 
             if alt_ext_form:
-                alt_temp = {
+                alt_data = {
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
                     "a_year": alt_ext_form.find("ModelYear").text,
                     "a_curb_weight": float(curbweight)
                     if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric()
-                    else data["curb_weight"],
+                    else event_data["curb_weight"],
                     "a_dmg_loc": damloc.text
                     if (damloc := alt_ext_form.find("DeformationLocation"))
                     else "--",
                 }
             else:
-                alt_temp = {
+                alt_data = {
                     "a_year": "--",
                     "a_make": "--",
                     "a_model": "--",
                     "a_curb_weight": 99999.0,
                     "a_dmg_loc": "--",
                 }
-            data.update(alt_temp)
 
-            # average crush in inches
-            c_bar = (
-                0.393701
-                * ((data["crush"][0] + data["crush"][5]) * 0.5 + sum(data["crush"][1:4]))
-                / 5.0
-            )
+            # Avg crush in inches
+            c_bar = 0.393701 * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:4])) / 5
 
-            data["c_bar"] = c_bar
             # NASS DV in MPH
-            NASS_dv = data["total_dv"] * 0.621371
-            data["NASS_dv"] = NASS_dv
+            NASS_dv = float(total_dv) * 0.621371
+
             # Vehicle Weights in LBS
-            voi_wt = data["curb_weight"] * 2.20462
-            a_wt = data["a_curb_weight"] * 2.20462
+            voi_wt = event_data["curb_weight"] * 2.20462
+            a_wt = alt_data["a_curb_weight"] * 2.20462
+
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
-            data["NASS_vc"] = NASS_vc
             e = 0.5992 * exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
-            data["e"] = e
             TOT_dv = NASS_dv * (1.0 + e)
-            data["TOT_dv"] = TOT_dv
+
+            calcs = {
+                "c_bar": c_bar,
+                "NASS_dv": NASS_dv,
+                "NASS_vc": NASS_vc,
+                "e": e,
+                "TOT_dv": TOT_dv,
+            }
+
+            event_data.update(alt_data)
+            event_data.update(calcs)
+
             self.total_events += 1
-            self.event_parsed.emit(data)
+            self.event_parsed.emit(event_data)
 
         if failed_events >= len(key_events):
             self.logger.warning(

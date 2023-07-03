@@ -142,6 +142,12 @@ class ProfileEvents(QAbstractListModel):
             a_curb_weight = event["a_curb_weight"]
             a_dmg_loc = event["a_dmg_loc"]
 
+            c_bar = event["c_bar"]
+            NASS_dv = event["NASS_dv"]
+            NASS_vc = event["NASS_vc"]
+            e = event["e"]
+            TOT_dv = event["TOT_dv"]
+
             self.cursor.execute(
                 """
                 INSERT OR IGNORE INTO cases (case_id, case_num, summary)
@@ -177,9 +183,14 @@ class ProfileEvents(QAbstractListModel):
                     a_model,
                     a_year,
                     a_curb_weight,
-                    a_dmg_loc
+                    a_dmg_loc,
+                    c_bar,
+                    NASS_dv,
+                    NASS_vc,
+                    e,
+                    TOT_dv
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     case_id,
@@ -208,6 +219,11 @@ class ProfileEvents(QAbstractListModel):
                     a_year,
                     a_curb_weight,
                     a_dmg_loc,
+                    c_bar,
+                    NASS_dv,
+                    NASS_vc,
+                    e,
+                    TOT_dv,
                 ),
             )
             self.cursor.execute(
@@ -226,8 +242,8 @@ class ProfileEvents(QAbstractListModel):
             self.logger.debug(
                 f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}."
             )
-        except (sqlite3.Error, KeyError) as e:
-            self.logger.error("Error adding case:", e)
+        except (sqlite3.Error, KeyError) as err:
+            self.logger.error("Error adding case:", err)
             return
         self.refresh_data()
 

@@ -49,7 +49,9 @@ class Ui_DataView(object):
         self.eventViewLayout = QtWidgets.QGridLayout()
         self.eventViewLayout.setObjectName("eventViewLayout")
         self.eventLabel = QtWidgets.QLabel(parent=self.casesTab)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.eventLabel.sizePolicy().hasHeightForWidth())
@@ -71,6 +73,10 @@ class Ui_DataView(object):
         DataView.setWindowTitle(_translate("DataView", "Form"))
         self.exitBtn.setText(_translate("DataView", "Exit"))
         self.mainTitle.setText(_translate("DataView", "Data Viewer"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data")
+        )
         self.eventLabel.setText(_translate("DataView", "Some event"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
+        )
