@@ -1,3 +1,4 @@
+import csv
 import logging
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
@@ -46,22 +47,20 @@ class DataView(QWidget):
     @pyqtSlot(dict)
     def add_event(self, event):
         self.model.add_data(event)
-        self.recalculate()
+        self.calculate()
 
     def scrape_complete(self):
         if not len(self.model.data_list):
             self.ui.textEdit.append("Scrape complete. No data found.")
             return
 
-    def recalculate(self):
-        print(self.model.data_list)
-
+    def calculate(self):
         caseid_path = ""
-        csv = ""
         contents = []
         x = []
         y_nass = []
         y_total = []
+        return
         file = f"{self.search_payload['ddlStartModelYear']}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
         for cse in contents:
             # average crush in inches
@@ -88,20 +87,11 @@ class DataView(QWidget):
             x.append(c_bar)
             y_nass.append(NASS_dv)
             y_total.append(TOT_dv)
-            # pandasb.set_trace()
         slope, intercept = numpy.polyfit(x, y_nass, 1)
 
         i = []
         [i.append(cse["image"]) for cse in contents]
         df_original = pandas.DataFrame(contents, index=i)
-
-        # field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
-        #               "lateral_dv","smashl","crush","a_vehnum","a_year","a_make","a_model","a_curbweight", "image","c_bar","NASS_dv",
-        #               "NASS_vc","e","TOT_dv"]
-        # with open(file, 'w') as f:
-        #    w = csv.DictWriter(f, fieldnames=field_names)
-        #    w.writeheader()
-        #    w.writerows(contents)
 
         df = df_original[["caseid", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
         df_original = df_original[

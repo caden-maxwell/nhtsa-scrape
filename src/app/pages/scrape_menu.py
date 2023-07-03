@@ -166,42 +166,41 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        search_params = {
-            "ddlMake": self.ui.makeCombo.currentData(),
-            "ddlModel": self.ui.modelCombo.currentData(),
-            "ddlStartModelYear": self.ui.startYearCombo.currentData(),
-            "ddlEndModelYear": self.ui.endYearCombo.currentData(),
-            "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
-            "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
-            "tDeltaVFrom": self.ui.dvMinSpin.value(),
-            "tDeltaVTo": self.ui.dvMaxSpin.value(),
-        }
         image_set = self.ui.imageSetCombo.currentText()
         case_limit = self.ui.casesSpin.value()
 
-        self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
+        self.scrape_engine = ScrapeEngine(
+            {
+                "ddlMake": self.ui.makeCombo.currentData(),
+                "ddlModel": self.ui.modelCombo.currentData(),
+                "ddlStartModelYear": self.ui.startYearCombo.currentData(),
+                "ddlEndModelYear": self.ui.endYearCombo.currentData(),
+                "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
+                "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
+                "tDeltaVFrom": self.ui.dvMinSpin.value(),
+                "tDeltaVTo": self.ui.dvMaxSpin.value(),
+            },
+            image_set,
+            case_limit,
+        )
         self.scrape_engine.completed.connect(self.handle_scrape_complete)
-
-        profile_model = ScrapeProfiles()
 
         make = self.ui.makeCombo.currentText().upper()
         model = self.ui.modelCombo.currentText().upper()
         start_year = self.ui.startYearCombo.currentText().upper()
         end_year = self.ui.endYearCombo.currentText().upper()
         p_dmg = self.ui.pDmgCombo.currentText().upper()
-        dv_min = self.ui.dvMinSpin.value() if self.ui.dvMinSpin.value() else "0"
-        dv_max = self.ui.dvMaxSpin.value() if self.ui.dvMaxSpin.value() else "INF"
 
-        name = f"{make}_{model}_{start_year},{end_year}_{p_dmg}_dv{dv_min},{dv_max}"
+        name = f"{start_year}_{end_year}_{make}_{model}_{p_dmg}"
         name = name.replace(" ", "")
         new_profile = {
             "name": name,
             "description": "",
-            "created": time.time(),
-            "modified": time.time(),
+            "created": int(time.time()),
+            "modified": int(time.time()),
         }
 
-        profile_id = profile_model.add_data(new_profile)
+        profile_id = ScrapeProfiles().add_data(new_profile)
         self.data_viewer = DataView(profile_id)
         self.data_viewer.show()
 
@@ -213,9 +212,12 @@ class ScrapeMenu(QWidget):
         self.engine_thread.start()
 
         self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
-        self.engine_timer.start(1000)
+        self.engine_timer.start(300)
 
     def handle_scrape_complete(self):
+        self.engine_timer.timeout.disconnect()
+        self.engine_timer.stop()
+
         self.engine_thread.quit()
         self.engine_thread.wait()
 

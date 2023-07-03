@@ -1,7 +1,5 @@
-# Import libaries and Get Webpage
 from urllib.request import urlopen as uReq
 from bs4 import BeautifulSoup as soup
-from bs4.builder import XMLParsedAsHTMLWarning
 from selenium import webdriver
 
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -22,41 +20,15 @@ from PIL import ImageFont
 from PIL import ImageDraw
 from io import BytesIO
 
-import warnings
-
-warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
-# Primary Damage Options
-# <="-1">All<>,
-# <="2">F Front<>,
-# <="5">B Back (Rear)<>,
-# <="4">L Left Side<>,
-# <="3">R Right Side<>,
-# <="6">T Top<>,D
-# <="7">U Undercarriage<>,
-# <="8">9 Unknown<>
-
-# Secondary Damage Options
-# <="">All<>,
-# <="9">D Distributed - side or end<>,
-# <="10">L Left - front or rear<>,
-# <="11">C Center - front or rear<>,
-# <="12">R Right - front or rear<>,
-# <="13">F Side Front - left or right<>,
-# <="14">P Side center section L or R<>,
-# <="15">B Side Rear - left or right<>,
-# <="16">Y Side (F + P) OR End (L + C)<>,
-# <="17">Z Side (P + B) OR End (C + R)<>,
-
 # Default Image Set: [FT]ront, [FL]ront Left, [LE]ft, [BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right
 
-istartyear = "2006"
+istartyear = "2008"
 iendyear = "2016"
-imake = "JEEP"
-imodel = "CHEROKEE"
+imake = "CHRYSLER"
+imodel = "300"
 idvfrom = "0"
-idvto = "250"
-ipdamage = "R"
+idvto = "159"
+ipdamage = "L"
 isdamage = "ALL"
 default_imageset = "All"
 multi_analysis = True
@@ -74,7 +46,6 @@ driver = webdriver.Firefox(
 )
 print("Firefox Headless Browser Invoked")
 
-# get web page
 driver.get(urlpage)
 
 init = soup(driver.page_source, "html.parser")
@@ -530,44 +501,9 @@ for i, caseid in enumerate(all_caseid):
                 temp = {}
 
 
-def get_r2(x, y):
-    slope, intercept = np.polyfit(x, y, 1)
-    r_squared = 1 - (
-        sum((y - (slope * x + intercept)) ** 2) / ((len(y) - 1) * np.var(y, ddof=1))
-    )
-    return r_squared
-
-
 x = []
 y_nass = []
 y_total = []
-
-print(contents)
-# "contents" at this point:
-# [{
-# 'summary': 'V1 was westbound, approaching an intersection. V2 was southbound, approaching the same intersection. As V2 attempted to turn left in the intersection, the front of V1 struck the left side of V2.',
-# 'caseid': '727018444',
-# 'casenum': '2014-79-092',
-# 'vehnum': '2',
-# 'year': '2013',
-# 'make': 'CHRYSLER',
-# 'model': '300/300M/300C/300S',
-# 'curbweight': 1873.0,
-# 'damloc': 'Left Side',
-# 'underride': 'None',
-# 'edr': 'Yes - Data entered13.0.1OffEvent# 1 10LYEW03Deployment29242925Buckled-7777NoUnbuckledNot Reported-7777Not ReportedSeat Back (Outboard)DriverStage Not ReportedStage Not ReportedRoof Side RailDriverStage Not ReportedStage Not Reported-5.00006773On-4.50006763On-4.00006633Off-3.50009515Off-3.000211077Off-2.5004168818Off-2.0008182217Off-1.50011189714Off-1.00012180610Off-0.500913066On10-.620-1.230-1.940-2.550-3.160-3.770-4.380-590-5100-5110-5120-5130-51400150016001700180019002000210022002300240025002600270028002900103.7206.8309.94012.45014.96015.57016.88017.490181001811017.412017.413017.41400150016001700180019002000210022002300240025002600270028002900',
-# 'total_dv': 25.0,
-# 'long_dv': -12.0,
-# 'lateral_dv': 22.0,
-# 'smashl': 315.0,
-# 'crush': [0.0, 5.0, 20.0, 26.0, 24.0, 6.0],
-# 'a_vehnum': '1',
-# 'a_year': '2007',
-# 'a_make': 'FORD',
-# 'a_model': 'E-SERIES VANS',
-# 'a_curbweight': 2208.0,
-# 'image': '995559201'
-# }]
 
 for cse in contents:
     # average crush in inches
