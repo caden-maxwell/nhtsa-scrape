@@ -284,14 +284,6 @@ class DataView(QWidget):
         f.close()
 
 
-def get_r2(self, x, y):
-    slope, intercept = numpy.polyfit(x, y, 1)
-    r_squared = 1 - (
-        sum((y - (slope * x + intercept)) ** 2) / ((len(y) - 1) * numpy.var(y, ddof=1))
-    )
-    return r_squared
-
-
 class ExitDataViewDialog(QDialog):
     def __init__(self):
         super().__init__()
