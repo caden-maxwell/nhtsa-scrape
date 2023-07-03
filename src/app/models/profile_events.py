@@ -33,8 +33,8 @@ class ProfileEvents(QAbstractListModel):
                 """
                 CREATE TABLE IF NOT EXISTS case_events (
                     case_id INTEGER,
-                    event_num INTEGER,
                     vehicle_num INTEGER,
+                    event_num INTEGER,
                     make TEXT,
                     model TEXT,
                     model_year INTEGER,
@@ -109,7 +109,8 @@ class ProfileEvents(QAbstractListModel):
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
-            return str(self.data_list[index.row()])
+            data = self.data_list[index.row()]
+            return f"Case: {data[0]}, Vehicle: {data[2]}, Event: {data[1]}"
         if role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None
@@ -119,8 +120,8 @@ class ProfileEvents(QAbstractListModel):
             summary = event["summary"]
             case_num = event["case_num"]
             case_id = event["case_id"]
-            event_num = event["event_num"]
             veh_num = event["veh_num"]
+            event_num = event["event_num"]
             make = event["make"]
             model = event["model"]
             model_year = event["model_year"]
@@ -152,8 +153,8 @@ class ProfileEvents(QAbstractListModel):
                 """
                 INSERT OR REPLACE INTO case_events (
                     case_id,
-                    event_num,
                     vehicle_num,
+                    event_num,
                     make,
                     model,
                     model_year,
@@ -182,8 +183,8 @@ class ProfileEvents(QAbstractListModel):
                 """,
                 (
                     case_id,
-                    event_num,
                     veh_num,
+                    event_num,
                     make,
                     model,
                     model_year,

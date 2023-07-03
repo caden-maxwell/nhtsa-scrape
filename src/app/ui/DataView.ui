@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>712</width>
-    <height>513</height>
+    <width>880</width>
+    <height>609</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="topHLayout">
+    <layout class="QHBoxLayout" name="topHLayout" stretch="1,4">
      <item>
       <widget class="QPushButton" name="exitBtn">
        <property name="text">
@@ -35,7 +35,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="dataTab">
       <attribute name="title">
@@ -54,9 +54,26 @@
       <attribute name="title">
        <string>Cases</string>
       </attribute>
-      <layout class="QGridLayout" name="gridLayout_2">
+      <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,2">
        <item row="0" column="0">
         <widget class="QListView" name="listView"/>
+       </item>
+       <item row="0" column="1">
+        <layout class="QGridLayout" name="eventViewLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="eventLabel">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="text">
+            <string>Some event</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

@@ -12,6 +12,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from bs4 import BeautifulSoup
 from PIL import Image, ImageFont, ImageDraw
+from numpy import exp
 
 from .request_handler import RequestHandler, Request
 
@@ -415,6 +416,29 @@ class ScrapeEngine(QObject):
                     "a_dmg_loc": "--",
                 }
             data.update(alt_temp)
+
+            # average crush in inches
+            c_bar = (
+                0.393701
+                * ((data["crush"][0] + data["crush"][5]) * 0.5 + sum(data["crush"][1:4]))
+                / 5.0
+            )
+
+            data["c_bar"] = c_bar
+            # NASS DV in MPH
+            NASS_dv = data["total_dv"] * 0.621371
+            data["NASS_dv"] = NASS_dv
+            # Vehicle Weights in LBS
+            voi_wt = data["curb_weight"] * 2.20462
+            a_wt = data["a_curb_weight"] * 2.20462
+            NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
+            data["NASS_vc"] = NASS_vc
+            e = 0.5992 * exp(
+                -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
+            )
+            data["e"] = e
+            TOT_dv = NASS_dv * (1.0 + e)
+            data["TOT_dv"] = TOT_dv
             self.total_events += 1
             self.event_parsed.emit(data)
 
