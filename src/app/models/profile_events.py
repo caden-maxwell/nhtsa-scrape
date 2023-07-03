@@ -141,7 +141,7 @@ class ProfileEvents(QAbstractListModel):
             return
         self.refresh_data()
 
-    def delete_data(self, index):
+    def delete_event(self, index):
         try:
             data = self.data_list[index.row()]
             self.cursor.execute(

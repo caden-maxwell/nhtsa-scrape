@@ -180,7 +180,7 @@ class ScrapeMenu(QWidget):
         case_limit = self.ui.casesSpin.value()
 
         self.scrape_engine = ScrapeEngine(search_params, image_set, case_limit)
-        self.scrape_engine.completed.connect(self.handle_scrape_done)
+        self.scrape_engine.completed.connect(self.handle_scrape_complete)
 
         profile_model = ScrapeProfiles()
 
@@ -215,9 +215,12 @@ class ScrapeMenu(QWidget):
         self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
         self.engine_timer.start(1000)
 
-    def handle_scrape_done(self):
+    def handle_scrape_complete(self):
         self.engine_thread.quit()
         self.engine_thread.wait()
+
+        self.data_viewer.scrape_complete()
+
         self.ui.submitBtn.setEnabled(True)
         self.ui.submitBtn.setText("Scrape")
 
