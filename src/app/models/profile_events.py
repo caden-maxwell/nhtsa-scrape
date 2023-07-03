@@ -83,6 +83,8 @@ class ProfileEvents(QAbstractListModel):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
             return f"Case {data[1]} Event {data[2]} Vehicle {data[3]}"
+        if role == Qt.ItemDataRole.UserRole:
+            return self.data_list[index.row()]
         return None
     
     def add_data(self, event):
@@ -125,10 +127,10 @@ class ProfileEvents(QAbstractListModel):
                 (case_id, event_num, vehicle_num, make, model, model_year)
             )
             self.db.commit()
+            self.logger.debug(f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}.")
         except (sqlite3.Error, KeyError) as e:
             self.logger.error("Error adding case:", e)
             return
-        self.logger.debug(f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}.")
         self.refresh_data()
 
     def delete_data(self, index):
@@ -147,7 +149,7 @@ class ProfileEvents(QAbstractListModel):
         except IndexError:
             self.logger.error("Error deleting case: index out of range")
             return
-        self.logger.debug("Deleted profile: " + str(data[1]))
+        self.logger.debug(f"Deleted event: Case {data[1]} Event {data[2]} Vehicle {data[3]}")
         self.refresh_data()
 
     def refresh_data(self):
@@ -164,7 +166,7 @@ class ProfileEvents(QAbstractListModel):
         except sqlite3.Error as e:
             self.logger.error("Error refreshing data:", e)
             return
-        self.logger.debug("Refreshed data")
+        self.logger.debug("Refreshed data.")
 
     def __del__(self):
         self.close_database()
