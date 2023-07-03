@@ -26,7 +26,7 @@ class ScrapeProfiles(QAbstractListModel):
                 description TEXT,
                 date_created TEXT,
                 date_modified TEXT
-                );
+            );
             """
         )
         self.db.commit()
@@ -78,18 +78,31 @@ class ScrapeProfiles(QAbstractListModel):
         try:
             data = self.data_list[index.row()]
             profile_id = data[0]
-            self.cursor.execute(
-                """
-                DELETE FROM scrape_profiles WHERE profile_id = ?
-                """,
-                (profile_id,)
-            )
-            self.cursor.execute(
-                """
-                DELETE FROM scrape_profile_events WHERE profile_id = ?
-                """,
-                (profile_id,)
-            )
+
+            # First, delete all case events that belong to this profile and are not referred to by any other profile
+            self.cursor.execute('SELECT case_id, event_num, vehicle_num FROM scrape_profile_events WHERE profile_id = ?;', (profile_id,))
+            case_events = self.cursor.fetchall()
+            for case_event in case_events:
+                case_id, event_num, vehicle_num = case_event
+                self.cursor.execute(
+                    """
+                    SELECT COUNT(*) FROM scrape_profile_events WHERE case_id = ? AND event_num = ? AND vehicle_num = ? AND profile_id != ?;
+                    """,
+                    (case_id, event_num, vehicle_num, profile_id))
+                count = self.cursor.fetchone()[0]
+
+                if count < 1:
+                    self.cursor.execute(
+                        """
+                        DELETE FROM case_events WHERE case_id = ? AND event_num = ? AND vehicle_num = ?;
+                        """,
+                        (case_id, event_num, vehicle_num)
+                    )
+
+            # Then, delete all scrape_profile_events that belong to this profile and finally the profile itself
+            self.cursor.execute('DELETE FROM scrape_profile_events WHERE profile_id = ?;', (profile_id,))
+            self.cursor.execute('DELETE FROM scrape_profiles WHERE profile_id = ?;', (profile_id,))
+
             self.db.commit()
             self.logger.debug(f"Deleted profile: '{data[1]}'")
         except (IndexError, sqlite3.Error) as e:
