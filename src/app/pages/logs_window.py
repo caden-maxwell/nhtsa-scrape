@@ -15,7 +15,7 @@ class LogsWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        
+
         self.ui = Ui_LogsWindow()
         self.ui.setupUi(self)
 
@@ -25,7 +25,9 @@ class LogsWindow(QWidget):
         self.ui.saveBtn.clicked.connect(self.handle_save_clicked)
 
     def showEvent(self, a0):
-        self.ui.logsEdit.verticalScrollBar().setValue(self.ui.logsEdit.verticalScrollBar().maximum())
+        self.ui.logsEdit.verticalScrollBar().setValue(
+            self.ui.logsEdit.verticalScrollBar().maximum()
+        )
         return super().showEvent(a0)
 
     @pyqtSlot(str)
@@ -42,8 +44,10 @@ class LogsWindow(QWidget):
     def handle_save_clicked(self):
         dir_path = Path(__file__).parent.parent / "logs"
         os.makedirs(dir_path, exist_ok=True)
-        log_path = dir_path / f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
-        with open(log_path, 'w') as f:
+        log_path = (
+            dir_path / f'{datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")}.log'
+        )
+        with open(log_path, "w") as f:
             f.write(self.ui.logsEdit.toPlainText())
         self.logger.info(f"Saved all logs to file at '{f.name}'.")
         self.ui.saveBtn.setEnabled(False)
