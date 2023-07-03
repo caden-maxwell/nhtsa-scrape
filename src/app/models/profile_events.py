@@ -47,7 +47,8 @@ class ProfileEvents(QAbstractListModel):
                     event_num INTEGER,
                     vehicle_num INTEGER,
                     FOREIGN KEY (profile_id) REFERENCES scrape_profiles(profile_id),
-                    FOREIGN KEY (case_id, event_num, vehicle_num) REFERENCES case_events(case_id, event_num, vehicle_num)
+                    FOREIGN KEY (case_id, event_num, vehicle_num)
+                        REFERENCES case_events(case_id, event_num, vehicle_num)
                 );
                 """
             )
@@ -99,7 +100,12 @@ class ProfileEvents(QAbstractListModel):
 
             self.cursor.execute(
                 """
-                INSERT OR IGNORE INTO scrape_profile_events (profile_id, case_id, event_num, vehicle_num)
+                INSERT OR IGNORE INTO scrape_profile_events (
+                    profile_id,
+                    case_id,
+                    event_num,
+                    vehicle_num
+                )
                 VALUES (?, ?, ?, ?)
                 """,
                 (self.profile[0], case_id, event_num, vehicle_num)
