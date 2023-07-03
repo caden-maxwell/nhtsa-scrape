@@ -33,79 +33,79 @@ class ScrapeProfiles(QAbstractListModel):
 
         self.data_list = []
 
-    def check_connection(msg=None):
-        def decorator(func):
-            def wrapper(self, *args, **kwargs):
-                if not self.db:
-                    if msg:
-                        self.logger.error(msg + ": No database connection.")
-                    return False
-                return func(self, *args, **kwargs)
-            return wrapper
-        return decorator
-
-    @check_connection("Cannot close database")
     def close_database(self):
-        self.cursor.close()
-        self.db.close()
-        self.db = None
-        self.cursor = None
+        try:
+            self.cursor.close()
+            self.db.close()
+            self.db = None
+            self.cursor = None
+        except sqlite3.Error as e:
+            self.logger.error(f"Error closing database: {e}")
 
-    @check_connection()
     def rowCount(self, parent=QModelIndex()):
         return len(self.data_list)
 
-    @check_connection()
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
-            name = data[1]
-            time = data[3]
-            data = str(name) + " - " + str(time)
-            return str(data)
+            return f"{data[1]} - {data[2]}"
         elif role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None
     
-    @check_connection("Cannot add data")
     def add_data(self, data: dict):
-        name = data["name"]
-        description = data["description"]
-        date_created = data["created"]
-        date_modified = data["modified"]
-        self.cursor.execute(
-            """
-            INSERT INTO scrape_profiles (name, description, date_created, date_modified)
-            VALUES (?, ?, ?, ?)
-            """,
-            (name, description, date_created, date_modified)
-        )
-        self.db.commit()
-        self.logger.debug(f"Added profile: {name}")
+        try:
+            name = data["name"]
+            description = data["description"]
+            date_created = data["created"]
+            date_modified = data["modified"]
+            self.cursor.execute(
+                """
+                INSERT INTO scrape_profiles (name, description, date_created, date_modified)
+                VALUES (?, ?, ?, ?)
+                """,
+                (name, description, date_created, date_modified)
+            )
+            self.db.commit()
+            self.logger.debug(f"Added profile: {name}")
+        except (KeyError, sqlite3.Error) as e:
+            self.logger.error(f"Error adding profile: {e}")
+            return
         self.refresh_data()
         return self.cursor.lastrowid
 
-    @check_connection("Cannot delete data")
     def delete_data(self, index: QModelIndex):
-        data = self.data_list[index.row()]
-        profile_id = data[0]
-        self.cursor.execute(
-            """
-            DELETE FROM scrape_profiles WHERE profile_id = ?
-            """,
-            (profile_id,)
-        )
-        self.db.commit()
-        name = data[1]
-        self.logger.debug(f"Deleted profile: '{name}'")
+        try:
+            data = self.data_list[index.row()]
+            profile_id = data[0]
+            self.cursor.execute(
+                """
+                DELETE FROM scrape_profiles WHERE profile_id = ?
+                """,
+                (profile_id,)
+            )
+            self.cursor.execute(
+                """
+                DELETE FROM scrape_profile_events WHERE profile_id = ?
+                """,
+                (profile_id,)
+            )
+            self.db.commit()
+            self.logger.debug(f"Deleted profile: '{data[1]}'")
+        except (IndexError, sqlite3.Error) as e:
+            self.logger.error(f"Error deleting profile: {e}")
+            return
         self.refresh_data()
 
-    @check_connection("Cannot refresh data")
     def refresh_data(self):
-        self.cursor.execute('SELECT * FROM scrape_profiles')
-        self.data_list = self.cursor.fetchall()
-        self.layoutChanged.emit()
-        self.logger.debug("Refreshed data")
+        try:
+            self.cursor.execute('SELECT * FROM scrape_profiles')
+            self.data_list = self.cursor.fetchall()
+            self.layoutChanged.emit()
+        except sqlite3.Error as e:
+            self.logger.error(f"Error refreshing data: {e}")
+            return
+        self.logger.debug("Refreshed data.")
 
     def __del__(self):
         self.close_database()
