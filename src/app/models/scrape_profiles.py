@@ -24,8 +24,8 @@ class ScrapeProfiles(QAbstractListModel):
                 profile_id INTEGER PRIMARY KEY,
                 name TEXT,
                 description TEXT,
-                date_created TEXT,
-                date_modified TEXT
+                date_created INTEGER,
+                date_modified INTEGER
             );
             """
         )
@@ -48,7 +48,7 @@ class ScrapeProfiles(QAbstractListModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
-            return f"{data[1]} - {data[2]}"
+            return f"{data[1]}"
         elif role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None

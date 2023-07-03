@@ -60,7 +60,6 @@ class ScrapeEngine(QObject):
         self.success_cases = 0
         self.failed_cases = 0
         self.total_events = 0
-        # self.scrape_data = []
 
     def start(self):
         self.running = True
@@ -77,12 +76,10 @@ class ScrapeEngine(QObject):
         self.req_handler.clear_queue(Priority.CASE_LIST.value)
         self.req_handler.clear_queue(Priority.CASE.value)
 
-        # data = json.dumps(self.scrape_data, indent=4)
         if self.success_cases + self.failed_cases < 1:
             self.logger.info("No data was found. Scrape complete.")
         else:
             total_cases = self.success_cases + self.failed_cases
-            # self.logger.debug(f"Scrape Data:\n{data}")
             self.logger.info(
                 textwrap.dedent(
                     f"""
@@ -298,8 +295,6 @@ class ScrapeEngine(QObject):
         ]
         # print(f"Key events: {key_events}")
 
-        img_num = ""
-
         veh_ext_forms = case_xml.find("VehicleExteriorForms")
         gen_veh_forms = case_xml.find("GeneralVehicleForms")
 
@@ -346,7 +341,7 @@ class ScrapeEngine(QObject):
 
             avg_c1 = float(crush_object.find("AVG_C1")["value"])
             smash_l = None
-            final_crush = None
+            final_crush = []
             if avg_c1 >= 0:
                 final_crush = [
                     avg_c1,
@@ -376,18 +371,18 @@ class ScrapeEngine(QObject):
                 "model": veh_ext_form.find("Model").text,
                 "model_year": veh_ext_form.find("ModelYear").text,
                 "curb_weight": float(veh_ext_form.find("CurbWeight").text),
-                "dam_loc": veh_ext_form.find("DeformationLocation").text,
+                "dmg_loc": veh_ext_form.find("DeformationLocation").text,
                 "underride": veh_ext_form.find("OverUnderride").text,
                 "edr": veh_ext_form.find("EDR").text,
                 "total_dv": float(tot),
                 "long_dv": float(lon),
-                "lateral_dv": float(lat),
+                "lat_dv": float(lat),
                 "smashl": float(smash_l),
                 "crush": final_crush,
             }
 
             # Alternate Vehicle Info
-            data["a_vehnum"] = event["an"]
+            data["a_veh_num"] = event["an"]
             alt_ext_form = veh_ext_forms.find(
                 "VehicleExteriorForm", {"VehicleNumber": event["an"]}
             )
@@ -401,28 +396,27 @@ class ScrapeEngine(QObject):
 
             if alt_ext_form:
                 alt_temp = {
-                    "a_year": alt_ext_form.find("ModelYear").text,
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
-                    "a_curbweight": float(curbweight)
+                    "a_year": alt_ext_form.find("ModelYear").text,
+                    "a_curb_weight": float(curbweight)
                     if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric()
                     else data["curb_weight"],
+                    "a_dmg_loc": damloc.text
+                    if (damloc := alt_ext_form.find("DeformationLocation"))
+                    else "--",
                 }
-                damloc = alt_ext_form.find("DeformationLocation")
-                alt_temp["a_damloc"] = damloc.text if damloc else "--"
             else:
                 alt_temp = {
                     "a_year": "--",
                     "a_make": "--",
                     "a_model": "--",
-                    "a_curbweight": 99999.0,
-                    "a_damloc": "--",
+                    "a_curb_weight": 99999.0,
+                    "a_dmg_loc": "--",
                 }
             data.update(alt_temp)
-            data["image"] = img_num
             self.total_events += 1
             self.event_parsed.emit(data)
-            # self.scrape_data.append(data)
 
         if failed_events >= len(key_events):
             self.logger.warning(
