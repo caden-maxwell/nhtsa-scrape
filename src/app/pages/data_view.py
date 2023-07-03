@@ -13,7 +13,6 @@ import numpy
 import pandas
 import matplotlib.pyplot as plt
 import sklearn.metrics
-from PIL import Image, ImageDraw
 
 
 class DataView(QWidget):
@@ -59,7 +58,12 @@ class DataView(QWidget):
         caseid_path = os.getcwd() + "/test/"
         # file = f"{event_data[""]}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
 
+        ### TODO: Need to figure out how to use our data in the dataframe ###
+
         df_original = pandas.DataFrame(self.model.data_list)
+        return
+    
+        ### TODO ###
 
         df = df_original[["case_id", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
         df_original = df_original[
