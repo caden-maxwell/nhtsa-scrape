@@ -20,7 +20,12 @@ class Ui_MainMenu(object):
         self.mainTitle = QtWidgets.QLabel(parent=MainMenu)
         self.mainTitle.setObjectName("mainTitle")
         self.mainVLayout.addWidget(self.mainTitle)
-        spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.mainVLayout.addItem(spacerItem)
         self.scrapeBtn = QtWidgets.QPushButton(parent=MainMenu)
         self.scrapeBtn.setObjectName("scrapeBtn")
@@ -35,13 +40,33 @@ class Ui_MainMenu(object):
         self.settingsBtn.setObjectName("settingsBtn")
         self.mainVLayout.addWidget(self.settingsBtn)
         self.gridLayout_2.addLayout(self.mainVLayout, 1, 1, 1, 1)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.gridLayout_2.addItem(spacerItem1, 2, 1, 1, 1)
-        spacerItem2 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem2, 0, 1, 1, 1)
-        spacerItem3 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem3 = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem3, 1, 0, 1, 1)
-        spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem4 = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem4, 1, 2, 1, 1)
 
         self.retranslateUi(MainMenu)

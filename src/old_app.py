@@ -13,20 +13,21 @@ from selenium.webdriver.support.ui import Select
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import r2_score
-import csv 
+import csv
 import numpy as np
 import os
 import requests
 from PIL import Image
 from PIL import ImageFont
-from PIL import ImageDraw 
+from PIL import ImageDraw
 from io import BytesIO
 
 import warnings
-warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
 
-#Primary Damage Options
-#<="-1">All<>,
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+# Primary Damage Options
+# <="-1">All<>,
 # <="2">F Front<>,
 # <="5">B Back (Rear)<>,
 # <="4">L Left Side<>,
@@ -35,8 +36,8 @@ warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
 # <="7">U Undercarriage<>,
 # <="8">9 Unknown<>
 
-#Secondary Damage Options
-#<="">All<>,
+# Secondary Damage Options
+# <="">All<>,
 # <="9">D Distributed - side or end<>,
 # <="10">L Left - front or rear<>,
 # <="11">C Center - front or rear<>,
@@ -49,35 +50,37 @@ warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
 
 # Default Image Set: [FT]ront, [FL]ront Left, [LE]ft, [BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right
 
-istartyear = '2006'
-iendyear = '2016'
-imake = 'JEEP'
-imodel = 'CHEROKEE'
+istartyear = "2006"
+iendyear = "2016"
+imake = "JEEP"
+imodel = "CHEROKEE"
 idvfrom = "0"
 idvto = "250"
-ipdamage = 'R'
-isdamage = 'ALL'
-default_imageset = 'All'
+ipdamage = "R"
+isdamage = "ALL"
+default_imageset = "All"
 multi_analysis = True
 
 default_path = os.getcwd()
 
 # Specify the URL
-urlpage = 'https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search' 
+urlpage = "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search"
 
 # run firefox webdriver from executable path of your choice
 options = Options()
 options.add_argument("-headless")
-driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()),options=options)
+driver = webdriver.Firefox(
+    service=FirefoxService(GeckoDriverManager().install()), options=options
+)
 print("Firefox Headless Browser Invoked")
 
 # get web page
 driver.get(urlpage)
 
-init = soup(driver.page_source,'html.parser')
+init = soup(driver.page_source, "html.parser")
 
-make_menu =driver.find_element("xpath","//*[@id='ddlMake']")
-model_menu = driver.find_element("xpath",'//*[@id="ddlModel"]')
+make_menu = driver.find_element("xpath", "//*[@id='ddlMake']")
+model_menu = driver.find_element("xpath", '//*[@id="ddlModel"]')
 
 select_make = Select(make_menu)
 make_options = select_make.options
@@ -93,21 +96,21 @@ for row in model_options:
         model = row.text
         select_model.select_by_visible_text(model)
 
-primary_menu = driver.find_element("xpath","//*[@id='ddlPrimaryDamage']")
-subsection_menu = driver.find_element("xpath","//*[@id='lSecondaryDamage']")
+primary_menu = driver.find_element("xpath", "//*[@id='ddlPrimaryDamage']")
+subsection_menu = driver.find_element("xpath", "//*[@id='lSecondaryDamage']")
 
 select_primary = Select(primary_menu)
 primary_options = select_primary.options
 for row in primary_options:
     if ipdamage in row.text:
         select_primary.select_by_visible_text(row.text)
-        
+
 select_subsection = Select(subsection_menu)
 subsection_options = select_subsection.options
 for row in subsection_options:
     if isdamage in row.text:
         select_subsection.select_by_visible_text(row.text)
-        
+
 test_yr_min = int(istartyear)
 test_yr_max = int(iendyear)
 test_make = make
@@ -115,43 +118,42 @@ test_model = model
 test_dl = ipdamage
 
 # Get Search Results
-select_start_year = Select(driver.find_element("name",'ddlStartModelYear'))
-                    
+select_start_year = Select(driver.find_element("name", "ddlStartModelYear"))
+
 select_start_year.select_by_visible_text(istartyear)
 
-select_end_year = Select(driver.find_element("name",'ddlEndModelYear'))
+select_end_year = Select(driver.find_element("name", "ddlEndModelYear"))
 select_end_year.select_by_visible_text(iendyear)
 
-text_DVFrom = driver.find_element("name",'tDeltaVFrom')
+text_DVFrom = driver.find_element("name", "tDeltaVFrom")
 text_DVFrom.send_keys(idvfrom)
 
-text_DVTo = driver.find_element("name",'tDeltaVTo')
+text_DVTo = driver.find_element("name", "tDeltaVTo")
 text_DVTo.send_keys(idvto)
 
 # Click the Search Button box
-driver.find_element("name",'btnSubmit').click()
+driver.find_element("name", "btnSubmit").click()
 
 
-
-links_page = soup(driver.page_source,'html.parser')
+links_page = soup(driver.page_source, "html.parser")
 
 all_caseid = []
-page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
+page_menu = driver.find_element("xpath", "//*[@id='ddlPage']")
 select_page = Select(page_menu)
 page_options = select_page.options
 
 for i in range(len(page_options)):
-    page_menu = driver.find_element("xpath","//*[@id='ddlPage']")
+    page_menu = driver.find_element("xpath", "//*[@id='ddlPage']")
     select_page = Select(page_menu)
     page_options = select_page.options
-    select_page.select_by_visible_text(str(i+1))
-    links_page = soup(driver.page_source,'html.parser')
-    all_links = [a['href'] for a in links_page.findAll('a',href=True)]
-    links = [row for row in all_links if 'crashviewer' in row]
-    case_id = [row.split('=')[2] for row in links]
+    select_page.select_by_visible_text(str(i + 1))
+    links_page = soup(driver.page_source, "html.parser")
+    all_links = [a["href"] for a in links_page.findAll("a", href=True)]
+    links = [row for row in all_links if "crashviewer" in row]
+    case_id = [row.split("=")[2] for row in links]
     all_caseid = all_caseid + case_id
 
-print('Number of cases:')
+print("Number of cases:")
 print(len(all_caseid))
 
 time.sleep(3)
@@ -161,20 +163,20 @@ driver.quit()
 
 temp = {}
 contents = []
-file = istartyear + '_' + iendyear + '_' + imake + '_'  + imodel + '_' + test_dl +'.csv'
+file = istartyear + "_" + iendyear + "_" + imake + "_" + imodel + "_" + test_dl + ".csv"
 
 
 def add_event(tempevent, event, voi, chk):
     """Chk variable checks to see if voi is in vehiclenumber (1) or contacted (0)"""
-    tempevent['en'] = event['eventnumber']
-    tempevent['voi'] = voi
+    tempevent["en"] = event["eventnumber"]
+    tempevent["voi"] = voi
     if chk:
-        if int(event.contacted['value']) > int(numvehicles):
-            tempevent['an'] = event.contacted.text
+        if int(event.contacted["value"]) > int(numvehicles):
+            tempevent["an"] = event.contacted.text
         else:
-            tempevent['an'] = event.contacted['value']
+            tempevent["an"] = event.contacted["value"]
     else:
-        tempevent['an'] = event['vehiclenumber']
+        tempevent["an"] = event["vehiclenumber"]
     return tempevent
 
 
@@ -193,24 +195,31 @@ for i, caseid in enumerate(all_caseid):
     smash_l = []
     keyevents = []
     tempevent = {}
-    img_num = ''
-    print(caseid + ": " + str(i+1) + "/" + str(len(all_caseid)))
-    #caseid = all_caseid[i]
-    begin1 = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid='
-    end1 = '&year=&transform=0&docInfo=0'
-    case_url=begin1+caseid+end1
-    page = soup(uReq(case_url).read(),"lxml")
+    img_num = ""
+    print(caseid + ": " + str(i + 1) + "/" + str(len(all_caseid)))
+    # caseid = all_caseid[i]
+    begin1 = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+    end1 = "&year=&transform=0&docInfo=0"
+    case_url = begin1 + caseid + end1
+    page = soup(uReq(case_url).read(), "lxml")
     summary = page.summary.text
     numevents = page.events.text
     numvehicles = page.vehicles.numbervehicles.text
     extform = page.vehicleexteriorforms.findAll("vehicleexteriorform")
     genvehform = page.findAll("generalvehicleform")
     eventforms = page.findAll("eventsum")
-    imgforms = page.imgform.findAll('vehicle')
-    vn = [genvehform[x]['vehiclenumber'] for x in range(len(genvehform)) if (test_make in genvehform[x].make.text 
-          and imodel in genvehform[x].model.text and test_yr_min <= int(genvehform[x].modelyear.text) <= test_yr_max)]
-    if not vn: 
-        print('VN not found')
+    imgforms = page.imgform.findAll("vehicle")
+    vn = [
+        genvehform[x]["vehiclenumber"]
+        for x in range(len(genvehform))
+        if (
+            test_make in genvehform[x].make.text
+            and imodel in genvehform[x].model.text
+            and test_yr_min <= int(genvehform[x].modelyear.text) <= test_yr_max
+        )
+    ]
+    if not vn:
+        print("VN not found")
         continue
 
     print(f"Vehicle Numbers: {vn}")
@@ -220,219 +229,315 @@ for i, caseid in enumerate(all_caseid):
 
         for event in eventforms:
             print(f"Event Number: {event['eventnumber']}")
-            if (voi in event['vehiclenumber'] and test_dl in event.areaofdamage.text):
-                print('Vehicle is primary')
-                if 'en' in tempevent:
-                    if str(tempevent.get('en')) in event['eventnumber']:
-                        tempevent = add_event(tempevent,event,voi,chk=1)
+            if voi in event["vehiclenumber"] and test_dl in event.areaofdamage.text:
+                print("Vehicle is primary")
+                if "en" in tempevent:
+                    if str(tempevent.get("en")) in event["eventnumber"]:
+                        tempevent = add_event(tempevent, event, voi, chk=1)
                     else:
                         keyevents.append(tempevent)
-                        tempevent = add_event(tempevent,event,voi,chk=1)
+                        tempevent = add_event(tempevent, event, voi, chk=1)
                 else:
-                    tempevent = add_event(tempevent,event,voi,chk=1)
+                    tempevent = add_event(tempevent, event, voi, chk=1)
 
-            elif voi in event.contacted.text and test_dl in event.contactedareaofdamage.text:
-                print('Vehicle is contacted')
-                if 'en' in tempevent:
-                    if str(tempevent.get('en')) in event['eventnumber']:
-                        tempevent = add_event(tempevent,event,voi,chk=0)
+            elif (
+                voi in event.contacted.text
+                and test_dl in event.contactedareaofdamage.text
+            ):
+                print("Vehicle is contacted")
+                if "en" in tempevent:
+                    if str(tempevent.get("en")) in event["eventnumber"]:
+                        tempevent = add_event(tempevent, event, voi, chk=0)
                     else:
                         keyevents.append(tempevent)
-                        tempevent = add_event(tempevent,event,voi,chk=0)
+                        tempevent = add_event(tempevent, event, voi, chk=0)
                 else:
-                    tempevent = add_event(tempevent,event,voi,chk=0)
+                    tempevent = add_event(tempevent, event, voi, chk=0)
     keyevents.append(tempevent)
     print(keyevents)
     for event in keyevents:
         print(event)
         image_set = []
-        fileName = ''
+        fileName = ""
         for x in range(len(extform)):
-            if event['voi'] in extform[x]['vehiclenumber']:
+            if event["voi"] in extform[x]["vehiclenumber"]:
                 n_voi = x
                 cdcevents = extform[x].findAll("cdcevent")
                 crushobjects = extform[x].findAll("crushobject")
                 for cdc in cdcevents:
-                    if event['en'] in cdc['eventnumber']:
-                        tot = cdc.total['value']
-                        lon = cdc.longitudinal['value']
-                        lat = cdc.lateral['value']
+                    if event["en"] in cdc["eventnumber"]:
+                        tot = cdc.total["value"]
+                        lon = cdc.longitudinal["value"]
+                        lat = cdc.lateral["value"]
                 for crush in crushobjects:
-                    if event['en'] in crush.eventnumber.text:
-                        if float(crush.avg_c1['value'])>=0:
-                            final_crush = [float(crush.avg_c1['value']),float(crush.avg_c2['value']),float(crush.avg_c3['value']),
-                                           float(crush.avg_c4['value']),float(crush.avg_c5['value']),float(crush.avg_c6['value'])]
-                            smash_l = crush.smashl['value']
+                    if event["en"] in crush.eventnumber.text:
+                        if float(crush.avg_c1["value"]) >= 0:
+                            final_crush = [
+                                float(crush.avg_c1["value"]),
+                                float(crush.avg_c2["value"]),
+                                float(crush.avg_c3["value"]),
+                                float(crush.avg_c4["value"]),
+                                float(crush.avg_c5["value"]),
+                                float(crush.avg_c6["value"]),
+                            ]
+                            smash_l = crush.smashl["value"]
                         else:
-                            crush_test = float(crush.avg_c1['value'])
+                            crush_test = float(crush.avg_c1["value"])
         for x in range(len(genvehform)):
-            if event['an'] in genvehform[x]['vehiclenumber']:
+            if event["an"] in genvehform[x]["vehiclenumber"]:
                 n_an = x
-        if crush_test<0: print('No crush in file')
-        if crush_test>=0:
-            front_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).front.findAll('image')]
-            frontleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontleftoblique.findAll('image')]
-            left_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).left.findAll('image')]
-            backleft_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backleftoblique.findAll('image')]
-            back_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).back.findAll('image')]
-            backright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).backrightoblique.findAll('image')]
-            right_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).right.findAll('image')]
-            frontright_images = [(row.text,row['version']) for row in page.imgform.find('vehicle',{'vehiclenumber':event['voi']}).frontrightoblique.findAll('image')]       
-            # Need to make sure the right event/CDC is placed in the following variables. 
-            #print(extform[n_voi]['caseid'])
+        if crush_test < 0:
+            print("No crush in file")
+        if crush_test >= 0:
+            front_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).front.findAll("image")
+            ]
+            frontleft_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).frontleftoblique.findAll("image")
+            ]
+            left_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).left.findAll("image")
+            ]
+            backleft_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).backleftoblique.findAll("image")
+            ]
+            back_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).back.findAll("image")
+            ]
+            backright_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).backrightoblique.findAll("image")
+            ]
+            right_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).right.findAll("image")
+            ]
+            frontright_images = [
+                (row.text, row["version"])
+                for row in page.imgform.find(
+                    "vehicle", {"vehiclenumber": event["voi"]}
+                ).frontrightoblique.findAll("image")
+            ]
+
+            # Need to make sure the right event/CDC is placed in the following variables.
+            # print(extform[n_voi]['caseid'])
             def check_image_set(image_set):
                 if not image_set:
-                    if 'F' in ipdamage:
+                    if "F" in ipdamage:
                         image_set = front_images
-                    elif 'R' in ipdamage:
+                    elif "R" in ipdamage:
                         image_set = right_images
-                    elif 'B' in ipdamage:
+                    elif "B" in ipdamage:
                         image_set = back_images
-                    elif 'L' in ipdamage:
+                    elif "L" in ipdamage:
                         image_set = left_images
-                    print('Empty Image Set')
+                    print("Empty Image Set")
                     return image_set
-                else: return image_set
+                else:
+                    return image_set
+
             with requests.session() as s:
-                url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID=' + str(extform[n_voi]['caseid'])
+                url = (
+                    "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID="
+                    + str(extform[n_voi]["caseid"])
+                )
                 r = s.get(url)
-                #try: image_set
-                #except NameError: image_set = None
-                #if image_set is None:
+                # try: image_set
+                # except NameError: image_set = None
+                # if image_set is None:
                 default_imageset
-                if 'ft' in default_imageset.lower():
+                if "ft" in default_imageset.lower():
                     image_set = front_images
-                elif 'fr' in default_imageset.lower():
+                elif "fr" in default_imageset.lower():
                     image_set = frontright_images
-                elif 'ri' in default_imageset.lower():
+                elif "ri" in default_imageset.lower():
                     image_set = right_images
-                elif 'br' in default_imageset.lower():
+                elif "br" in default_imageset.lower():
                     image_set = backright_images
-                elif 'ba' in default_imageset.lower():
+                elif "ba" in default_imageset.lower():
                     image_set = back_images
-                elif 'bl' in default_imageset.lower():
+                elif "bl" in default_imageset.lower():
                     image_set = backleft_images
-                elif 'le' in default_imageset.lower():
+                elif "le" in default_imageset.lower():
                     image_set = left_images
-                elif 'fl' in default_imageset.lower():
+                elif "fl" in default_imageset.lower():
                     image_set = frontleft_images
                 if not image_set:
-                    if 'F' in ipdamage:
+                    if "F" in ipdamage:
                         image_set = front_images
-                    elif 'R' in ipdamage:
+                    elif "R" in ipdamage:
                         image_set = right_images
-                    elif 'B' in ipdamage:
+                    elif "B" in ipdamage:
                         image_set = back_images
-                    elif 'L' in ipdamage:
-                        image_set = left_images  
+                    elif "L" in ipdamage:
+                        image_set = left_images
                 while True:
                     for row in image_set:
-                        img_url = 'https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID=' + str(row[0]) + '&CaseID='+ caseid + '&Version=' + str(row[1])
+                        img_url = (
+                            "https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID="
+                            + str(row[0])
+                            + "&CaseID="
+                            + caseid
+                            + "&Version="
+                            + str(row[1])
+                        )
                         response = s.get(img_url)
                         img = Image.open(BytesIO(response.content))
                         draw = ImageDraw.Draw(img)
                         draw.rectangle(((0, 0), (300, 30)), fill="white")
-                        tot_mph = str(float(tot)*0.6214)
-                        img_text = 'Case No: ' + caseid + ' - NASS DV: ' + tot_mph
-                        draw.text((0, 0),img_text,(220,20,60),font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24))
+                        tot_mph = str(float(tot) * 0.6214)
+                        img_text = "Case No: " + caseid + " - NASS DV: " + tot_mph
+                        draw.text(
+                            (0, 0),
+                            img_text,
+                            (220, 20, 60),
+                            font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24),
+                        )
                         img.show()
-                        g = input("Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
-                                  "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: ")
-                        if 'sa' in g.lower():
+                        g = input(
+                            "Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
+                            "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: "
+                        )
+                        if "sa" in g.lower():
                             # write `content` to file
                             if multi_analysis:
-                                if 'caseid_path' not in locals():
-                                    caseid_path = os.getcwd() + '/' +  istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
+                                if "caseid_path" not in locals():
+                                    caseid_path = (
+                                        os.getcwd()
+                                        + "/"
+                                        + istartyear
+                                        + "_"
+                                        + iendyear
+                                        + "_"
+                                        + imake
+                                        + imodel
+                                        + "_"
+                                        + ipdamage
+                                    )
                                     if not os.path.exists(caseid_path):
                                         os.makedirs(caseid_path)
                                     os.chdir(caseid_path)
-  
+
                             else:
-                                caseid_path = os.getcwd() + istartyear + '_' + iendyear + '_' + imake + imodel + '_' + ipdamage
+                                caseid_path = (
+                                    os.getcwd()
+                                    + istartyear
+                                    + "_"
+                                    + iendyear
+                                    + "_"
+                                    + imake
+                                    + imodel
+                                    + "_"
+                                    + ipdamage
+                                )
                                 if not os.path.exists(caseid_path):
                                     os.makedirs(caseid_path)
                                 os.chdir(caseid_path)
-                                
+
                             img_num = str(row[0])
-                            fileName = caseid_path + '//' + img_num + '.jpg'
+                            fileName = caseid_path + "//" + img_num + ".jpg"
                             img.save(fileName)
-                            g = 'de'
+                            g = "de"
                             break
-                        elif 'ne' in g.lower():
+                        elif "ne" in g.lower():
                             continue
-                        elif 'de' in g.lower():
+                        elif "de" in g.lower():
                             break
-                        elif 'ft' in g.lower():
+                        elif "ft" in g.lower():
                             image_set = check_image_set(front_images)
                             break
-                        elif 'fr' in g.lower():
+                        elif "fr" in g.lower():
                             image_set = check_image_set(frontright_images)
                             break
-                        elif 'ri' in g.lower():
+                        elif "ri" in g.lower():
                             image_set = check_image_set(right_images)
                             break
-                        elif 'br' in g.lower():
-                            image_set = check_image_set(backright_images) 
+                        elif "br" in g.lower():
+                            image_set = check_image_set(backright_images)
                             break
-                        elif 'ba' in g.lower():
+                        elif "ba" in g.lower():
                             image_set = check_image_set(back_images)
                             break
-                        elif 'bl' in g.lower():
+                        elif "bl" in g.lower():
                             image_set = check_image_set(backleft_images)
                             break
-                        elif 'le' in g.lower():
+                        elif "le" in g.lower():
                             image_set = check_image_set(left_images)
                             break
-                        elif 'fl' in g.lower():
+                        elif "fl" in g.lower():
                             image_set = check_image_set(frontleft_images)
                             break
                         img.close()
-                    if 'de' in g.lower():
+                    if "de" in g.lower():
                         break
             if not len(fileName) == 0:
-                temp = {'summary':summary}
-                temp['caseid'] = extform[n_voi]['caseid']
-                temp['casenum'] = page.case['casestr']
-                temp['vehnum'] = extform[n_voi]['vehiclenumber']
-                temp['year'] = extform[n_voi].modelyear.text
-                temp['make'] = extform[n_voi].make.text
-                temp['model'] = extform[n_voi].model.text
-                temp['curbweight'] = float(extform[n_voi].curbweight.text)
-                temp['damloc'] = extform[n_voi].deformationlocation.text
-                temp['underride'] = extform[n_voi].overunderride.text
-                temp['edr'] = extform[n_voi].edr.text
-                #Check correct CDC
-                temp['total_dv'] = float(tot)
-                temp['long_dv'] = float(lon)
-                temp['lateral_dv'] = float(lat)
-                temp['smashl'] = float(smash_l)
-                temp['crush'] = final_crush
-                #Alternate Vehicle Info
-                if event['an'].isnumeric():
-                    temp['a_vehnum'] = genvehform[n_an]['vehiclenumber']
-                    temp['a_year'] = genvehform[n_an].modelyear.text
-                    temp['a_make'] = genvehform[n_an].make.text
-                    temp['a_model'] = genvehform[n_an].model.text
-                    if 'Unk' in genvehform[n_an].curbweight.text:
-                        temp['a_curbweight'] = temp['curbweight']
+                temp = {"summary": summary}
+                temp["caseid"] = extform[n_voi]["caseid"]
+                temp["casenum"] = page.case["casestr"]
+                temp["vehnum"] = extform[n_voi]["vehiclenumber"]
+                temp["year"] = extform[n_voi].modelyear.text
+                temp["make"] = extform[n_voi].make.text
+                temp["model"] = extform[n_voi].model.text
+                temp["curbweight"] = float(extform[n_voi].curbweight.text)
+                temp["damloc"] = extform[n_voi].deformationlocation.text
+                temp["underride"] = extform[n_voi].overunderride.text
+                temp["edr"] = extform[n_voi].edr.text
+                # Check correct CDC
+                temp["total_dv"] = float(tot)
+                temp["long_dv"] = float(lon)
+                temp["lateral_dv"] = float(lat)
+                temp["smashl"] = float(smash_l)
+                temp["crush"] = final_crush
+                # Alternate Vehicle Info
+                if event["an"].isnumeric():
+                    temp["a_vehnum"] = genvehform[n_an]["vehiclenumber"]
+                    temp["a_year"] = genvehform[n_an].modelyear.text
+                    temp["a_make"] = genvehform[n_an].make.text
+                    temp["a_model"] = genvehform[n_an].model.text
+                    if "Unk" in genvehform[n_an].curbweight.text:
+                        temp["a_curbweight"] = temp["curbweight"]
                     else:
-                        temp['a_curbweight'] = float(genvehform[n_an].curbweight.text)
+                        temp["a_curbweight"] = float(genvehform[n_an].curbweight.text)
                 else:
-                    temp['a_vehnum'] = event['an']
-                    temp['a_year'] = '--'
-                    temp['a_make'] = '--'
-                    temp['a_model'] = '--'
-                    temp['a_curbweight'] = float(99999)
-                temp['image'] = img_num
-                #temp['a_damloc'] = genvehform[n_an].deformationlocation.text
+                    temp["a_vehnum"] = event["an"]
+                    temp["a_year"] = "--"
+                    temp["a_make"] = "--"
+                    temp["a_model"] = "--"
+                    temp["a_curbweight"] = float(99999)
+                temp["image"] = img_num
+                # temp['a_damloc'] = genvehform[n_an].deformationlocation.text
                 contents.append(temp)
                 print(temp)
                 temp = {}
-    
+
+
 def get_r2(x, y):
     slope, intercept = np.polyfit(x, y, 1)
-    r_squared = 1 - (sum((y - (slope * x + intercept))**2) / ((len(y) - 1) * np.var(y, ddof=1)))
+    r_squared = 1 - (
+        sum((y - (slope * x + intercept)) ** 2) / ((len(y) - 1) * np.var(y, ddof=1))
+    )
     return r_squared
+
+
 x = []
 y_nass = []
 y_total = []
@@ -440,78 +545,111 @@ y_total = []
 print(contents)
 # "contents" at this point:
 # [{
-    # 'summary': 'V1 was westbound, approaching an intersection. V2 was southbound, approaching the same intersection. As V2 attempted to turn left in the intersection, the front of V1 struck the left side of V2.',
-    # 'caseid': '727018444',
-    # 'casenum': '2014-79-092',
-    # 'vehnum': '2',
-    # 'year': '2013',
-    # 'make': 'CHRYSLER',
-    # 'model': '300/300M/300C/300S',
-    # 'curbweight': 1873.0,
-    # 'damloc': 'Left Side',
-    # 'underride': 'None',
-    # 'edr': 'Yes - Data entered13.0.1OffEvent# 1 10LYEW03Deployment29242925Buckled-7777NoUnbuckledNot Reported-7777Not ReportedSeat Back (Outboard)DriverStage Not ReportedStage Not ReportedRoof Side RailDriverStage Not ReportedStage Not Reported-5.00006773On-4.50006763On-4.00006633Off-3.50009515Off-3.000211077Off-2.5004168818Off-2.0008182217Off-1.50011189714Off-1.00012180610Off-0.500913066On10-.620-1.230-1.940-2.550-3.160-3.770-4.380-590-5100-5110-5120-5130-51400150016001700180019002000210022002300240025002600270028002900103.7206.8309.94012.45014.96015.57016.88017.490181001811017.412017.413017.41400150016001700180019002000210022002300240025002600270028002900',
-    # 'total_dv': 25.0,
-    # 'long_dv': -12.0,
-    # 'lateral_dv': 22.0,
-    # 'smashl': 315.0,
-    # 'crush': [0.0, 5.0, 20.0, 26.0, 24.0, 6.0],
-    # 'a_vehnum': '1',
-    # 'a_year': '2007',
-    # 'a_make': 'FORD',
-    # 'a_model': 'E-SERIES VANS',
-    # 'a_curbweight': 2208.0,
-    # 'image': '995559201'
+# 'summary': 'V1 was westbound, approaching an intersection. V2 was southbound, approaching the same intersection. As V2 attempted to turn left in the intersection, the front of V1 struck the left side of V2.',
+# 'caseid': '727018444',
+# 'casenum': '2014-79-092',
+# 'vehnum': '2',
+# 'year': '2013',
+# 'make': 'CHRYSLER',
+# 'model': '300/300M/300C/300S',
+# 'curbweight': 1873.0,
+# 'damloc': 'Left Side',
+# 'underride': 'None',
+# 'edr': 'Yes - Data entered13.0.1OffEvent# 1 10LYEW03Deployment29242925Buckled-7777NoUnbuckledNot Reported-7777Not ReportedSeat Back (Outboard)DriverStage Not ReportedStage Not ReportedRoof Side RailDriverStage Not ReportedStage Not Reported-5.00006773On-4.50006763On-4.00006633Off-3.50009515Off-3.000211077Off-2.5004168818Off-2.0008182217Off-1.50011189714Off-1.00012180610Off-0.500913066On10-.620-1.230-1.940-2.550-3.160-3.770-4.380-590-5100-5110-5120-5130-51400150016001700180019002000210022002300240025002600270028002900103.7206.8309.94012.45014.96015.57016.88017.490181001811017.412017.413017.41400150016001700180019002000210022002300240025002600270028002900',
+# 'total_dv': 25.0,
+# 'long_dv': -12.0,
+# 'lateral_dv': 22.0,
+# 'smashl': 315.0,
+# 'crush': [0.0, 5.0, 20.0, 26.0, 24.0, 6.0],
+# 'a_vehnum': '1',
+# 'a_year': '2007',
+# 'a_make': 'FORD',
+# 'a_model': 'E-SERIES VANS',
+# 'a_curbweight': 2208.0,
+# 'image': '995559201'
 # }]
 
 for cse in contents:
-    #average crush in inches
-    c_bar = 0.393701*((cse['crush'][0]+cse['crush'][5])*0.5+sum(cse['crush'][1:4]))/5.0
-    cse['c_bar'] = c_bar
-    #NASS DV in MPH
-    NASS_dv = cse['total_dv']*0.621371
-    cse['NASS_dv'] = NASS_dv
-    #Vehicle Weights in LBS
-    voi_wt = cse['curbweight']*2.20462
-    a_wt = cse['a_curbweight']*2.20462
-    NASS_vc = NASS_dv/(a_wt/(voi_wt+a_wt))
-    cse['NASS_vc'] = NASS_vc
-    e = 0.5992*np.exp(-0.1125*NASS_vc+0.003889*NASS_vc**2-0.0001153*NASS_vc**3)
-    cse['e'] = e
-    TOT_dv = NASS_dv*(1.0+e)
-    cse['TOT_dv'] = TOT_dv
+    # average crush in inches
+    c_bar = (
+        0.393701
+        * ((cse["crush"][0] + cse["crush"][5]) * 0.5 + sum(cse["crush"][1:4]))
+        / 5.0
+    )
+    cse["c_bar"] = c_bar
+    # NASS DV in MPH
+    NASS_dv = cse["total_dv"] * 0.621371
+    cse["NASS_dv"] = NASS_dv
+    # Vehicle Weights in LBS
+    voi_wt = cse["curbweight"] * 2.20462
+    a_wt = cse["a_curbweight"] * 2.20462
+    NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
+    cse["NASS_vc"] = NASS_vc
+    e = 0.5992 * np.exp(
+        -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
+    )
+    cse["e"] = e
+    TOT_dv = NASS_dv * (1.0 + e)
+    cse["TOT_dv"] = TOT_dv
     x.append(c_bar)
     y_nass.append(NASS_dv)
     y_total.append(TOT_dv)
-    #pdb.set_trace()
+    # pdb.set_trace()
 slope, intercept = np.polyfit(x, y_nass, 1)
 
 i = []
-[i.append(cse['image']) for cse in contents]
-df_original = pd.DataFrame(contents,index = i)
+[i.append(cse["image"]) for cse in contents]
+df_original = pd.DataFrame(contents, index=i)
 
-#field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
+# field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
 #               "lateral_dv","smashl","crush","a_vehnum","a_year","a_make","a_model","a_curbweight", "image","c_bar","NASS_dv",
 #               "NASS_vc","e","TOT_dv"]
-#with open(file, 'w') as f:
+# with open(file, 'w') as f:
 #    w = csv.DictWriter(f, fieldnames=field_names)
 #    w.writeheader()
 #    w.writerows(contents)
 
-df = df_original[['caseid','c_bar','NASS_dv','NASS_vc','TOT_dv']]
-df_original = df_original[['caseid', 'casenum', 'vehnum', 'year', 'make', 'model', 'curbweight',
-       'damloc', 'underride','edr', 'total_dv', 'long_dv', 'lateral_dv', 'smashl',
-       'crush', 'a_vehnum', 'a_year', 'a_make', 'a_model', 'a_curbweight',
-       'image', 'c_bar', 'NASS_dv', 'NASS_vc', 'e', 'TOT_dv','summary', ]]
-        
+df = df_original[["caseid", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
+df_original = df_original[
+    [
+        "caseid",
+        "casenum",
+        "vehnum",
+        "year",
+        "make",
+        "model",
+        "curbweight",
+        "damloc",
+        "underride",
+        "edr",
+        "total_dv",
+        "long_dv",
+        "lateral_dv",
+        "smashl",
+        "crush",
+        "a_vehnum",
+        "a_year",
+        "a_make",
+        "a_model",
+        "a_curbweight",
+        "image",
+        "c_bar",
+        "NASS_dv",
+        "NASS_vc",
+        "e",
+        "TOT_dv",
+        "summary",
+    ]
+]
+
 # Scatter plots.
-dfn = df.apply(pd.to_numeric, errors='coerce')
+dfn = df.apply(pd.to_numeric, errors="coerce")
 
-#dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
-dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c='r',figsize=(16,12))
+# dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
+dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c="r", figsize=(16, 12))
 
-fit=np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
-fit_e=np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
+fit = np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
+fit_e = np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
 
 slope = fit[0]
 slope_e = fit_e[0]
@@ -519,29 +657,31 @@ slope_e = fit_e[0]
 intercept = fit[1]
 intercept_e = fit_e[1]
 
-s_eq = 'Y = ' + str(round(slope,1)) + 'X + ' + str(round(intercept,1))
-s_eq_e = 'Y = ' + str(round(slope_e,1)) + 'X + ' + str(round(intercept_e,1))
+s_eq = "Y = " + str(round(slope, 1)) + "X + " + str(round(intercept, 1))
+s_eq_e = "Y = " + str(round(slope_e, 1)) + "X + " + str(round(intercept_e, 1))
 
 # regression lines
-plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color='darkblue', linewidth=2)
-#plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
+plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color="darkblue", linewidth=2)
+# plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
 
 predict = np.poly1d(fit)
 predict_e = np.poly1d(fit_e)
-r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))),2))
-r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))),2))
+r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))), 2))
+r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))), 2))
 
 # legend, title and labels.
-#plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq, 'Total, ' + 'r$\mathregular{^2}$ value = ' + r2_e + ' - ' + s_eq_e], fontsize=14)
-plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq], fontsize=14)
-plt.xlabel('Crush (inches)', size=24)
-plt.ylabel('Change in Velocity (mph)', size=24);
-for i, label in enumerate(df['caseid']):
-    plt.text(dfn.c_bar[i], dfn.NASS_dv[i],label)  
-#for i, label in enumerate(df.index):
+# plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq, 'Total, ' + 'r$\mathregular{^2}$ value = ' + r2_e + ' - ' + s_eq_e], fontsize=14)
+plt.legend(
+    labels=["NASS, " + "r$\mathregular{^2}$ value = " + r2 + " - " + s_eq], fontsize=14
+)
+plt.xlabel("Crush (inches)", size=24)
+plt.ylabel("Change in Velocity (mph)", size=24)
+for i, label in enumerate(df["caseid"]):
+    plt.text(dfn.c_bar[i], dfn.NASS_dv[i], label)
+# for i, label in enumerate(df.index):
 #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
 
-plt.savefig(caseid_path + '//' + 'NASS_Analysis.png', dpi=150)
+plt.savefig(caseid_path + "//" + "NASS_Analysis.png", dpi=150)
 
 crush_est = np.array([0, 1.0])
 print(predict(crush_est))
@@ -550,31 +690,31 @@ print(df)
 
 # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 for i in df.index:
-    s = 'Caseid: ' + str(df.loc[i].caseid) + '. NASSDV = ' + str(df.loc[i].NASS_dv)
-    img = Image.open(caseid_path + '//' + i + '.jpg')
+    s = "Caseid: " + str(df.loc[i].caseid) + ". NASSDV = " + str(df.loc[i].NASS_dv)
+    img = Image.open(caseid_path + "//" + i + ".jpg")
     draw = ImageDraw.Draw(img)
-    #draw.text((0, 0),s,(220,20,60),font=font)
+    # draw.text((0, 0),s,(220,20,60),font=font)
     img.show()
-    #plt.text(25, 25, s, fontsize=18, bbox=dict(facecolor='white', edgecolor='red', linewidth=2))
-    g = input(s + ' ' "Select: [SA]ve case, [DE]lete Case, [ST]op: ")
+    # plt.text(25, 25, s, fontsize=18, bbox=dict(facecolor='white', edgecolor='red', linewidth=2))
+    g = input(s + " " "Select: [SA]ve case, [DE]lete Case, [ST]op: ")
     img.close()
-    if 'de' in g.lower():
-        df = df.drop(index = i)
-        df_original = df_original.drop(index = i)
+    if "de" in g.lower():
+        df = df.drop(index=i)
+        df_original = df_original.drop(index=i)
         continue
-    elif 'st' in g.lower():
+    elif "st" in g.lower():
         break
     else:
         continue
 # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    
-dfn = df.apply(pd.to_numeric, errors='coerce')
 
-#dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
-dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c='r',figsize=(16,12))
+dfn = df.apply(pd.to_numeric, errors="coerce")
 
-fit=np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
-fit_e=np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
+# dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
+dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c="r", figsize=(16, 12))
+
+fit = np.polyfit(dfn.c_bar, dfn.NASS_dv, 1)
+fit_e = np.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
 
 slope = fit[0]
 slope_e = fit_e[0]
@@ -582,59 +722,71 @@ slope_e = fit_e[0]
 intercept = fit[1]
 intercept_e = fit_e[1]
 
-s_eq = 'Y = ' + str(round(slope,1)) + 'X + ' + str(round(intercept,1))
-s_eq_e = 'Y = ' + str(round(slope_e,1)) + 'X + ' + str(round(intercept_e,1))
+s_eq = "Y = " + str(round(slope, 1)) + "X + " + str(round(intercept, 1))
+s_eq_e = "Y = " + str(round(slope_e, 1)) + "X + " + str(round(intercept_e, 1))
 
 # regression lines
-plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color='darkblue', linewidth=2)
-#plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
+plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color="darkblue", linewidth=2)
+# plt.plot(dfn.c_bar, fit_e[0] * dfn.c_bar + fit_e[1], color='red', linewidth=2)
 
 predict = np.poly1d(fit)
 predict_e = np.poly1d(fit_e)
-r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))),2))
-r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))),2))
+r2 = str(round((r2_score(dfn.NASS_dv, predict(dfn.c_bar))), 2))
+r2_e = str(round((r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))), 2))
 
 # legend, title and labels.
-#plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq, 'Total, ' + 'r$\mathregular{^2}$ value = ' + r2_e + ' - ' + s_eq_e], fontsize=14)
-plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq], fontsize=14)
-plt.xlabel('Crush (inches)', size=24)
-plt.ylabel('Change in Velocity (mph)', size=24);
-for i, label in enumerate(df['caseid']):
-    plt.text(dfn.c_bar[i], dfn.NASS_dv[i],label)  
-#for i, label in enumerate(df.index):
+# plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq, 'Total, ' + 'r$\mathregular{^2}$ value = ' + r2_e + ' - ' + s_eq_e], fontsize=14)
+plt.legend(
+    labels=["NASS, " + "r$\mathregular{^2}$ value = " + r2 + " - " + s_eq], fontsize=14
+)
+plt.xlabel("Crush (inches)", size=24)
+plt.ylabel("Change in Velocity (mph)", size=24)
+for i, label in enumerate(df["caseid"]):
+    plt.text(dfn.c_bar[i], dfn.NASS_dv[i], label)
+# for i, label in enumerate(df.index):
 #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
 
-plt.savefig(caseid_path + '//' + 'NASS_Analysis.png', dpi=150)
+plt.savefig(caseid_path + "//" + "NASS_Analysis.png", dpi=150)
 
 crush_est = np.array([0, 1.0])
 print(predict(crush_est))
 print(predict_e(crush_est))
 print(df)
 
-df_original.to_csv(caseid_path + '//' + file)
-f = open(caseid_path + '//' + file,'a')
+df_original.to_csv(caseid_path + "//" + file)
+f = open(caseid_path + "//" + file, "a")
 writer = csv.writer(f)
 
-csestr = ''
-end = len(df['caseid'])-1
-for i in range(len(df['caseid'])):
-    cnum = df['caseid'].iloc[i]
+csestr = ""
+end = len(df["caseid"]) - 1
+for i in range(len(df["caseid"])):
+    cnum = df["caseid"].iloc[i]
     if i == end:
-        csestr = csestr + 'and ' + cnum + '.'
+        csestr = csestr + "and " + cnum + "."
     else:
-        csestr = csestr + cnum + ', '
-#print(csestr)
+        csestr = csestr + cnum + ", "
+# print(csestr)
 
-temp1 = df.sort_values(by=['NASS_dv'])
-minval = str(round(temp1.iloc[0]['NASS_dv'],1))
-mincase = temp1.iloc[0]['caseid']
-maxval = str(round(temp1.iloc[end]['NASS_dv'],1))
-maxcase = temp1.iloc[end]['caseid']
+temp1 = df.sort_values(by=["NASS_dv"])
+minval = str(round(temp1.iloc[0]["NASS_dv"], 1))
+mincase = temp1.iloc[0]["caseid"]
+maxval = str(round(temp1.iloc[end]["NASS_dv"], 1))
+maxcase = temp1.iloc[end]["caseid"]
 
-dvstr = ' Among these cases, the changes in velocity ranged from as low as ' + minval + ' mph (' + mincase + ') to as high as ' + maxval + ' mph (' + maxcase + ').'
+dvstr = (
+    " Among these cases, the changes in velocity ranged from as low as "
+    + minval
+    + " mph ("
+    + mincase
+    + ") to as high as "
+    + maxval
+    + " mph ("
+    + maxcase
+    + ")."
+)
 
 par = csestr + dvstr
-writer.writerows([[],[par]])
+writer.writerows([[], [par]])
 f.close()
 
 print(par)

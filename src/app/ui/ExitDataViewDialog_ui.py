@@ -16,7 +16,9 @@ class Ui_ExitDialog(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(ExitDialog)
         self.verticalLayout.setObjectName("verticalLayout")
         self.promptLabel = QtWidgets.QLabel(parent=ExitDialog)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.promptLabel.sizePolicy().hasHeightForWidth())
@@ -28,13 +30,16 @@ class Ui_ExitDialog(object):
         self.verticalLayout.addWidget(self.profileNameEdit)
         self.buttonBox = QtWidgets.QDialogButtonBox(parent=ExitDialog)
         self.buttonBox.setOrientation(QtCore.Qt.Orientation.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.StandardButton.Discard|QtWidgets.QDialogButtonBox.StandardButton.Save)
+        self.buttonBox.setStandardButtons(
+            QtWidgets.QDialogButtonBox.StandardButton.Discard
+            | QtWidgets.QDialogButtonBox.StandardButton.Save
+        )
         self.buttonBox.setObjectName("buttonBox")
         self.verticalLayout.addWidget(self.buttonBox)
 
         self.retranslateUi(ExitDialog)
-        self.buttonBox.accepted.connect(ExitDialog.accept) # type: ignore
-        self.buttonBox.rejected.connect(ExitDialog.reject) # type: ignore
+        self.buttonBox.accepted.connect(ExitDialog.accept)  # type: ignore
+        self.buttonBox.rejected.connect(ExitDialog.reject)  # type: ignore
         QtCore.QMetaObject.connectSlotsByName(ExitDialog)
 
     def retranslateUi(self, ExitDialog):

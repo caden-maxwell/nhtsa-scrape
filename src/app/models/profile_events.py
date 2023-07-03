@@ -58,11 +58,11 @@ class ProfileEvents(QAbstractListModel):
                 """
                 SELECT * FROM scrape_profiles WHERE profile_id = ?
                 """,
-                (profile_id,)
+                (profile_id,),
             ).fetchone()
             if self.profile is None:
                 raise ValueError(f"Profile ID {profile_id} does not exist.")
-            
+
         except (ValueError, sqlite3.Error) as e:
             self.logger.error(e)
 
@@ -87,7 +87,7 @@ class ProfileEvents(QAbstractListModel):
         if role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None
-    
+
     def add_data(self, event):
         try:
             case_id = event["case_id"]
@@ -109,11 +109,15 @@ class ProfileEvents(QAbstractListModel):
                 )
                 VALUES (?, ?, ?, ?)
                 """,
-                (self.profile[0], case_id, event_num, vehicle_num))
-            self.cursor.execute("""
+                (self.profile[0], case_id, event_num, vehicle_num),
+            )
+            self.cursor.execute(
+                """
                 INSERT OR IGNORE INTO cases (case_id, case_num, summary)
                 VALUES (?, ?, ?)
-                """, (case_id, case_num, summary))
+                """,
+                (case_id, case_num, summary),
+            )
             self.cursor.execute(
                 """
                 INSERT OR IGNORE INTO case_events (
@@ -126,10 +130,12 @@ class ProfileEvents(QAbstractListModel):
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (case_id, event_num, vehicle_num, make, model, model_year)
+                (case_id, event_num, vehicle_num, make, model, model_year),
             )
             self.db.commit()
-            self.logger.debug(f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}.")
+            self.logger.debug(
+                f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}."
+            )
         except (sqlite3.Error, KeyError) as e:
             self.logger.error("Error adding case:", e)
             return
@@ -138,10 +144,13 @@ class ProfileEvents(QAbstractListModel):
     def delete_data(self, index):
         try:
             data = self.data_list[index.row()]
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 DELETE FROM case_events
                 WHERE (case_id, event_num, vehicle_num) = ?
-                """, (data[0],))
+                """,
+                (data[0],),
+            )
             self.db.commit()
         except sqlite3.Error as e:
             self.logger.error("Error deleting case:", e)
@@ -149,15 +158,20 @@ class ProfileEvents(QAbstractListModel):
         except IndexError:
             self.logger.error("Error deleting case: index out of range")
             return
-        self.logger.debug(f"Deleted event: Case {data[1]} Event {data[2]} Vehicle {data[3]}")
+        self.logger.debug(
+            f"Deleted event: Case {data[1]} Event {data[2]} Vehicle {data[3]}"
+        )
         self.refresh_data()
 
     def refresh_data(self):
         try:
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 SELECT * FROM scrape_profile_events
                 WHERE profile_id = ?
-                """, (self.profile[0],))
+                """,
+                (self.profile[0],),
+            )
             self.data_list = self.cursor.fetchall()
             self.layoutChanged.emit()
         except sqlite3.Error as e:

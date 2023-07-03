@@ -18,7 +18,7 @@ class QtLogHandler(logging.Handler, QObject):
     def handle(self, record):
         msg = self.format(record)
         self.log_message.emit(msg)
-        
+
     def flush(self):
         pass
 
