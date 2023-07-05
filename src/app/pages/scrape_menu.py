@@ -215,7 +215,6 @@ class ScrapeMenu(QWidget):
         self.engine_timer.start(300)
 
     def handle_scrape_complete(self):
-        self.engine_timer.timeout.disconnect()
         self.engine_timer.stop()
 
         self.engine_thread.quit()

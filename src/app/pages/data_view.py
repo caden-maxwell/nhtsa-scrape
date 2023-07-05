@@ -1,10 +1,10 @@
 import csv
-from datetime import datetime
 import logging
 import os
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QWidget, QDialog
 
 from app.models import ProfileEvents
@@ -36,6 +36,7 @@ class DataView(QWidget):
     def showEvent(self, event):
         self.model.refresh_data()
         self.ui.listView.clearSelection()
+        self.update_scatter_view()
         return super().showEvent(event)
 
     def handle_exit_button_clicked(self):
@@ -44,7 +45,7 @@ class DataView(QWidget):
         self.exited.emit()
 
     def open_item_details(self, index):
-        print(f"Opening item details for index {index.row()}")
+        self.ui.eventLabel.setText(f"Index selected: {index.row()}")
 
     @pyqtSlot(dict)
     def add_event(self, event):
@@ -53,7 +54,7 @@ class DataView(QWidget):
 
     def scrape_complete(self):
         if not len(self.model.data_list):
-            self.ui.textEdit.append("Scrape complete. No data found.")
+            self.ui.summaryEdit.append("Scrape complete. No data found.")
             return
 
     def calculate(self):
@@ -63,7 +64,8 @@ class DataView(QWidget):
         df_original = pandas.DataFrame(self.model.all_data())
         df = df_original[["case_id", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
 
-        self.calc2(df)
+        self.build_scatterplot(df)
+        self.update_scatter_view()
         return
 
         file = "random.csv"
@@ -92,7 +94,7 @@ class DataView(QWidget):
         writer.writerows([[], [par]])
         f.close()
 
-    def calc2(self, df: pandas.DataFrame):
+    def build_scatterplot(self, df: pandas.DataFrame):
         dfn = df.apply(pandas.to_numeric, errors="coerce")
 
         # dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
@@ -141,6 +143,14 @@ class DataView(QWidget):
         # print(predict(crush_est))
         # print(predict_e(crush_est))
         # print(df)
+
+    def update_scatter_view(self):
+        dir_path = Path(__file__).parent / "test"
+        caseid_path = dir_path / "NASS_Analysis.png"
+        if caseid_path.exists():
+            self.ui.scatterLabel.setPixmap(QPixmap(str(caseid_path)))
+        else:
+            self.ui.scatterLabel.setPixmap(QPixmap())
 
 
 class ExitDataViewDialog(QDialog):
