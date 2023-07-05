@@ -104,6 +104,7 @@ class ScrapeEngine(QObject):
             not self.req_handler.contains(Priority.CASE.value)
             and not self.req_handler.get_ongoing_requests(Priority.CASE.value)
             and self.final_page
+            and self.running
         ):
             self.complete()
 
