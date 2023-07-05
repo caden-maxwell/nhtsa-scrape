@@ -249,10 +249,9 @@ class ScrapeEngine(QObject):
         make = int(self.search_payload["ddlMake"])
         model = int(self.search_payload["ddlModel"])
         start_year = int(self.search_payload["ddlStartModelYear"])
-        end_year = (
-            9999
-            if (year := int(self.search_payload["ddlEndModelYear"])) == -1
-            else year
+        end_year = ( year 
+            if (year := int(self.search_payload["ddlEndModelYear"])) != -1
+            else 9999
         )
 
         make_match = (
@@ -262,16 +261,22 @@ class ScrapeEngine(QObject):
             lambda veh_sum: model == int(veh_sum.find("Model").get("value"))
             or model == -1
         )
-        year_match = (
-            lambda veh_sum: start_year <= int(veh_sum.find("Year").text) <= end_year
-        )
+        def year_match(veh_sum: BeautifulSoup, start_year, end_year):
+            year = veh_sum.find("Year").text
+            if year == "Unknown":
+                if start_year == -1 and end_year == 9999:
+                    return True
+                return False
+            elif not year.isnumeric():
+                return False
+            return start_year <= int(year) <= end_year
 
         vehicle_nums = [
             int(veh_summary.get("VehicleNumber"))
             for veh_summary in case_xml.find_all("VehicleSum")
             if make_match(veh_summary)
             and model_match(veh_summary)
-            and year_match(veh_summary)
+            and year_match(veh_summary, start_year, end_year)
         ]
 
         if not vehicle_nums:
@@ -279,7 +284,7 @@ class ScrapeEngine(QObject):
             self.enqueue_extra_case()
             self.failed_cases += 1
             return
-        # print(f"Vehicle numbers: {vehicle_nums}")
+        self.logger.debug(f"Vehicle numbers: {vehicle_nums}")
 
         veh_amount = int(case_xml.find("NumberVehicles").text)
         key_events = [
@@ -294,14 +299,14 @@ class ScrapeEngine(QObject):
                 an := self.get_an(voi, event, veh_amount)
             )  # Add event to key_events only if 'an' is truthy.
         ]
-        # print(f"Key events: {key_events}")
+        self.logger.debug(f"Key events: {key_events}")
 
         veh_ext_forms = case_xml.find("VehicleExteriorForms")
         gen_veh_forms = case_xml.find("GeneralVehicleForms")
 
         failed_events = 0
         for event in key_events:
-            # print(f"Event: {event}")
+            self.logger.debug(f"Event: {event}")
 
             veh_ext_form = veh_ext_forms.find(
                 "VehicleExteriorForm", {"VehicleNumber": event["voi"]}
@@ -318,14 +323,21 @@ class ScrapeEngine(QObject):
             lat_dv = None
             long_dv = None
             if cdc_event:
-                total_dv = int(cdc_event.find("Total")["value"])
-                lat_dv = int(cdc_event.find("Lateral")["value"])
-                long_dv = int(cdc_event.find("Longitudinal")["value"])
-                # print(f"Total: {tot}, Longitudinal: {lon}, Lateral: {lat}")
+                total_dv = int(dv) if (dv := cdc_event.find("Total").text).lstrip("-").isnumeric() else None
+                lat_dv = int(dv) if (dv := cdc_event.find("Lateral").text).lstrip("-").isnumeric() else None
+                long_dv = int(dv) if (dv := cdc_event.find("Longitudinal").text).lstrip("-").isnumeric() else None
+                # self.logger.debug(f"Total: {total_dv}, Longitudinal: {long_dv}, Lateral: {lat_dv}")
             else:
                 self.logger.warning(
                     f"No CDCevent found for event {event['en']} in case {case_id}."
                 )
+
+            if not total_dv or not lat_dv or not long_dv:
+                self.logger.warning(
+                    f"Delta-V not found for event {event['en']} in case {case_id}."
+                )
+                failed_events += 1
+                continue
 
             crush_object = None
             for obj in veh_ext_form.find_all("CrushObject"):
@@ -605,13 +617,18 @@ class ScrapeEngine(QObject):
         # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
         area_of_dmg = int(event.find("AreaOfDamage")["value"]) - 1
         contacted_aod = int(event.find("ContactedAreaOfDamage")["value"]) - 1
+        self.logger.debug(f"AODs: {area_of_dmg}, {contacted_aod}")
 
         contacted = event.find("Contacted")
         vehicle_number = int(event["VehicleNumber"])
+        self.logger.debug(f"Nums: {vehicle_number}, {contacted['value']}")
 
         primary_damage = int(self.search_payload["ddlPrimaryDamage"])
+        self.logger.debug(f"Primary Damage: {primary_damage}")
+
         primary_dmg_match = primary_damage == area_of_dmg or primary_damage == -1
         contacted_dmg_match = primary_damage == contacted_aod or primary_damage == -1
+        self.logger.debug(f"Matches: primary-{primary_dmg_match}, contacted-{contacted_dmg_match}")
 
         if (
             voi == vehicle_number and primary_dmg_match
@@ -621,7 +638,7 @@ class ScrapeEngine(QObject):
             else:
                 return int(contacted["value"])
         elif (
-            str(voi) in contacted.text and contacted_dmg_match
+            voi == int(contacted['value']) and contacted_dmg_match
         ):  # If the voi is the contacted vehicle, return the primary vehicle as the an
             return vehicle_number
 
