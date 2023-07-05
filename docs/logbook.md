@@ -25,7 +25,9 @@
 | 6/29 | 6 | - Moved to a different request handler that works 10x better and is more flexible than the last. <br> - Modularized the main scrape engine to be more readable and easy to debug. |
 | 6/30 | 6 | - Extra cases that are above the max case limit will be put on a list to be enqueued if the current cases fail to obtain sufficient data. This way we can get as many cases as possible under the max case limit. <br> - Added model class to handle case events in the data viewer. <br> - Scraped data is now saved to the database automatically upon scraping. Need to implement it so that a new profile is automatically created at scrape time. <br> - Very happy with how this is turning out. |
 | 7/2 | 7 | - Connected all the database tables. A new profile is created at scrape time, and events are added to it as they are scraped and processed. <br> - The case_events table is completely setup, and data viewer now populates with this data. <br> - Opening an existing scrape profile will now actually show the data that was scraped. <br> - Slightly changed database schema to make it easier to query certain things. <br> - Trying very hard to figure out what is going on with the plotting/csv part of the code. Pretty messy.|
-| Total | 107 | - |
+| 7/4 | 4 | - Added ability to view and export the scatterplot and csv data. <br> - After adding the scatterplot, I was seeing some pretty weird data points, so I went back to the main scraper and fixed some bugs and added some more edge case handling. |
+| 7/5 | n/a | n/a |
+| Total | 111 | - |
 
 ---
 
