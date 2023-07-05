@@ -367,7 +367,7 @@ class ScrapeEngine(QObject):
                 "case_id": case_id,
                 "event_num": event["en"],
                 "case_num": case_xml.find("Case")["CaseStr"],
-                "veh_num": veh_ext_form["VehicleNumber"],
+                "vehicle_num": veh_ext_form["VehicleNumber"],
                 "make": veh_ext_form.find("Make").text,
                 "model": veh_ext_form.find("Model").text,
                 "model_year": veh_ext_form.find("ModelYear").text,

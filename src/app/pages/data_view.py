@@ -1,6 +1,8 @@
 import csv
+from datetime import datetime
 import logging
 import os
+from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QDialog
@@ -47,81 +49,22 @@ class DataView(QWidget):
     @pyqtSlot(dict)
     def add_event(self, event):
         self.model.add_data(event)
-        self.calculate(event)
+        self.calculate()
 
     def scrape_complete(self):
         if not len(self.model.data_list):
             self.ui.textEdit.append("Scrape complete. No data found.")
             return
 
-    def calculate(self, event_data):
+    def calculate(self):
         caseid_path = os.getcwd() + "/test/"
         # file = f"{event_data[""]}_{self.search_payload['ddlEndModelYear']}_{self.search_payload['ddlMake']}_{self.search_payload['ddlModel']}_{self.search_payload['ddlPrimaryDamage']}.csv"
 
-        ### TODO: Need to figure out how to use our data in the dataframe ###
-
-        df_original = pandas.DataFrame(self.model.data_list)
-        return
-    
-        ### TODO ###
-
+        df_original = pandas.DataFrame(self.model.all_data())
         df = df_original[["case_id", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
-        df_original = df_original[
-            [
-                "case_id",
-                "vehicle_num",
-                "event_num",
-                "make",
-                "model",
-                "year",
-                "curbweight",
-                "dmg_loc",
-                "underride",
-                "edr",
-                "total_dv",
-                "long_dv",
-                "lat_dv",
-                "smashl",
-                "crush",
-                "a_vehnum",
-                "a_year",
-                "a_make",
-                "a_model",
-                "a_curb_weight",
-                "c_bar",
-                "NASS_dv",
-                "NASS_vc",
-                "e",
-                "TOT_dv",
-            ]
-        ]
 
-        # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        # for i in df.index:
-        #     s = (
-        #         "Caseid: "
-        #         + str(df.loc[i].caseid)
-        #         + ". NASSDV = "
-        #         + str(df.loc[i].NASS_dv)
-        #     )
-        #     img = Image.open(caseid_path + "//" + i + ".jpg")
-        #     draw = ImageDraw.Draw(img)
-        #     # draw.text((0, 0),s,(220,20,60),font=font)
-        #     img.show()
-        #     # plt.text(25, 25, s, fontsize=18, bbox=dict(facecolor='white', edgecolor='red', linewidth=2))
-        #     g = input(s + " " "Select: [SA]ve case, [DE]lete Case, [ST]op: ")
-        #     img.close()
-        #     if "de" in g.lower():
-        #         df = df.drop(index=i)
-        #         df_original = df_original.drop(index=i)
-        #         continue
-        #     elif "st" in g.lower():
-        #         break
-        #     else:
-        #         continue
-        # Re-Analyze Info - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-        self.calc2(df, caseid_path)
+        self.calc2(df)
+        return
 
         file = "random.csv"
         df_original.to_csv(caseid_path + "//" + file)
@@ -149,10 +92,8 @@ class DataView(QWidget):
         writer.writerows([[], [par]])
         f.close()
 
-    def calc2(self, df: pandas.DataFrame, caseid_path: str):
-        print(df)
+    def calc2(self, df: pandas.DataFrame):
         dfn = df.apply(pandas.to_numeric, errors="coerce")
-        print(dfn)
 
         # dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
         dv_plot = dfn.plot.scatter(x="c_bar", y="NASS_dv", c="r", figsize=(16, 12))
@@ -161,13 +102,13 @@ class DataView(QWidget):
         fit_e = numpy.polyfit(dfn.c_bar, dfn.TOT_dv, 1)
 
         slope = fit[0]
-        slope_e = fit_e[0]
+        # slope_e = fit_e[0]
 
         intercept = fit[1]
-        intercept_e = fit_e[1]
+        # intercept_e = fit_e[1]
 
         s_eq = "Y = " + str(round(slope, 1)) + "X + " + str(round(intercept, 1))
-        s_eq_e = "Y = " + str(round(slope_e, 1)) + "X + " + str(round(intercept_e, 1))
+        # s_eq_e = "Y = " + str(round(slope_e, 1)) + "X + " + str(round(intercept_e, 1))
 
         # regression lines
         plt.plot(dfn.c_bar, fit[0] * dfn.c_bar + fit[1], color="darkblue", linewidth=2)
@@ -176,26 +117,30 @@ class DataView(QWidget):
         predict = numpy.poly1d(fit)
         predict_e = numpy.poly1d(fit_e)
         r2 = str(round((sklearn.metrics.r2_score(dfn.NASS_dv, predict(dfn.c_bar))), 2))
-        r2_e = str(round((sklearn.metrics.r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))), 2))
+        # r2_e = str(round((sklearn.metrics.r2_score(dfn.TOT_dv, predict_e(dfn.c_bar))), 2))
 
         # legend, title and labels.
         # plt.legend(labels=['NASS, ' + 'r$\mathregular{^2}$ value = ' + r2 + ' - ' + s_eq, 'Total, ' + 'r$\mathregular{^2}$ value = ' + r2_e + ' - ' + s_eq_e], fontsize=14)
         plt.legend(
-            labels=["NASS, " + "r$\mathregular{^2}$ value = " + r2 + " - " + s_eq], fontsize=14
+            labels=["NASS, " + "r$\mathregular{^2}$ value = " + r2 + " - " + s_eq],
+            fontsize=14,
         )
         plt.xlabel("Crush (inches)", size=24)
         plt.ylabel("Change in Velocity (mph)", size=24)
-        for i, label in enumerate(df["caseid"]):
+        for i, label in enumerate(df["case_id"]):
             plt.text(dfn.c_bar[i], dfn.NASS_dv[i], label)
         # for i, label in enumerate(df.index):
         #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
 
-        plt.savefig(caseid_path + "//" + "NASS_Analysis.png", dpi=150)
+        dir_path = Path(__file__).parent / "test"
+        os.makedirs(dir_path, exist_ok=True)
+        caseid_path = dir_path / "NASS_Analysis.png"
+        plt.savefig(caseid_path, dpi=150)
 
         crush_est = numpy.array([0, 1.0])
-        print(predict(crush_est))
-        print(predict_e(crush_est))
-        print(df)
+        # print(predict(crush_est))
+        # print(predict_e(crush_est))
+        # print(df)
 
 
 class ExitDataViewDialog(QDialog):
