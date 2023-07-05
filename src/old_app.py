@@ -535,6 +535,7 @@ slope, intercept = np.polyfit(x, y_nass, 1)
 
 i = [cse["image"] for cse in contents]
 df_original = pd.DataFrame(contents, index=i)
+print(df_original)
 
 # field_names = ["summary","caseid","vehnum","year","make","model","curbweight","damloc","underride","total_dv","long_dv",
 #               "lateral_dv","smashl","crush","a_vehnum","a_year","a_make","a_model","a_curbweight", "image","c_bar","NASS_dv",

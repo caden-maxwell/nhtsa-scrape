@@ -115,12 +115,46 @@ class ProfileEvents(QAbstractListModel):
             return self.data_list[index.row()]
         return None
 
+    def all_data(self):
+        """Return events as list of dictionaries"""
+        return [
+            {
+                "case_id": event[0],
+                "vehicle_num": event[2],
+                "event_num": event[1],
+                "make": event[3],
+                "model": event[4],
+                "model_year": event[5],
+                "curb_weight": event[6],
+                "dmg_loc": event[7],
+                "underride": event[8],
+                "edr": event[9],
+                "total_dv": event[10],
+                "long_dv": event[11],
+                "lat_dv": event[12],
+                "smashl": event[13],
+                "crush": event[14:20],
+                "a_veh_num": event[20],
+                "a_make": event[21],
+                "a_model": event[22],
+                "a_year": event[23],
+                "a_curb_weight": event[24],
+                "a_dmg_loc": event[25],
+                "c_bar": event[26],
+                "NASS_dv": event[27],
+                "NASS_vc": event[28],
+                "e": event[29],
+                "TOT_dv": event[30],
+            }
+            for event in self.data_list
+        ]
+
     def add_data(self, event):
         try:
             summary = event["summary"]
             case_num = event["case_num"]
             case_id = event["case_id"]
-            veh_num = event["veh_num"]
+            vehicle_num = event["vehicle_num"]
             event_num = event["event_num"]
             make = event["make"]
             model = event["model"]
@@ -194,7 +228,7 @@ class ProfileEvents(QAbstractListModel):
                 """,
                 (
                     case_id,
-                    veh_num,
+                    vehicle_num,
                     event_num,
                     make,
                     model,
@@ -236,7 +270,7 @@ class ProfileEvents(QAbstractListModel):
                 )
                 VALUES (?, ?, ?, ?)
                 """,
-                (self.profile[0], case_id, event_num, veh_num),
+                (self.profile[0], case_id, event_num, vehicle_num),
             )
             self.db.commit()
             self.logger.debug(
