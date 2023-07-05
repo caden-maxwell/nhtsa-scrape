@@ -250,7 +250,8 @@ class ScrapeEngine(QObject):
         make = int(self.search_payload["ddlMake"])
         model = int(self.search_payload["ddlModel"])
         start_year = int(self.search_payload["ddlStartModelYear"])
-        end_year = ( year 
+        end_year = (
+            year
             if (year := int(self.search_payload["ddlEndModelYear"])) != -1
             else 9999
         )
@@ -262,6 +263,7 @@ class ScrapeEngine(QObject):
             lambda veh_sum: model == int(veh_sum.find("Model").get("value"))
             or model == -1
         )
+
         def year_match(veh_sum: BeautifulSoup, start_year, end_year):
             year = veh_sum.find("Year").text
             if year == "Unknown":
@@ -324,9 +326,23 @@ class ScrapeEngine(QObject):
             lat_dv = None
             long_dv = None
             if cdc_event:
-                total_dv = int(dv) if (dv := cdc_event.find("Total").text).lstrip("-").isnumeric() else None
-                lat_dv = int(dv) if (dv := cdc_event.find("Lateral").text).lstrip("-").isnumeric() else None
-                long_dv = int(dv) if (dv := cdc_event.find("Longitudinal").text).lstrip("-").isnumeric() else None
+                total_dv = (
+                    int(dv)
+                    if (dv := cdc_event.find("Total").text).lstrip("-").isnumeric()
+                    else None
+                )
+                lat_dv = (
+                    int(dv)
+                    if (dv := cdc_event.find("Lateral").text).lstrip("-").isnumeric()
+                    else None
+                )
+                long_dv = (
+                    int(dv)
+                    if (dv := cdc_event.find("Longitudinal").text)
+                    .lstrip("-")
+                    .isnumeric()
+                    else None
+                )
                 # self.logger.debug(f"Total: {total_dv}, Longitudinal: {long_dv}, Lateral: {lat_dv}")
             else:
                 self.logger.warning(
@@ -629,7 +645,9 @@ class ScrapeEngine(QObject):
 
         primary_dmg_match = primary_damage == area_of_dmg or primary_damage == -1
         contacted_dmg_match = primary_damage == contacted_aod or primary_damage == -1
-        self.logger.debug(f"Matches: primary-{primary_dmg_match}, contacted-{contacted_dmg_match}")
+        self.logger.debug(
+            f"Matches: primary-{primary_dmg_match}, contacted-{contacted_dmg_match}"
+        )
 
         if (
             voi == vehicle_number and primary_dmg_match
@@ -639,7 +657,7 @@ class ScrapeEngine(QObject):
             else:
                 return int(contacted["value"])
         elif (
-            voi == int(contacted['value']) and contacted_dmg_match
+            voi == int(contacted["value"]) and contacted_dmg_match
         ):  # If the voi is the contacted vehicle, return the primary vehicle as the an
             return vehicle_number
 
