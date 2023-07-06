@@ -25,8 +25,8 @@ class ScatterplotWorker(QRunnable):
     @pyqtSlot()
     def run(self):
         matplotlib.use("agg")
-        matplotlib.rcParams['font.family'] = 'Arial, sans-serif'
-        logging.getLogger('matplotlib').setLevel(logging.WARNING)
+        matplotlib.rcParams["font.family"] = "Arial, sans-serif"
+        logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
         data_frame = pandas.DataFrame(self.data)
         data_frame = data_frame[["case_id", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
@@ -48,7 +48,6 @@ class ScatterplotWorker(QRunnable):
 
         s_eq = "Y = " + str(round(slope, 1)) + "X + " + str(round(intercept, 1))
         # s_eq_e = "Y = " + str(round(slope_e, 1)) + "X + " + str(round(intercept_e, 1))
-
 
         # regression lines
         plt.plot(
@@ -87,7 +86,7 @@ class ScatterplotWorker(QRunnable):
         #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
 
         os.makedirs(self.path, exist_ok=True)
-        plt.savefig(self.path / "NASS_Analysis.png", dpi=150)
+        plt.savefig(self.path / "NASS_Analysis.png", format="png", dpi=150)
         plt.close()
 
         crush_est = numpy.array([0, 1.0])
