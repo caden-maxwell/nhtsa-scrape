@@ -3,9 +3,10 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool, Qt, QTimer
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QWidget, QDialog
+
 import pandas
 
 from app.models import ProfileEvents
@@ -29,13 +30,19 @@ class DataView(QWidget):
         self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
+        self.ui.tabWidget.currentChanged.connect(self.update_scatter_view)
+
+        self.resize_timer = QTimer()
+        self.resize_timer.setSingleShot(True)
+        self.resize_timer.timeout.connect(self.update_scatter_view)
 
         self.threads = QThreadPool()
+        self.data_dir = (Path(__file__).parent.parent / "test").resolve()
+        os.makedirs(self.data_dir, exist_ok=True)
 
     def showEvent(self, event):
         self.model.refresh_data()
         self.ui.listView.clearSelection()
-        self.update_scatter_view()
         return super().showEvent(event)
 
     def handle_exit_button_clicked(self):
@@ -50,23 +57,22 @@ class DataView(QWidget):
     def add_event(self, event):
         self.model.add_data(event)
 
-        data_dir = Path(__file__).parent.parent / "test"
-        scatter_worker = ScatterplotWorker(self.model.all_data(), data_dir)
+        scatter_worker = ScatterplotWorker(self.model.all_data(), self.data_dir)
         scatter_worker.signals.finished.connect(self.update_scatter_view)
         self.threads.start(scatter_worker)
 
         file = "random.csv"
         df = pandas.DataFrame(self.model.all_data())
-        os.makedirs(data_dir, exist_ok=True)
-        df.to_csv(data_dir / file, index=False)
-
-        with open(data_dir / file, "a") as f:
+        df.to_csv(self.data_dir / file, index=False)
+        with open(self.data_dir / file, "a") as f:
             writer = csv.writer(f)
 
             case_ids = df["case_id"].unique()
+            event_str = ", ".join(str(id) for id in case_ids[:-1])
             event_str = (
-                ", ".join(str(cnum) for cnum in case_ids[:-1])
-                + f", and {case_ids[-1]}."
+                event_str + f", and {case_ids[-1]}."
+                if len(case_ids) > 1
+                else event_str + "."
             )
 
             minval = round(df["NASS_dv"].min(), 1)
@@ -85,12 +91,27 @@ class DataView(QWidget):
             return
 
     def update_scatter_view(self):
-        dir_path = Path(__file__).parent.parent / "test"
-        caseid_path = dir_path / "NASS_Analysis.png"
+        caseid_path = self.data_dir / "NASS_Analysis.png"
+        pixmap = QPixmap()
         if caseid_path.exists():
-            self.ui.scatterLabel.setPixmap(QPixmap(str(caseid_path)))
-        else:
-            self.ui.scatterLabel.setPixmap(QPixmap())
+            pixmap.load(str(caseid_path))
+            PIXMAP_SCALE = 3
+            pixmap.setDevicePixelRatio(PIXMAP_SCALE)
+            width = self.ui.scatterTab.size().width() * PIXMAP_SCALE
+            height = self.ui.scatterTab.size().height() * PIXMAP_SCALE
+            pixmap = pixmap.scaled(
+                width,
+                height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+
+        self.ui.scatterLabel.setPixmap(pixmap)
+
+    def resizeEvent(self, event):
+        self.resize_timer.stop()
+        self.resize_timer.start(50)
+        return super().resizeEvent(event)
 
 
 class ExitDataViewDialog(QDialog):

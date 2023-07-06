@@ -92,7 +92,7 @@
        <string>Scatterplot</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0">
+       <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
         <widget class="QLabel" name="scatterLabel">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
@@ -104,7 +104,7 @@
           <string/>
          </property>
          <property name="scaledContents">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
         </widget>
        </item>
