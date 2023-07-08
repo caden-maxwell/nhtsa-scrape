@@ -3,11 +3,12 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
+import pandas
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 from app.models import ProfileEvents
@@ -22,6 +23,7 @@ class DataView(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
+        self.model.refresh_data()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
@@ -32,16 +34,22 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
 
-        # Create figure/canvas with matplotlib
         self.figure = Figure()
+        self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
 
-        self.update_scatter_view()
+        toolbar = NavigationToolbar(self.canvas, self)
 
-    def showEvent(self, event):
-        self.model.refresh_data()
-        self.ui.listView.clearSelection()
-        return super().showEvent(event)
+        layout = QVBoxLayout()
+        layout.addWidget(toolbar)
+        layout.addWidget(self.canvas)
+
+        self.ui.scatterTab.setLayout(layout)
+
+        self.xdata = []
+        self.ydata = []
+
+        self.update_scatter_view()
 
     def open_item_details(self, index):
         self.ui.eventLabel.setText(f"Index selected: {index.row()}")
@@ -49,7 +57,7 @@ class DataView(QWidget):
     @pyqtSlot(dict)
     def add_event(self, event):
         self.model.add_data(event)
-
+        self.update_scatter_view()
         return
         file = "random.csv"
         df = pandas.DataFrame(self.model.all_data())
@@ -75,11 +83,18 @@ class DataView(QWidget):
             par = event_str + " " + dv_msg
             writer.writerows([[], [par]])
 
+    def update_scatter_view(self):
+        all_data = self.model.all_data()
+        for event in all_data:
+            self.xdata.append(event["case_id"])
+            self.ydata.append(event["NASS_dv"])
+
+        self.ax.clear()
+        self.ax.scatter(self.xdata, self.ydata)
+        self.canvas.draw()
+
     def scrape_complete(self):
         if not len(self.model.data_list):
             self.ui.summaryEdit.append("Scrape complete. No data found.")
         else:
             self.ui.summaryEdit.append("Scrape complete.")
-
-    def update_scatter_view(self):
-        pass
