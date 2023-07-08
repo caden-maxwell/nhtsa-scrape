@@ -3,14 +3,14 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool, Qt, QTimer
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, Qt
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import QWidget
 
-import pandas
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 from app.models import ProfileEvents
-from app.scrape import ScatterplotWorker
 from app.ui.DataView_ui import Ui_DataView
 
 
@@ -28,15 +28,15 @@ class DataView(QWidget):
 
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
-        self.ui.tabWidget.currentChanged.connect(self.update_scatter_view)
 
-        self.resize_timer = QTimer()
-        self.resize_timer.setSingleShot(True)
-        self.resize_timer.timeout.connect(self.update_scatter_view)
-
-        self.threads = QThreadPool()
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
+
+        # Create figure/canvas with matplotlib
+        self.figure = Figure()
+        self.canvas = FigureCanvas(self.figure)
+
+        self.update_scatter_view()
 
     def showEvent(self, event):
         self.model.refresh_data()
@@ -50,10 +50,7 @@ class DataView(QWidget):
     def add_event(self, event):
         self.model.add_data(event)
 
-        scatter_worker = ScatterplotWorker(self.model.all_data(), self.data_dir)
-        scatter_worker.signals.finished.connect(self.update_scatter_view)
-        self.threads.start(scatter_worker)
-
+        return
         file = "random.csv"
         df = pandas.DataFrame(self.model.all_data())
         df.to_csv(self.data_dir / file, index=False)
@@ -85,24 +82,4 @@ class DataView(QWidget):
             self.ui.summaryEdit.append("Scrape complete.")
 
     def update_scatter_view(self):
-        caseid_path = self.data_dir / "NASS_Analysis.png"
-        pixmap = QPixmap()
-        if caseid_path.exists():
-            pixmap.load(str(caseid_path))
-            PIXMAP_SCALE = 3
-            pixmap.setDevicePixelRatio(PIXMAP_SCALE)
-            width = self.ui.scatterTab.size().width() * PIXMAP_SCALE
-            height = self.ui.scatterTab.size().height() * PIXMAP_SCALE
-            pixmap = pixmap.scaled(
-                width,
-                height,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-
-        self.ui.scatterLabel.setPixmap(pixmap)
-
-    def resizeEvent(self, event):
-        self.resize_timer.stop()
-        self.resize_timer.start(50)
-        return super().resizeEvent(event)
+        pass

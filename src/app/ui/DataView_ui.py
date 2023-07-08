@@ -16,6 +16,7 @@ class Ui_DataView(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(DataView)
         self.verticalLayout.setObjectName("verticalLayout")
         self.tabWidget = QtWidgets.QTabWidget(parent=DataView)
+        self.tabWidget.setTabShape(QtWidgets.QTabWidget.TabShape.Triangular)
         self.tabWidget.setObjectName("tabWidget")
         self.summaryTab = QtWidgets.QWidget()
         self.summaryTab.setObjectName("summaryTab")
@@ -61,19 +62,6 @@ class Ui_DataView(object):
         self.tabWidget.addTab(self.casesTab, "")
         self.scatterTab = QtWidgets.QWidget()
         self.scatterTab.setObjectName("scatterTab")
-        self.gridLayout_3 = QtWidgets.QGridLayout(self.scatterTab)
-        self.gridLayout_3.setObjectName("gridLayout_3")
-        self.scatterLabel = QtWidgets.QLabel(parent=self.scatterTab)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored
-        )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.scatterLabel.sizePolicy().hasHeightForWidth())
-        self.scatterLabel.setSizePolicy(sizePolicy)
-        self.scatterLabel.setText("")
-        self.scatterLabel.setObjectName("scatterLabel")
-        self.gridLayout_3.addWidget(self.scatterLabel, 0, 0, 1, 1)
         self.tabWidget.addTab(self.scatterTab, "")
         self.dataTab = QtWidgets.QWidget()
         self.dataTab.setObjectName("dataTab")
@@ -86,7 +74,7 @@ class Ui_DataView(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
-        self.tabWidget.setCurrentIndex(2)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):
