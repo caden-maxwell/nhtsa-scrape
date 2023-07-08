@@ -32,9 +32,9 @@ class ScatterplotWorker(QRunnable):
         data_frame = data_frame[["case_id", "c_bar", "NASS_dv", "NASS_vc", "TOT_dv"]]
         data_frame = data_frame.apply(pandas.to_numeric, errors="coerce")
 
-        # dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(20,12))
+        # dv_plot_e = dfn.plot.scatter(x="c_bar", y="TOT_dv", c='r',figsize=(16,12))
         dv_plot = data_frame.plot.scatter(
-            x="c_bar", y="NASS_dv", c="r", figsize=(20, 12)
+            x="c_bar", y="NASS_dv", c="r", figsize=(16, 12)
         )
 
         fit = numpy.polyfit(data_frame.c_bar, data_frame.NASS_dv, 1)
