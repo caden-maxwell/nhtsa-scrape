@@ -88,8 +88,9 @@ class DataView(QWidget):
     def scrape_complete(self):
         if not len(self.model.data_list):
             self.ui.summaryEdit.append("Scrape complete. No data found.")
-            return
-
+        else:
+            self.ui.summaryEdit.append("Scrape complete.")
+    
     def update_scatter_view(self):
         caseid_path = self.data_dir / "NASS_Analysis.png"
         pixmap = QPixmap()
