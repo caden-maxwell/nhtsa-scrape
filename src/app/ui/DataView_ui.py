@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'c:\Users\aweso\projects\nhtsa-scrape\src\app\ui\DataView.ui'
+# Form implementation generated from reading ui file 'c:\Users\Caden\Desktop\nhtsa-scrape\src\app\ui\DataView.ui'
 #
 # Created by: PyQt6 UI code generator 6.5.1
 #
@@ -15,17 +15,6 @@ class Ui_DataView(object):
         DataView.resize(1024, 576)
         self.verticalLayout = QtWidgets.QVBoxLayout(DataView)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.topHLayout = QtWidgets.QHBoxLayout()
-        self.topHLayout.setObjectName("topHLayout")
-        self.exitBtn = QtWidgets.QPushButton(parent=DataView)
-        self.exitBtn.setObjectName("exitBtn")
-        self.topHLayout.addWidget(self.exitBtn)
-        self.mainTitle = QtWidgets.QLabel(parent=DataView)
-        self.mainTitle.setObjectName("mainTitle")
-        self.topHLayout.addWidget(self.mainTitle)
-        self.topHLayout.setStretch(0, 1)
-        self.topHLayout.setStretch(1, 4)
-        self.verticalLayout.addLayout(self.topHLayout)
         self.tabWidget = QtWidgets.QTabWidget(parent=DataView)
         self.tabWidget.setObjectName("tabWidget")
         self.summaryTab = QtWidgets.QWidget()
@@ -33,10 +22,7 @@ class Ui_DataView(object):
         self.gridLayout = QtWidgets.QGridLayout(self.summaryTab)
         self.gridLayout.setObjectName("gridLayout")
         self.summaryLabel = QtWidgets.QLabel(parent=self.summaryTab)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Preferred,
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.summaryLabel.sizePolicy().hasHeightForWidth())
@@ -57,9 +43,7 @@ class Ui_DataView(object):
         self.eventViewLayout = QtWidgets.QGridLayout()
         self.eventViewLayout.setObjectName("eventViewLayout")
         self.eventLabel = QtWidgets.QLabel(parent=self.casesTab)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.eventLabel.sizePolicy().hasHeightForWidth())
@@ -75,24 +59,14 @@ class Ui_DataView(object):
         self.gridLayout_3 = QtWidgets.QGridLayout(self.scatterTab)
         self.gridLayout_3.setObjectName("gridLayout_3")
         self.scatterLabel = QtWidgets.QLabel(parent=self.scatterTab)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.scatterLabel.sizePolicy().hasHeightForWidth())
         self.scatterLabel.setSizePolicy(sizePolicy)
         self.scatterLabel.setText("")
-        self.scatterLabel.setScaledContents(False)
         self.scatterLabel.setObjectName("scatterLabel")
-        self.gridLayout_3.addWidget(
-            self.scatterLabel,
-            0,
-            0,
-            1,
-            1,
-            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
-        )
+        self.gridLayout_3.addWidget(self.scatterLabel, 0, 0, 1, 1)
         self.tabWidget.addTab(self.scatterTab, "")
         self.dataTab = QtWidgets.QWidget()
         self.dataTab.setObjectName("dataTab")
@@ -105,26 +79,15 @@ class Ui_DataView(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(2)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):
         _translate = QtCore.QCoreApplication.translate
         DataView.setWindowTitle(_translate("DataView", "Form"))
-        self.exitBtn.setText(_translate("DataView", "Exit"))
-        self.mainTitle.setText(_translate("DataView", "Data Viewer"))
         self.summaryLabel.setText(_translate("DataView", "Some title"))
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.summaryTab), _translate("DataView", "Summary")
-        )
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.summaryTab), _translate("DataView", "Summary"))
         self.eventLabel.setText(_translate("DataView", "Event goes here"))
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
-        )
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.scatterTab),
-            _translate("DataView", "Scatterplot"),
-        )
-        self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data Table")
-        )
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scatterTab), _translate("DataView", "Scatterplot"))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data Table"))

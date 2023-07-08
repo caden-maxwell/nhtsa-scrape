@@ -15,27 +15,9 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QHBoxLayout" name="topHLayout" stretch="1,4">
-     <item>
-      <widget class="QPushButton" name="exitBtn">
-       <property name="text">
-        <string>Exit</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="mainTitle">
-       <property name="text">
-        <string>Data Viewer</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="summaryTab">
       <attribute name="title">
@@ -92,7 +74,7 @@
        <string>Scatterplot</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+       <item row="0" column="0">
         <widget class="QLabel" name="scatterLabel">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
@@ -102,9 +84,6 @@
          </property>
          <property name="text">
           <string/>
-         </property>
-         <property name="scaledContents">
-          <bool>false</bool>
          </property>
         </widget>
        </item>
