@@ -5,13 +5,12 @@ from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool, Qt, QTimer
 from PyQt6.QtGui import QPixmap
-from PyQt6.QtWidgets import QWidget, QDialog
+from PyQt6.QtWidgets import QWidget
 
 import pandas
 
 from app.models import ProfileEvents
 from app.scrape import ScatterplotWorker
-from app.ui.ExitDataViewDialog_ui import Ui_ExitDialog
 from app.ui.DataView_ui import Ui_DataView
 
 
@@ -27,7 +26,6 @@ class DataView(QWidget):
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
-        self.ui.exitBtn.clicked.connect(self.handle_exit_button_clicked)
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
         self.ui.tabWidget.currentChanged.connect(self.update_scatter_view)
@@ -44,11 +42,6 @@ class DataView(QWidget):
         self.model.refresh_data()
         self.ui.listView.clearSelection()
         return super().showEvent(event)
-
-    def handle_exit_button_clicked(self):
-        self.exit_dialog_controller = ExitDataViewDialog()
-        self.exit_dialog_controller.exec()
-        self.exited.emit()
 
     def open_item_details(self, index):
         self.ui.eventLabel.setText(f"Index selected: {index.row()}")
@@ -113,31 +106,3 @@ class DataView(QWidget):
         self.resize_timer.stop()
         self.resize_timer.start(50)
         return super().resizeEvent(event)
-
-
-class ExitDataViewDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-
-        self.ui = Ui_ExitDialog()
-        self.ui.setupUi(self)
-
-        self.logger = logging.getLogger(__name__)
-
-        self.ui.buttonBox.accepted.connect(self.handle_accepted)
-        self.ui.buttonBox.button(
-            self.ui.buttonBox.StandardButton.Discard
-        ).clicked.connect(self.handle_rejected)
-
-    def handle_accepted(self):
-        ### TODO: Add save logic ###
-        profile_name = self.ui.profileNameEdit.text()
-        self.logger.info(
-            f"User saved changes to profile '{profile_name}' and exited data viewer."
-        )
-        self.close()
-
-    def handle_rejected(self):
-        ### TODO: Add discard logic ###
-        self.logger.info("User discarded changes and exited data viewer.")
-        self.close()
