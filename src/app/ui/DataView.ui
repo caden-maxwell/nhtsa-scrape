@@ -17,10 +17,7 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="tabShape">
-      <enum>QTabWidget::Triangular</enum>
-     </property>
-     <property name="currentIndex">
-      <number>0</number>
+      <enum>QTabWidget::Rounded</enum>
      </property>
      <widget class="QWidget" name="summaryTab">
       <attribute name="title">
