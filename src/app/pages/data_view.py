@@ -91,7 +91,9 @@ class DataView(QWidget):
         self.ax.clear()
 
         all_data = self.model.all_data()
+        case_ids = []
         for event in all_data:
+            case_ids.append(event["case_id"])
             self.xdata.append(event["c_bar"])
             self.y1data.append(event["NASS_dv"])
             self.y2data.append(event["TOT_dv"])
@@ -124,27 +126,24 @@ class DataView(QWidget):
         )
         leg.set_draggable(True)
 
-        for i, label in enumerate(data_frame["case_id"]):
-            plt.text(data_frame.c_bar[i], data_frame.NASS_dv[i], label)
+        for i, case_id in enumerate(case_ids):
+            self.ax.text(self.xdata[i], self.y1data[i], case_id, fontsize=8)
 
-        # for i, label in enumerate(df.index):
-        #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
-
-        # # TOT_dv plot and fit
+        # TOT_dv plot and fit
         # self.ax.scatter(self.xdata, self.y2data, c="b", s=10)
 
-        # coeffs_e = numpy.polyfit(self.xdata, self.y2data, 1)
-        # polynomial_e = numpy.poly1d(coeffs_e)
+        coeffs_e = numpy.polyfit(self.xdata, self.y2data, 1)
+        polynomial_e = numpy.poly1d(coeffs_e)
 
-        # x_fit_e = numpy.linspace(min(self.xdata), max(self.xdata))
-        # y_fit_e = polynomial_e(x_fit_e)
+        x_fit_e = numpy.linspace(min(self.xdata), max(self.xdata))
+        y_fit_e = polynomial_e(x_fit_e)
 
         # self.ax.plot(x_fit_e, y_fit_e, color='red')
 
-        # y_pred_e = polynomial_e(self.xdata)
-        # ssr_e = numpy.sum((y_pred_e - numpy.mean(self.y2data)) ** 2)
-        # sst_e = numpy.sum((self.y2data - numpy.mean(self.y2data)) ** 2)
-        # r_squared_e = ssr_e / sst_e
+        y_pred_e = polynomial_e(self.xdata)
+        ssr_e = numpy.sum((y_pred_e - numpy.mean(self.y2data)) ** 2)
+        sst_e = numpy.sum((self.y2data - numpy.mean(self.y2data)) ** 2)
+        r_squared_e = ssr_e / sst_e
 
         # leg_e = self.ax.legend(
         #     [
@@ -155,16 +154,18 @@ class DataView(QWidget):
         # )
         # leg_e.set_draggable(True)
 
-        self.ax.set_xlabel("Crush (inches)")
-        self.ax.set_ylabel("Change in Velocity (mph)")
+        # for i, label in enumerate(df.index):
+        #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
+
+        self.ax.set_xlabel("Crush (inches)", fontsize=12)
+        self.ax.set_ylabel("Change in Velocity (mph)", fontsize=12)
 
         self.canvas.draw()
 
         crush_est = numpy.array([0, 1.0])
-        # print(predict(crush_est))
-        # print(predict_e(crush_est))
+        print(polynomial(crush_est))
+        print(polynomial_e(crush_est))
         # print(df)
-
 
     def scrape_complete(self):
         if not len(self.model.data_list):
