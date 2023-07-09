@@ -172,3 +172,6 @@ class DataView(QWidget):
             self.ui.summaryEdit.append("Scrape complete. No data found.")
         else:
             self.ui.summaryEdit.append("Scrape complete.")
+
+    ### TODO: Add ability to toggle Total_dv data on scatterplot
+    ### TODO: Add ability to toggle case_id labels on scatterplot
