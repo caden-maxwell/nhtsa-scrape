@@ -6,13 +6,16 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QVBoxLayout
 
-import pandas
+import logging
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
+import numpy
 
 from app.models import ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
+
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
 
 
 class DataView(QWidget):
@@ -34,7 +37,7 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.figure = Figure()
+        self.figure = Figure(figsize=(16, 12), dpi=100)
         self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
 
@@ -47,7 +50,8 @@ class DataView(QWidget):
         self.ui.scatterTab.setLayout(layout)
 
         self.xdata = []
-        self.ydata = []
+        self.y1data = []
+        self.y2data = []
 
         self.update_scatter_view()
 
@@ -84,14 +88,83 @@ class DataView(QWidget):
             writer.writerows([[], [par]])
 
     def update_scatter_view(self):
+        self.ax.clear()
+
         all_data = self.model.all_data()
         for event in all_data:
-            self.xdata.append(event["case_id"])
-            self.ydata.append(event["NASS_dv"])
+            self.xdata.append(event["c_bar"])
+            self.y1data.append(event["NASS_dv"])
+            self.y2data.append(event["TOT_dv"])
 
-        self.ax.clear()
-        self.ax.scatter(self.xdata, self.ydata)
+        if len(self.xdata) < 2:
+            self.canvas.draw()
+            return
+
+        # NASS_dv plot, fit, and r^2
+        self.ax.scatter(self.xdata, self.y1data, c="r", s=10)
+
+        coeffs = numpy.polyfit(self.xdata, self.y1data, 1)
+        polynomial = numpy.poly1d(coeffs)
+
+        x_fit = numpy.linspace(min(self.xdata), max(self.xdata))
+        y_fit = polynomial(x_fit)
+
+        self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=1)
+
+        y_pred = polynomial(self.xdata)
+        ssr = numpy.sum((y_pred - numpy.mean(self.y1data)) ** 2)
+        sst = numpy.sum((self.y1data - numpy.mean(self.y1data)) ** 2)
+        r_squared = ssr / sst
+
+        leg = self.ax.legend(
+            [
+                f"NASS, y = {str(polynomial).strip()}\nR-squared = {r_squared:.2f}",
+            ],
+            loc="upper left",
+        )
+        leg.set_draggable(True)
+
+        for i, label in enumerate(data_frame["case_id"]):
+            plt.text(data_frame.c_bar[i], data_frame.NASS_dv[i], label)
+
+        # for i, label in enumerate(df.index):
+        #    plt.text(dfn.c_bar[i], dfn.TOT_dv[i],label)
+
+        # # TOT_dv plot and fit
+        # self.ax.scatter(self.xdata, self.y2data, c="b", s=10)
+
+        # coeffs_e = numpy.polyfit(self.xdata, self.y2data, 1)
+        # polynomial_e = numpy.poly1d(coeffs_e)
+
+        # x_fit_e = numpy.linspace(min(self.xdata), max(self.xdata))
+        # y_fit_e = polynomial_e(x_fit_e)
+
+        # self.ax.plot(x_fit_e, y_fit_e, color='red')
+
+        # y_pred_e = polynomial_e(self.xdata)
+        # ssr_e = numpy.sum((y_pred_e - numpy.mean(self.y2data)) ** 2)
+        # sst_e = numpy.sum((self.y2data - numpy.mean(self.y2data)) ** 2)
+        # r_squared_e = ssr_e / sst_e
+
+        # leg_e = self.ax.legend(
+        #     [
+        #         f"NASS, y = {str(polynomial).strip()}\nR-squared = {r_squared:.2f}",
+        #         f"TOT, y = {str(polynomial_e).strip()}\nR-squared = {r_squared_e:.2f}",
+        #     ],
+        #     loc="upper left",
+        # )
+        # leg_e.set_draggable(True)
+
+        self.ax.set_xlabel("Crush (inches)")
+        self.ax.set_ylabel("Change in Velocity (mph)")
+
         self.canvas.draw()
+
+        crush_est = numpy.array([0, 1.0])
+        # print(predict(crush_est))
+        # print(predict_e(crush_est))
+        # print(df)
+
 
     def scrape_complete(self):
         if not len(self.model.data_list):
