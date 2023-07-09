@@ -16,7 +16,7 @@ class Ui_DataView(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(DataView)
         self.verticalLayout.setObjectName("verticalLayout")
         self.tabWidget = QtWidgets.QTabWidget(parent=DataView)
-        self.tabWidget.setTabShape(QtWidgets.QTabWidget.TabShape.Triangular)
+        self.tabWidget.setTabShape(QtWidgets.QTabWidget.TabShape.Rounded)
         self.tabWidget.setObjectName("tabWidget")
         self.summaryTab = QtWidgets.QWidget()
         self.summaryTab.setObjectName("summaryTab")
@@ -74,7 +74,6 @@ class Ui_DataView(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
-        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):
