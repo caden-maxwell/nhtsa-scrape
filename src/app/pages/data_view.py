@@ -38,6 +38,10 @@ class DataView(QWidget):
 
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
+        self.ui.nassDataBtn.clicked.connect(self.update_nass_data)
+        self.ui.nassLabelBtn.clicked.connect(self.update_nass_labels)
+        self.ui.totalDataBtn.clicked.connect(self.update_tot_data)
+        self.ui.totalLabelBtn.clicked.connect(self.update_tot_labels)
 
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
@@ -50,7 +54,39 @@ class DataView(QWidget):
         self.ui.scatterLayout.addWidget(toolbar)
         self.ui.scatterLayout.addWidget(self.canvas)
 
+        self.nass_plots = []
+        self.nass_labels = []
+        self.tot_plots = []
+        self.tot_labels = []
         self.update_scatter_view()
+    
+    def update_nass_data(self):
+        checked = self.ui.nassDataBtn.isChecked()
+        for plot in self.nass_plots:
+            plot.set_visible(checked)
+        self.canvas.draw()
+        self.ui.nassLabelBtn.setEnabled(checked)
+        self.update_nass_labels()
+        
+    def update_nass_labels(self):
+        visible = self.ui.nassLabelBtn.isChecked() and self.ui.nassLabelBtn.isEnabled()
+        for label in self.nass_labels:
+            label.set_visible(visible)
+        self.canvas.draw()
+
+    def update_tot_data(self):
+        checked = self.ui.totalDataBtn.isChecked()
+        for plot in self.tot_plots:
+            plot.set_visible(checked)
+        self.canvas.draw()
+        self.ui.totalLabelBtn.setEnabled(checked)
+        self.update_tot_labels()
+
+    def update_tot_labels(self):
+        visible = self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
+        for label in self.tot_labels:
+            label.set_visible(visible)
+        self.canvas.draw()
 
     def open_item_details(self, index):
         self.ui.eventLabel.setText(f"Index selected: {index.row()}")
@@ -101,16 +137,16 @@ class DataView(QWidget):
             self.canvas.draw()
             return
 
-        # NASS_dv plot and fit
-        self.ax.scatter(xdata, y1data, c="darkblue", s=10)
-
+        # NASS_dv
         coeffs = numpy.polyfit(xdata, y1data, 1)
         polynomial = numpy.poly1d(coeffs)
 
         x_fit = numpy.linspace(min(xdata), max(xdata))
         y_fit = polynomial(x_fit)
 
-        self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=2)
+        scatter_nass = self.ax.scatter(xdata, y1data, c="darkblue", s=10)
+        reg_nass = self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=2)[0]
+        self.nass_plots = [scatter_nass, reg_nass]
 
         # NASS_dv R^2 calculation
         y_pred = polynomial(xdata)
@@ -126,42 +162,48 @@ class DataView(QWidget):
             loc="upper left",
         ).set_draggable(True)
 
-        # TOT_dv plot and fit
-        self.ax.scatter(xdata, y2data, c="red", s=10)
-
+        # TOT_dv
         coeffs_e = numpy.polyfit(xdata, y2data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
 
         x_fit_e = numpy.linspace(min(xdata), max(xdata))
         y_fit_e = polynomial_e(x_fit_e)
 
-        self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)
+        scatter_tot = self.ax.scatter(xdata, y2data, c="red", s=10)
+        reg_tot = self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)[0]
+        self.tot_plots = [scatter_tot, reg_tot]
 
         y_pred_e = polynomial_e(xdata)
         ssr_e = numpy.sum((y_pred_e - numpy.mean(y2data)) ** 2)
         sst_e = numpy.sum((y2data - numpy.mean(y2data)) ** 2)
         r_squared_e = ssr_e / sst_e
 
-        leg_e = self.ax.legend(
+        self.ax.legend(
             [
                 f"NASS, $y = {str(polynomial).strip()}$\n$R^2= {r_squared:.2f}$",
                 f"TOT, $y = {str(polynomial_e).strip()}$\n$R^2= {r_squared_e:.2f}$",
             ],
             loc="upper left",
-        )
-        leg_e.set_draggable(True)
+        ).set_draggable(True)
 
         # Case ID labels
+        self.nass_labels = []
+        self.tot_labels = []
         for i, case_id in enumerate(case_ids):
-            ann = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=8)
-            ann.draggable(True)
-            ann1 = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=8)
-            ann1.draggable(True)
+            nass_label = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=8)
+            nass_label.draggable(True)
+            self.nass_labels.append(nass_label)
+            tot_label = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=8)
+            tot_label.draggable(True)
+            self.tot_labels.append(tot_label)
 
         self.ax.set_xlabel("Crush (inches)", fontsize=20)
         self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
 
         self.canvas.draw()
+
+        self.update_nass_data()
+        self.update_tot_data()
 
         crush_est = numpy.array([0, 1.0])
         print(polynomial(crush_est))
