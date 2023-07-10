@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_DataView(object):
     def setupUi(self, DataView):
         DataView.setObjectName("DataView")
-        DataView.resize(1024, 576)
+        DataView.resize(800, 600)
         self.verticalLayout = QtWidgets.QVBoxLayout(DataView)
         self.verticalLayout.setObjectName("verticalLayout")
         self.tabWidget = QtWidgets.QTabWidget(parent=DataView)
@@ -62,6 +62,30 @@ class Ui_DataView(object):
         self.tabWidget.addTab(self.casesTab, "")
         self.scatterTab = QtWidgets.QWidget()
         self.scatterTab.setObjectName("scatterTab")
+        self.gridLayout_5 = QtWidgets.QGridLayout(self.scatterTab)
+        self.gridLayout_5.setObjectName("gridLayout_5")
+        self.nassDataBtn = QtWidgets.QPushButton(parent=self.scatterTab)
+        self.nassDataBtn.setCheckable(True)
+        self.nassDataBtn.setChecked(True)
+        self.nassDataBtn.setObjectName("nassDataBtn")
+        self.gridLayout_5.addWidget(self.nassDataBtn, 1, 3, 1, 1)
+        self.totalDataBtn = QtWidgets.QPushButton(parent=self.scatterTab)
+        self.totalDataBtn.setCheckable(True)
+        self.totalDataBtn.setObjectName("totalDataBtn")
+        self.gridLayout_5.addWidget(self.totalDataBtn, 1, 5, 1, 1)
+        self.nassLabelBtn = QtWidgets.QPushButton(parent=self.scatterTab)
+        self.nassLabelBtn.setCheckable(True)
+        self.nassLabelBtn.setChecked(True)
+        self.nassLabelBtn.setObjectName("nassLabelBtn")
+        self.gridLayout_5.addWidget(self.nassLabelBtn, 1, 4, 1, 1)
+        self.totalLabelBtn = QtWidgets.QPushButton(parent=self.scatterTab)
+        self.totalLabelBtn.setEnabled(False)
+        self.totalLabelBtn.setCheckable(True)
+        self.totalLabelBtn.setObjectName("totalLabelBtn")
+        self.gridLayout_5.addWidget(self.totalLabelBtn, 1, 6, 1, 1)
+        self.scatterLayout = QtWidgets.QVBoxLayout()
+        self.scatterLayout.setObjectName("scatterLayout")
+        self.gridLayout_5.addLayout(self.scatterLayout, 0, 3, 1, 4)
         self.tabWidget.addTab(self.scatterTab, "")
         self.dataTab = QtWidgets.QWidget()
         self.dataTab.setObjectName("dataTab")
@@ -74,6 +98,7 @@ class Ui_DataView(object):
         self.verticalLayout.addWidget(self.tabWidget)
 
         self.retranslateUi(DataView)
+        self.tabWidget.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(DataView)
 
     def retranslateUi(self, DataView):
@@ -87,6 +112,10 @@ class Ui_DataView(object):
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
         )
+        self.nassDataBtn.setText(_translate("DataView", "NASS_dv"))
+        self.totalDataBtn.setText(_translate("DataView", "TOT_dv"))
+        self.nassLabelBtn.setText(_translate("DataView", "NASS_dv Case Labels"))
+        self.totalLabelBtn.setText(_translate("DataView", "TOT_dv Case Labels"))
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.scatterTab),
             _translate("DataView", "Scatterplot"),
