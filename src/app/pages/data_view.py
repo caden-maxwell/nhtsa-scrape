@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QWidget, QGridLayout, QCheckBox
+from PyQt6.QtWidgets import QWidget
 
 import logging
 from matplotlib import rcParams
@@ -20,7 +20,7 @@ logging.getLogger("matplotlib").setLevel(logging.WARNING)
 rcParams["savefig.dpi"] = 300
 rcParams["savefig.bbox"] = "tight"
 rcParams["savefig.pad_inches"] = 0.75
-rcParams["savefig.format"] = "svg"
+rcParams["savefig.format"] = "png"
 
 
 class DataView(QWidget):
