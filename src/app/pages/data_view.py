@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QCheckBox
+from PyQt6.QtWidgets import QWidget, QGridLayout, QCheckBox
 
 import logging
 from matplotlib import rcParams
@@ -19,7 +19,8 @@ from app.ui.DataView_ui import Ui_DataView
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 rcParams["savefig.dpi"] = 300
 rcParams["savefig.bbox"] = "tight"
-rcParams["savefig.pad_inches"] = 0.5
+rcParams["savefig.pad_inches"] = 0.75
+rcParams["savefig.format"] = "svg"
 
 
 class DataView(QWidget):
@@ -27,7 +28,6 @@ class DataView(QWidget):
 
     def __init__(self, profile_id):
         super().__init__()
-
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
@@ -42,22 +42,13 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.figure = Figure(tight_layout=True)
+        self.figure = Figure(tight_layout=True, dpi=60)
         self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
         toolbar = NavigationToolbar(self.canvas, self)
 
-        layout = QVBoxLayout()
-        layout.addWidget(toolbar)
-        layout.addWidget(self.canvas)
-
-        nass_on = QCheckBox("NASS_dv")
-        nass_on.setChecked(True)
-
-        tot_on = QCheckBox("TOT_dv")
-        tot_on.setChecked(False)
-
-        self.ui.scatterTab.setLayout(layout)
+        self.ui.scatterLayout.addWidget(toolbar)
+        self.ui.scatterLayout.addWidget(self.canvas)
 
         self.update_scatter_view()
 
@@ -111,7 +102,7 @@ class DataView(QWidget):
             return
 
         # NASS_dv plot and fit
-        self.ax.scatter(xdata, y1data, c="darkblue", s=1)
+        self.ax.scatter(xdata, y1data, c="darkblue", s=10)
 
         coeffs = numpy.polyfit(xdata, y1data, 1)
         polynomial = numpy.poly1d(coeffs)
@@ -119,7 +110,7 @@ class DataView(QWidget):
         x_fit = numpy.linspace(min(xdata), max(xdata))
         y_fit = polynomial(x_fit)
 
-        self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=1)[0]
+        self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=2)
 
         # NASS_dv R^2 calculation
         y_pred = polynomial(xdata)
@@ -136,7 +127,7 @@ class DataView(QWidget):
         ).set_draggable(True)
 
         # TOT_dv plot and fit
-        self.ax.scatter(xdata, y2data, c="red", s=1)
+        self.ax.scatter(xdata, y2data, c="red", s=10)
 
         coeffs_e = numpy.polyfit(xdata, y2data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
@@ -144,7 +135,7 @@ class DataView(QWidget):
         x_fit_e = numpy.linspace(min(xdata), max(xdata))
         y_fit_e = polynomial_e(x_fit_e)
 
-        self.ax.plot(x_fit_e, y_fit_e, color="red")[0]
+        self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)
 
         y_pred_e = polynomial_e(xdata)
         ssr_e = numpy.sum((y_pred_e - numpy.mean(y2data)) ** 2)
@@ -162,13 +153,13 @@ class DataView(QWidget):
 
         # Case ID labels
         for i, case_id in enumerate(case_ids):
-            ann = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=6)
+            ann = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=8)
             ann.draggable(True)
-            ann1 = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=6)
+            ann1 = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=8)
             ann1.draggable(True)
 
-        self.ax.set_xlabel("Crush (inches)", fontsize=14)
-        self.ax.set_ylabel("Change in Velocity (mph)", fontsize=14)
+        self.ax.set_xlabel("Crush (inches)", fontsize=20)
+        self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
 
         self.canvas.draw()
 
