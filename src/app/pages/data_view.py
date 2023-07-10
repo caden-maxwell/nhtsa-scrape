@@ -4,10 +4,10 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QIcon, QAction
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QCheckBox
 
 import logging
+from matplotlib import rcParams
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -17,6 +17,9 @@ from app.models import ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
+rcParams["savefig.dpi"] = 300
+rcParams["savefig.bbox"] = "tight"
+rcParams["savefig.pad_inches"] = 0.5
 
 
 class DataView(QWidget):
@@ -24,6 +27,7 @@ class DataView(QWidget):
 
     def __init__(self, profile_id):
         super().__init__()
+
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
@@ -38,37 +42,22 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "test").resolve()
         os.makedirs(self.data_dir, exist_ok=True)
 
-        self.figure = Figure()
+        self.figure = Figure(tight_layout=True)
         self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
-
         toolbar = NavigationToolbar(self.canvas, self)
-
-        icon_path = Path(__file__).parent.parent / "resources" / "toggle.png"
-        action = QAction(QIcon(str(icon_path)), "Toggles", self)
-
-        toolbar.insertAction(toolbar.actions()[8], action)
 
         layout = QVBoxLayout()
         layout.addWidget(toolbar)
         layout.addWidget(self.canvas)
 
+        nass_on = QCheckBox("NASS_dv")
+        nass_on.setChecked(True)
+
+        tot_on = QCheckBox("TOT_dv")
+        tot_on.setChecked(False)
+
         self.ui.scatterTab.setLayout(layout)
-
-        self.toggle_window = QWidget()
-        action.triggered.connect(self.toggle_window.show)
-
-        toggle_layout = QVBoxLayout()
-
-        self.nass_toggle = QCheckBox("NASS_dv")
-        self.nass_toggle.setChecked(True)
-        toggle_layout.addWidget(self.nass_toggle)
-
-        self.total_toggle = QCheckBox("TOT_dv")
-        self.total_toggle.setChecked(False)
-        toggle_layout.addWidget(QCheckBox("TOT_dv"))
-
-        self.toggle_window.setLayout(toggle_layout)
 
         self.update_scatter_view()
 
@@ -122,7 +111,7 @@ class DataView(QWidget):
             return
 
         # NASS_dv plot and fit
-        self.ax.scatter(xdata, y1data, c="darkblue", s=10)
+        self.ax.scatter(xdata, y1data, c="darkblue", s=1)
 
         coeffs = numpy.polyfit(xdata, y1data, 1)
         polynomial = numpy.poly1d(coeffs)
@@ -147,7 +136,7 @@ class DataView(QWidget):
         ).set_draggable(True)
 
         # TOT_dv plot and fit
-        self.ax.scatter(xdata, y2data, c="red", s=10)
+        self.ax.scatter(xdata, y2data, c="red", s=1)
 
         coeffs_e = numpy.polyfit(xdata, y2data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
@@ -173,9 +162,9 @@ class DataView(QWidget):
 
         # Case ID labels
         for i, case_id in enumerate(case_ids):
-            ann = self.ax.annotate(case_id, (xdata[i], y1data[i]))
+            ann = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=6)
             ann.draggable(True)
-            ann1 = self.ax.annotate(case_id, (xdata[i], y2data[i]))
+            ann1 = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=6)
             ann1.draggable(True)
 
         self.ax.set_xlabel("Crush (inches)", fontsize=14)
@@ -187,20 +176,6 @@ class DataView(QWidget):
         print(polynomial(crush_est))
         print(polynomial_e(crush_est))
         # print(df)
-
-    def toggle_nass_dv(self):
-        self.nass_label_button.setEnabled(self.nass_dv_button.isChecked())
-        self.update_scatter_view()
-
-    def toggle_nass_labels(self):
-        self.update_scatter_view()
-
-    def toggle_total_dv(self):
-        self.total_label_button.setEnabled(self.total_dv_button.isChecked())
-        self.update_scatter_view()
-
-    def toggle_total_labels(self):
-        self.update_scatter_view()
 
     def scrape_complete(self):
         if not len(self.model.data_list):
