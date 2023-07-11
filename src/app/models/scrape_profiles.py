@@ -11,7 +11,7 @@ class ScrapeProfiles(QAbstractListModel):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         try:
-            db_path = Path(__file__).parent / "db_saves.sqlite3"
+            db_path = Path(__file__).parent / "db.sqlite3"
             self.db = sqlite3.connect(db_path)
             self.cursor = self.db.cursor()
         except Error as e:
@@ -53,7 +53,7 @@ class ScrapeProfiles(QAbstractListModel):
             return self.data_list[index.row()]
         return None
 
-    def add_data(self, data: dict):
+    def add_profile(self, data: dict):
         try:
             name = data["name"]
             description = data["description"]
@@ -76,75 +76,76 @@ class ScrapeProfiles(QAbstractListModel):
         except (KeyError, sqlite3.Error) as e:
             self.logger.error(f"Error adding profile: {e}")
             return
-        self.refresh_data()
+        self.refresh_profiles()
         return self.cursor.lastrowid
 
-    def delete_data(self, index: QModelIndex):
+    def delete_profiles(self, indices: list[QModelIndex]):
         try:
-            data = self.data_list[index.row()]
-            profile_id = data[0]
+            for index in indices:
+                data = self.data_list[index.row()]
+                profile_id = data[0]
 
-            # Delete all case events that belong to this profile
-            # and are not referred to by another profile
-            self.cursor.execute(
-                """
-                SELECT case_id, event_num, vehicle_num
-                FROM scrape_profile_events
-                WHERE profile_id = ?;
-                """,
-                (profile_id,),
-            )
-            case_events = self.cursor.fetchall()
-            for case_event in case_events:
-                case_id, event_num, vehicle_num = case_event
+                # Delete all case events that belong to this profile
+                # and are not referred to by another profile
                 self.cursor.execute(
                     """
-                    SELECT COUNT(*)
+                    SELECT case_id, event_num, vehicle_num
                     FROM scrape_profile_events
-                    WHERE case_id = ?
-                        AND event_num = ?
-                        AND vehicle_num = ?
-                        AND profile_id != ?;
+                    WHERE profile_id = ?;
                     """,
-                    (case_id, event_num, vehicle_num, profile_id),
+                    (profile_id,),
                 )
-                count = self.cursor.fetchone()[0]
-
-                if count < 1:
+                case_events = self.cursor.fetchall()
+                for case_event in case_events:
+                    case_id, event_num, vehicle_num = case_event
                     self.cursor.execute(
                         """
-                        DELETE FROM case_events
+                        SELECT COUNT(*)
+                        FROM scrape_profile_events
                         WHERE case_id = ?
                             AND event_num = ?
-                            AND vehicle_num = ?;
+                            AND vehicle_num = ?
+                            AND profile_id != ?;
                         """,
-                        (case_id, event_num, vehicle_num),
+                        (case_id, event_num, vehicle_num, profile_id),
                     )
+                    count = self.cursor.fetchone()[0]
 
-            # Delete all scrape_profile_events belonging to this profile
-            # and the profile itself
-            self.cursor.execute(
-                """
-                DELETE FROM scrape_profile_events
-                WHERE profile_id = ?;
-                """,
-                (profile_id,),
-            )
-            self.cursor.execute(
-                """
-                DELETE FROM scrape_profiles
-                WHERE profile_id = ?
-                """,
-                (profile_id,),
-            )
-            self.db.commit()
-            self.logger.debug(f"Deleted profile: '{data[1]}'")
+                    if count < 1:
+                        self.cursor.execute(
+                            """
+                            DELETE FROM case_events
+                            WHERE case_id = ?
+                                AND event_num = ?
+                                AND vehicle_num = ?;
+                            """,
+                            (case_id, event_num, vehicle_num),
+                        )
+
+                # Delete all scrape_profile_events belonging to this profile
+                # and the profile itself
+                self.cursor.execute(
+                    """
+                    DELETE FROM scrape_profile_events
+                    WHERE profile_id = ?;
+                    """,
+                    (profile_id,),
+                )
+                self.cursor.execute(
+                    """
+                    DELETE FROM scrape_profiles
+                    WHERE profile_id = ?
+                    """,
+                    (profile_id,),
+                )
+                self.db.commit()
+                self.logger.debug(f"Deleted profile: '{data[1]}'")
         except (IndexError, sqlite3.Error) as e:
             self.logger.error(f"Error deleting profile: {e}")
             return
-        self.refresh_data()
+        self.refresh_profiles()
 
-    def refresh_data(self):
+    def refresh_profiles(self):
         try:
             self.cursor.execute("SELECT * FROM scrape_profiles")
             self.data_list = self.cursor.fetchall()

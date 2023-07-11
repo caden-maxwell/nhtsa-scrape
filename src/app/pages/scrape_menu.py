@@ -200,7 +200,7 @@ class ScrapeMenu(QWidget):
             "modified": int(time.time()),
         }
 
-        profile_id = ScrapeProfiles().add_data(new_profile)
+        profile_id = ScrapeProfiles().add_profile(new_profile)
         self.data_viewer = DataView(profile_id)
         self.data_viewer.show()
 

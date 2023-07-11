@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
 import logging
-from matplotlib import rcParams, style
+from matplotlib import style
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -17,10 +17,6 @@ from app.models import ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-rcParams["savefig.dpi"] = 300
-rcParams["savefig.bbox"] = "tight"
-rcParams["savefig.pad_inches"] = 0.75
-rcParams["savefig.format"] = "png"
 style.use("seaborn-deep")
 
 
@@ -32,11 +28,12 @@ class DataView(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
-        self.model.refresh_data()
+        self.model.refresh_events()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
+        # Set up list view and button connections
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
         self.ui.nassDataBtn.clicked.connect(self.update_nass_data)
@@ -44,14 +41,26 @@ class DataView(QWidget):
         self.ui.totalDataBtn.clicked.connect(self.update_tot_data)
         self.ui.totalLabelBtn.clicked.connect(self.update_tot_labels)
 
-        self.data_dir = (Path(__file__).parent.parent / "test").resolve()
-        os.makedirs(self.data_dir, exist_ok=True)
-
+        # Set up scatterplot
         self.figure = Figure(tight_layout=True, dpi=60)
         self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
-        toolbar = NavigationToolbar(self.canvas, self)
+        toolbar = CustomToolbar(self.canvas, self)
         toolbar.setStyleSheet("background-color: none;")
+
+        # Get a filename-safe string for the new directory
+        profile = self.model.profile
+        profile_name = "".join(
+            c if c.isalnum() else "_" for c in profile[1].replace(" ", "_")
+        )
+        self.data_dir = (Path(__file__).parent.parent / profile_name).resolve()
+
+        i = 1
+        while self.data_dir.exists():
+            self.data_dir = (
+                Path(__file__).parent.parent / f"{profile_name}({i})"
+            ).resolve()
+            i += 1
 
         self.ui.scatterLayout.addWidget(toolbar)
         self.ui.scatterLayout.addWidget(self.canvas)
@@ -63,6 +72,17 @@ class DataView(QWidget):
         self.tot_labels = []
         self.tot_legend = []
         self.update_scatter_view()
+
+    def save_figure(self):
+        os.makedirs(self.data_dir, exist_ok=True)
+        self.figure.savefig(
+            self.data_dir / "scatterplot.png",
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            pad_inches=0.75,
+        )
+        self.logger.info(f"Saved figure to {self.data_dir / 'scatterplot.png'}")
 
     def update_nass_data(self):
         checked = self.ui.nassDataBtn.isChecked()
@@ -119,11 +139,11 @@ class DataView(QWidget):
 
     @pyqtSlot(dict)
     def add_event(self, event):
-        self.model.add_data(event)
+        self.model.add_event(event)
         self.update_scatter_view()
         return
         file = "random.csv"
-        df = pandas.DataFrame(self.model.all_data())
+        df = pandas.DataFrame(self.model.all_events())
         df.to_csv(self.data_dir / file, index=False)
         with open(self.data_dir / file, "a") as f:
             writer = csv.writer(f)
@@ -153,7 +173,7 @@ class DataView(QWidget):
         y1data = []
         y2data = []
         case_ids = []
-        for event in self.model.all_data():
+        for event in self.model.all_events():
             xdata.append(event["c_bar"])
             y1data.append(event["NASS_dv"])
             y2data.append(event["TOT_dv"])
@@ -236,3 +256,12 @@ class DataView(QWidget):
             self.ui.summaryEdit.append("Scrape complete. No data found.")
         else:
             self.ui.summaryEdit.append("Scrape complete.")
+
+
+class CustomToolbar(NavigationToolbar):
+    def __init__(self, canvas, parent):
+        super().__init__(canvas, parent)
+        self.parent = parent
+
+    def save_figure(self, *args):
+        self.parent.save_figure()
