@@ -38,10 +38,18 @@ class DataView(QWidget):
         # Set up list view and button connections
         self.ui.listView.setModel(self.model)
         self.ui.listView.doubleClicked.connect(self.open_item_details)
-        self.ui.nassDataBtn.clicked.connect(self.update_nass_data)
-        self.ui.nassLabelBtn.clicked.connect(self.update_nass_labels)
-        self.ui.totalDataBtn.clicked.connect(self.update_tot_data)
-        self.ui.totalLabelBtn.clicked.connect(self.update_tot_labels)
+        self.ui.nassDataBtn.clicked.connect(
+            lambda: self.btn_update(self.update_nass_data)
+        )
+        self.ui.nassLabelBtn.clicked.connect(
+            lambda: self.btn_update(self.update_nass_labels)
+        )
+        self.ui.totalDataBtn.clicked.connect(
+            lambda: self.btn_update(self.update_tot_data)
+        )
+        self.ui.totalLabelBtn.clicked.connect(
+            lambda: self.btn_update(self.update_tot_labels)
+        )
 
         # Set up scatterplot
         self.figure = Figure(tight_layout=True, dpi=60)
@@ -91,11 +99,14 @@ class DataView(QWidget):
         )
         self.logger.info(f"Saved figure to {self.data_dir / 'scatterplot.png'}")
 
+    def btn_update(self, btn_func):
+        btn_func()
+        self.canvas.draw()
+
     def update_nass_data(self):
         checked = self.ui.nassDataBtn.isChecked()
         for plot in self.nass_plots:
             plot.set_visible(checked)
-        self.canvas.draw()
         self.ui.nassLabelBtn.setEnabled(checked)
 
         self.update_nass_labels()
@@ -105,13 +116,11 @@ class DataView(QWidget):
         visible = self.ui.nassLabelBtn.isChecked() and self.ui.nassLabelBtn.isEnabled()
         for label in self.nass_labels:
             label.set_visible(visible)
-        self.canvas.draw()
 
     def update_tot_data(self):
         checked = self.ui.totalDataBtn.isChecked()
         for plot in self.tot_plots:
             plot.set_visible(checked)
-        self.canvas.draw()
         self.ui.totalLabelBtn.setEnabled(checked)
 
         self.update_tot_labels()
@@ -123,10 +132,12 @@ class DataView(QWidget):
         )
         for label in self.tot_labels:
             label.set_visible(visible)
-        self.canvas.draw()
 
     def update_legend(self):
-        self.ax.get_legend().remove()
+        legend = self.ax.get_legend()
+        if not legend:
+            return
+        legend.remove()
         if self.ui.nassDataBtn.isChecked() and self.ui.totalDataBtn.isChecked():
             self.ax.legend(
                 self.nass_plots + self.tot_plots,
@@ -139,7 +150,6 @@ class DataView(QWidget):
             self.ax.legend(self.tot_plots, self.tot_legend, loc="upper left")
         else:
             self.ax.legend(loc="upper left").set_visible(False)
-        self.canvas.draw()
 
     def open_item_details(self, index):
         self.ui.eventLabel.setText(f"Index selected: {index.row()}")
@@ -248,15 +258,17 @@ class DataView(QWidget):
         self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
         self.ax.legend(self.nass_legend + self.tot_legend, loc="upper left")
 
-        self.canvas.draw()
-
         self.update_nass_data()
         self.update_tot_data()
+
+        self.canvas.draw()
 
         crush_est = numpy.array([0, 1.0])
         print(polynomial(crush_est))
         print(polynomial_e(crush_est))
-        # print(df)
+        print(f"{'Case ID':^12}{'c_bar':^10}{'NASS_dv':^10}{'TOT_dv':^10}")
+        for i, case_id in enumerate(case_ids):
+            print(f"{case_id:^12}{xdata[i]:^10.2f}{y1data[i]:^10.2f}{y2data[i]:^10.2f}")
 
     def scrape_complete(self):
         if not len(self.model.data_list):
