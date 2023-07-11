@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
 import logging
-from matplotlib import rcParams
+from matplotlib import rcParams, style
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -21,6 +21,7 @@ rcParams["savefig.dpi"] = 300
 rcParams["savefig.bbox"] = "tight"
 rcParams["savefig.pad_inches"] = 0.75
 rcParams["savefig.format"] = "png"
+style.use("seaborn-deep")
 
 
 class DataView(QWidget):
@@ -50,6 +51,7 @@ class DataView(QWidget):
         self.ax = self.figure.add_subplot(111)
         self.canvas = FigureCanvas(self.figure)
         toolbar = NavigationToolbar(self.canvas, self)
+        toolbar.setStyleSheet("background-color: none;")
 
         self.ui.scatterLayout.addWidget(toolbar)
         self.ui.scatterLayout.addWidget(self.canvas)
@@ -154,14 +156,6 @@ class DataView(QWidget):
         sst = numpy.sum((y1data - numpy.mean(y1data)) ** 2)
         r_squared = ssr / sst
 
-        self.ax.legend(
-            [
-                "NASS_dv",
-                f"$y = {str(polynomial).strip()}$\n$R^2$ = {r_squared:.2f}",
-            ],
-            loc="upper left",
-        ).set_draggable(True)
-
         # TOT_dv
         coeffs_e = numpy.polyfit(xdata, y2data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
@@ -181,7 +175,9 @@ class DataView(QWidget):
         self.ax.legend(
             [
                 f"NASS, $y = {str(polynomial).strip()}$\n$R^2= {r_squared:.2f}$",
+                None,
                 f"TOT, $y = {str(polynomial_e).strip()}$\n$R^2= {r_squared_e:.2f}$",
+                None,
             ],
             loc="upper left",
         ).set_draggable(True)
