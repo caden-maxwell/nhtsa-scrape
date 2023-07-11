@@ -58,18 +58,22 @@ class DataView(QWidget):
 
         self.nass_plots = []
         self.nass_labels = []
+        self.nass_legend = []
         self.tot_plots = []
         self.tot_labels = []
+        self.tot_legend = []
         self.update_scatter_view()
-    
+
     def update_nass_data(self):
         checked = self.ui.nassDataBtn.isChecked()
         for plot in self.nass_plots:
             plot.set_visible(checked)
         self.canvas.draw()
         self.ui.nassLabelBtn.setEnabled(checked)
+
         self.update_nass_labels()
-        
+        self.update_legend()
+
     def update_nass_labels(self):
         visible = self.ui.nassLabelBtn.isChecked() and self.ui.nassLabelBtn.isEnabled()
         for label in self.nass_labels:
@@ -82,12 +86,32 @@ class DataView(QWidget):
             plot.set_visible(checked)
         self.canvas.draw()
         self.ui.totalLabelBtn.setEnabled(checked)
+
         self.update_tot_labels()
+        self.update_legend()
 
     def update_tot_labels(self):
-        visible = self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
+        visible = (
+            self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
+        )
         for label in self.tot_labels:
             label.set_visible(visible)
+        self.canvas.draw()
+
+    def update_legend(self):
+        self.ax.get_legend().remove()
+        if self.ui.nassDataBtn.isChecked() and self.ui.totalDataBtn.isChecked():
+            self.ax.legend(
+                self.nass_plots + self.tot_plots,
+                self.nass_legend + self.tot_legend,
+                loc="upper left",
+            )
+        elif self.ui.nassDataBtn.isChecked():
+            self.ax.legend(self.nass_plots, self.nass_legend, loc="upper left")
+        elif self.ui.totalDataBtn.isChecked():
+            self.ax.legend(self.tot_plots, self.tot_legend, loc="upper left")
+        else:
+            self.ax.legend(loc="upper left").set_visible(False)
         self.canvas.draw()
 
     def open_item_details(self, index):
@@ -156,6 +180,11 @@ class DataView(QWidget):
         sst = numpy.sum((y1data - numpy.mean(y1data)) ** 2)
         r_squared = ssr / sst
 
+        self.nass_legend = [
+            f"NASS, $R^2= {r_squared:.2f}$",
+            f"$y = {str(polynomial).strip()}$",
+        ]
+
         # TOT_dv
         coeffs_e = numpy.polyfit(xdata, y2data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
@@ -172,15 +201,10 @@ class DataView(QWidget):
         sst_e = numpy.sum((y2data - numpy.mean(y2data)) ** 2)
         r_squared_e = ssr_e / sst_e
 
-        self.ax.legend(
-            [
-                f"NASS, $y = {str(polynomial).strip()}$\n$R^2= {r_squared:.2f}$",
-                None,
-                f"TOT, $y = {str(polynomial_e).strip()}$\n$R^2= {r_squared_e:.2f}$",
-                None,
-            ],
-            loc="upper left",
-        ).set_draggable(True)
+        self.tot_legend = [
+            f"TOT, $R^2= {r_squared_e:.2f}$",
+            f"$y = {str(polynomial_e).strip()}$",
+        ]
 
         # Case ID labels
         self.nass_labels = []
@@ -195,6 +219,7 @@ class DataView(QWidget):
 
         self.ax.set_xlabel("Crush (inches)", fontsize=20)
         self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
+        self.ax.legend(self.nass_legend + self.tot_legend, loc="upper left")
 
         self.canvas.draw()
 
