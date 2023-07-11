@@ -23,7 +23,10 @@ class Ui_DataView(object):
         self.gridLayout = QtWidgets.QGridLayout(self.summaryTab)
         self.gridLayout.setObjectName("gridLayout")
         self.summaryLabel = QtWidgets.QLabel(parent=self.summaryTab)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Preferred,
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.summaryLabel.sizePolicy().hasHeightForWidth())
@@ -44,7 +47,9 @@ class Ui_DataView(object):
         self.eventViewLayout = QtWidgets.QGridLayout()
         self.eventViewLayout.setObjectName("eventViewLayout")
         self.eventLabel = QtWidgets.QLabel(parent=self.casesTab)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.eventLabel.sizePolicy().hasHeightForWidth())
@@ -101,12 +106,21 @@ class Ui_DataView(object):
         _translate = QtCore.QCoreApplication.translate
         DataView.setWindowTitle(_translate("DataView", "Form"))
         self.summaryLabel.setText(_translate("DataView", "Some title"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.summaryTab), _translate("DataView", "Summary"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.summaryTab), _translate("DataView", "Summary")
+        )
         self.eventLabel.setText(_translate("DataView", "Event goes here"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.casesTab), _translate("DataView", "Cases")
+        )
         self.nassDataBtn.setText(_translate("DataView", "NASS_dv"))
         self.totalDataBtn.setText(_translate("DataView", "TOT_dv"))
         self.nassLabelBtn.setText(_translate("DataView", "NASS_dv Case Labels"))
         self.totalLabelBtn.setText(_translate("DataView", "TOT_dv Case Labels"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.scatterTab), _translate("DataView", "Scatterplot"))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data Table"))
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.scatterTab),
+            _translate("DataView", "Scatterplot"),
+        )
+        self.tabWidget.setTabText(
+            self.tabWidget.indexOf(self.dataTab), _translate("DataView", "Data Table")
+        )
