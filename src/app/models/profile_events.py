@@ -110,7 +110,7 @@ class ProfileEvents(QAbstractListModel):
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             data = self.data_list[index.row()]
-            return f"Case: {data[0]}, Vehicle: {data[2]}, Event: {data[1]}"
+            return f"Case: {data[0]}, Vehicle: {data[1]}, Event: {data[2]}"
         if role == Qt.ItemDataRole.UserRole:
             return self.data_list[index.row()]
         return None
