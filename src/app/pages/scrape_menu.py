@@ -1,6 +1,6 @@
 import json
 import logging
-import time
+from datetime import datetime
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
 from PyQt6.QtWidgets import QWidget
@@ -185,19 +185,30 @@ class ScrapeMenu(QWidget):
         )
         self.scrape_engine.completed.connect(self.handle_scrape_complete)
 
-        make = self.ui.makeCombo.currentText().upper()
-        model = self.ui.modelCombo.currentText().upper()
+        make = (
+            make
+            if (make := self.ui.makeCombo.currentText().upper()) != "ALL"
+            else "ANY MAKE"
+        )
+        model = (
+            model
+            if (model := self.ui.modelCombo.currentText().upper()) != "ALL"
+            else "ANY MODEL"
+        )
         start_year = self.ui.startYearCombo.currentText().upper()
         end_year = self.ui.endYearCombo.currentText().upper()
-        p_dmg = self.ui.pDmgCombo.currentText().upper()
+        p_dmg = dmg if (dmg := self.ui.pDmgCombo.currentText().upper()) != "ALL" else ""
 
-        name = f"{start_year}_{end_year}_{make}_{model}_{p_dmg}"
-        name = name.replace(" ", "")
+        now = datetime.now()
+        name = f"{make} {model} ({start_year}-{end_year}) {p_dmg}"
+        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
+        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
+
         new_profile = {
             "name": name,
             "description": "",
-            "created": int(time.time()),
-            "modified": int(time.time()),
+            "created": int(now.timestamp()),
+            "modified": int(now.timestamp()),
         }
 
         profile_id = ScrapeProfiles().add_profile(new_profile)

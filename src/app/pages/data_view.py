@@ -1,7 +1,9 @@
 import csv
+from datetime import datetime
 import logging
 import os
 from pathlib import Path
+import re
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
@@ -49,18 +51,17 @@ class DataView(QWidget):
         toolbar.setStyleSheet("background-color: none;")
 
         # Get a filename-safe string for the new directory
-        profile = self.model.profile
-        profile_name = "".join(
-            c if c.isalnum() else "_" for c in profile[1].replace(" ", "_")
+        profile_name = str(self.model.profile[1])
+        created = datetime.fromtimestamp(float(self.model.profile[3])).strftime(
+            "%Y-%m-%d %H-%M-%S"
         )
-        self.data_dir = (Path(__file__).parent.parent / profile_name).resolve()
-
-        i = 1
-        while self.data_dir.exists():
-            self.data_dir = (
-                Path(__file__).parent.parent / f"{profile_name}({i})"
-            ).resolve()
-            i += 1
+        dir_name = f"{profile_name}_{created}".replace(" ", "_")
+        filename_safe = ["_", "-", "(", ")"]
+        dir_name = "".join(
+            c if c.isalnum() or c in filename_safe else "_" for c in dir_name
+        )
+        dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
+        self.data_dir = (Path(__file__).parent.parent / dir_name).resolve()
 
         self.ui.scatterLayout.addWidget(toolbar)
         self.ui.scatterLayout.addWidget(self.canvas)
@@ -75,8 +76,14 @@ class DataView(QWidget):
 
     def save_figure(self):
         os.makedirs(self.data_dir, exist_ok=True)
+        path = self.data_dir / "scatterplot.png"
+        i = 1
+        while path.exists():
+            path = self.data_dir / f"scatterplot({i}).png"
+            i += 1
+
         self.figure.savefig(
-            self.data_dir / "scatterplot.png",
+            path,
             format="png",
             dpi=300,
             bbox_inches="tight",

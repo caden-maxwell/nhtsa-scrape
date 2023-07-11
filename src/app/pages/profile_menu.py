@@ -22,7 +22,9 @@ class ProfileMenu(QWidget):
         self.ui.setupUi(self)
 
         self.ui.listView.setModel(self.model)
-        self.ui.listView.setSelectionMode(self.ui.listView.SelectionMode.ExtendedSelection)
+        self.ui.listView.setSelectionMode(
+            self.ui.listView.SelectionMode.ExtendedSelection
+        )
         self.ui.listView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
@@ -74,7 +76,7 @@ class ProfileMenu(QWidget):
         self.ui.deleteBtn.setEnabled(False)
         if len(self.ui.listView.selectedIndexes()) < 1:
             self.ui.deleteBtn.setEnabled(False)
-            self.ui.openBtn.setEnabled(False) 
+            self.ui.openBtn.setEnabled(False)
         else:
             self.ui.openBtn.setEnabled(True)
             self.ui.deleteBtn.setEnabled(True)

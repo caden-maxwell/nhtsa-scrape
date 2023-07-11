@@ -26,7 +26,7 @@
      <item>
       <widget class="QLabel" name="mainTitle">
        <property name="text">
-        <string>Open Existing Case Profile...</string>
+        <string>Open Existing Scrape Profile...</string>
        </property>
       </widget>
      </item>
