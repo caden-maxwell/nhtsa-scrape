@@ -1,7 +1,6 @@
 import logging
-from datetime import datetime
 
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
@@ -23,6 +22,7 @@ class ProfileMenu(QWidget):
         self.ui.setupUi(self)
 
         self.ui.listView.setModel(self.model)
+        self.ui.listView.setSelectionMode(self.ui.listView.SelectionMode.ExtendedSelection)
         self.ui.listView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
@@ -32,8 +32,10 @@ class ProfileMenu(QWidget):
         self.ui.openBtn.clicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
 
+        self.data_viewers = []
+
     def showEvent(self, event):
-        self.model.refresh_data()
+        self.model.refresh_profiles()
         self.ui.listView.clearSelection()
         return super().showEvent(event)
 
@@ -41,10 +43,12 @@ class ProfileMenu(QWidget):
         selected = self.ui.listView.selectedIndexes()
         if not selected:
             return
-        profile_id = selected.pop().data(role=Qt.ItemDataRole.UserRole)[0]
-        self.logger.debug(f"Opening profile {profile_id}")
-        self.data_viewer = DataView(profile_id)
-        self.data_viewer.show()
+        for idx in selected:
+            profile_id = idx.data(role=Qt.ItemDataRole.UserRole)[0]
+            self.logger.debug(f"Opening profile {profile_id}")
+            new_viewer = DataView(profile_id)
+            self.data_viewers.append(new_viewer)
+            new_viewer.show()
 
     def handle_delete(self):
         selected = self.ui.listView.selectedIndexes()
@@ -54,7 +58,7 @@ class ProfileMenu(QWidget):
         dialog = QMessageBox(
             QMessageBox.Icon.Warning,
             "Delete Profile",
-            "Are you sure you want to delete this profile?",
+            f"Are you sure you want to delete {'these' if len(selected) > 1 else 'this'} profile{'s'[:len(selected)^1]}?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         dialog.setDefaultButton(QMessageBox.StandardButton.No)
@@ -62,12 +66,15 @@ class ProfileMenu(QWidget):
         if response == QMessageBox.StandardButton.No:
             return
 
-        self.model.delete_data(selected.pop())
+        self.model.delete_profiles(selected)
         self.ui.listView.clearSelection()
 
-    def handle_selection_changed(self, selected, deselected):
-        # Enable/disable buttons based on if a profile is selected
-        for button in [self.ui.openBtn, self.ui.deleteBtn]:
-            button.setEnabled(False)
-            if self.ui.listView.selectedIndexes():
-                button.setEnabled(True)
+    def handle_selection_changed(self, selected: QItemSelection, deselected):
+        self.ui.openBtn.setEnabled(False)
+        self.ui.deleteBtn.setEnabled(False)
+        if len(self.ui.listView.selectedIndexes()) < 1:
+            self.ui.deleteBtn.setEnabled(False)
+            self.ui.openBtn.setEnabled(False) 
+        else:
+            self.ui.openBtn.setEnabled(True)
+            self.ui.deleteBtn.setEnabled(True)

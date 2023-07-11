@@ -16,7 +16,7 @@ class ProfileEvents(QAbstractListModel):
         self.data_list = []
 
         try:
-            db_path = Path(__file__).parent / "db_saves.sqlite3"
+            db_path = Path(__file__).parent / "db.sqlite3"
             self.db = sqlite3.connect(db_path)
             self.cursor = self.db.cursor()
             self.db.execute("PRAGMA foreign_keys = ON")
@@ -115,7 +115,7 @@ class ProfileEvents(QAbstractListModel):
             return self.data_list[index.row()]
         return None
 
-    def all_data(self):
+    def all_events(self):
         """Return events as list of dictionaries"""
         return [
             {
@@ -149,7 +149,7 @@ class ProfileEvents(QAbstractListModel):
             for event in self.data_list
         ]
 
-    def add_data(self, event):
+    def add_event(self, event):
         try:
             summary = event["summary"]
             case_num = event["case_num"]
@@ -279,7 +279,7 @@ class ProfileEvents(QAbstractListModel):
         except (sqlite3.Error, KeyError) as err:
             self.logger.error("Error adding case:", err)
             return
-        self.refresh_data()
+        self.refresh_events()
 
     def delete_event(self, index):
         try:
@@ -301,9 +301,9 @@ class ProfileEvents(QAbstractListModel):
         self.logger.debug(
             f"Deleted event: Case {data[1]} Event {data[2]} Vehicle {data[3]}"
         )
-        self.refresh_data()
+        self.refresh_events()
 
-    def refresh_data(self):
+    def refresh_events(self):
         try:
             self.cursor.execute(
                 """
