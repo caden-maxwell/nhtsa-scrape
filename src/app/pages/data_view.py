@@ -215,7 +215,9 @@ class DataView(QWidget):
         y_pred = polynomial(xdata)
         ssr = numpy.sum((y_pred - numpy.mean(y1data)) ** 2)
         sst = numpy.sum((y1data - numpy.mean(y1data)) ** 2)
-        r_squared = ssr / sst
+        r_squared = 0
+        if sst != 0:
+            r_squared = ssr / sst
 
         self.nass_legend = [
             f"NASS, $R^2= {r_squared:.2f}$",

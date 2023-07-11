@@ -80,3 +80,10 @@ class ProfileMenu(QWidget):
         else:
             self.ui.openBtn.setEnabled(True)
             self.ui.deleteBtn.setEnabled(True)
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Delete or event.key() == Qt.Key.Key_Backspace:
+            self.handle_delete()
+        if event.key() == Qt.Key.Key_Return:
+            self.handle_open()
+        return super().keyPressEvent(event)
