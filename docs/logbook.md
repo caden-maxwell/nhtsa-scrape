@@ -26,8 +26,8 @@
 | 6/30 | 6 | - Extra cases that are above the max case limit will be put on a list to be enqueued if the current cases fail to obtain sufficient data. This way we can get as many cases as possible under the max case limit. <br> - Added model class to handle case events in the data viewer. <br> - Scraped data is now saved to the database automatically upon scraping. Need to implement it so that a new profile is automatically created at scrape time. <br> - Very happy with how this is turning out. |
 | 7/2 | 7 | - Connected all the database tables. A new profile is created at scrape time, and events are added to it as they are scraped and processed. <br> - The case_events table is completely setup, and data viewer now populates with this data. <br> - Opening an existing scrape profile will now actually show the data that was scraped. <br> - Slightly changed database schema to make it easier to query certain things. <br> - Trying very hard to figure out what is going on with the plotting/csv part of the code. Pretty messy.|
 | 7/4 | 4 | - Added ability to view and export the scatterplot and csv data. <br> - After adding the scatterplot, I was seeing some pretty weird data points, so I went back to the main scraper and fixed some bugs and added some more edge case handling. |
-| 7/5 | n/a | n/a |
-| Total | 111 | - |
+| 7/10 | 7 | - Added interactive scatterplot viewer. <br> - Scatterplot data and case labels can now be toggled. <br> - Scatterplot is saved to a unique scrape folder; separate saves do not overwrite each other. <br> -  |
+| Total | 118 | - |
 
 ---
 
