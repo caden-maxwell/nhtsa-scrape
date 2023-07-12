@@ -11,7 +11,7 @@ from app.models.scrape_profiles import ScrapeProfiles
 from app.scrape import RequestHandler, ScrapeEngine, Request, Priority
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 
-from .data_view import DataView
+from . import DataView
 
 
 class ScrapeMenu(QWidget):
