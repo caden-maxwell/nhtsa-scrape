@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Form</string>
+   <string>NHTSA Scrape Tool - Data Viewer</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -20,130 +20,8 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>-1</number>
      </property>
-     <widget class="QWidget" name="summaryTab">
-      <attribute name="title">
-       <string>Summary</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="summaryLabel">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Some title</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QTextEdit" name="summaryEdit"/>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="casesTab">
-      <attribute name="title">
-       <string>Cases</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,2">
-       <item row="0" column="0">
-        <widget class="QListView" name="listView"/>
-       </item>
-       <item row="0" column="1">
-        <layout class="QGridLayout" name="eventViewLayout">
-         <item row="0" column="0">
-          <widget class="QLabel" name="eventLabel">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="text">
-            <string>Event goes here</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="scatterTab">
-      <attribute name="title">
-       <string>Scatterplot</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_5">
-       <item row="1" column="3">
-        <widget class="QPushButton" name="nassDataBtn">
-         <property name="text">
-          <string>NASS_dv</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="5">
-        <widget class="QPushButton" name="totalDataBtn">
-         <property name="text">
-          <string>TOT_dv</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="4">
-        <widget class="QPushButton" name="nassLabelBtn">
-         <property name="text">
-          <string>NASS_dv Case Labels</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="6">
-        <widget class="QPushButton" name="totalLabelBtn">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="text">
-          <string>TOT_dv Case Labels</string>
-         </property>
-         <property name="checkable">
-          <bool>true</bool>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="3" colspan="4">
-        <layout class="QVBoxLayout" name="scatterLayout"/>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="dataTab">
-      <attribute name="title">
-       <string>Data Table</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_4">
-       <item row="0" column="0">
-        <widget class="QTableView" name="tableView"/>
-       </item>
-      </layout>
-     </widget>
     </widget>
    </item>
   </layout>
