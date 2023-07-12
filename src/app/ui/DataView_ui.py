@@ -26,4 +26,6 @@ class Ui_DataView(object):
 
     def retranslateUi(self, DataView):
         _translate = QtCore.QCoreApplication.translate
-        DataView.setWindowTitle(_translate("DataView", "NHTSA Scrape Tool - Data Viewer"))
+        DataView.setWindowTitle(
+            _translate("DataView", "NHTSA Scrape Tool - Data Viewer")
+        )

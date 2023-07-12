@@ -1,11 +1,12 @@
 import csv
 from datetime import datetime
 import logging
+import os
 from pathlib import Path
 import re
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QMessageBox
 
 import pandas
 
@@ -39,7 +40,9 @@ class DataView(QWidget):
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
         )
         dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
-        self.data_dir = (Path(__file__).parent.parent.parent / "data" / dir_name).resolve()
+        self.data_dir = (
+            Path(__file__).parent.parent.parent / "data" / dir_name
+        ).resolve()
 
         self.events_tab = EventsTab(self.model)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
@@ -58,6 +61,7 @@ class DataView(QWidget):
 
         file = "random.csv"
         df = pandas.DataFrame(self.model.all_events())
+        os.makedirs(self.data_dir, exist_ok=True)
         df.to_csv(self.data_dir / file, index=False)
         with open(self.data_dir / file, "a") as f:
             writer = csv.writer(f)
@@ -82,8 +86,21 @@ class DataView(QWidget):
 
     @pyqtSlot()
     def scrape_complete(self):
-        # if not len(self.model.data_list):
-        #     self.ui.summaryEdit.append("Scrape complete. No data found.")
-        # else:
-        #     self.ui.summaryEdit.append("Scrape complete.")
-        pass
+        # Create a dialog to tell the user that the scrape is complete
+
+        dialog = QMessageBox()
+        if not len(self.model.data_list):
+            dialog.setText(
+                "Scrape complete. No events were found.\nDelete this profile?"
+            )
+            dialog.setStandardButtons(
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            dialog.setDefaultButton(QMessageBox.StandardButton.Yes)
+        else:
+            dialog.setText("Scrape complete.")
+            dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+            dialog.setDefaultButton(QMessageBox.StandardButton.Ok)
+        dialog.setIcon(QMessageBox.Icon.Information)
+        dialog.setWindowTitle("Scrape Complete")
+        dialog.exec()
