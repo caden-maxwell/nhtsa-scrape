@@ -16,10 +16,21 @@ class Ui_EventsTab(object):
         self.horizontalLayout = QtWidgets.QHBoxLayout(EventsTab)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.eventsList = QtWidgets.QListView(parent=EventsTab)
+        self.eventsList.setMinimumSize(QtCore.QSize(100, 0))
         self.eventsList.setObjectName("eventsList")
         self.horizontalLayout.addWidget(self.eventsList)
         self.eventLayout = QtWidgets.QGridLayout()
         self.eventLayout.setObjectName("eventLayout")
+        self.label = QtWidgets.QLabel(parent=EventsTab)
+        self.label.setObjectName("label")
+        self.eventLayout.addWidget(
+            self.label,
+            0,
+            0,
+            1,
+            1,
+            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
+        )
         self.horizontalLayout.addLayout(self.eventLayout)
 
         self.retranslateUi(EventsTab)
@@ -28,3 +39,4 @@ class Ui_EventsTab(object):
     def retranslateUi(self, EventsTab):
         _translate = QtCore.QCoreApplication.translate
         EventsTab.setWindowTitle(_translate("EventsTab", "Events"))
+        self.label.setText(_translate("EventsTab", "Select an event to view."))
