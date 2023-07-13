@@ -84,6 +84,12 @@ class RequestHandler(QObject, metaclass=Singleton):
             if request.priority != priority:
                 self.request_queue.put(request)
 
+        ongoing_requests = self.ongoing_requests
+        self.ongoing_requests = []
+        for request in ongoing_requests:
+            if request.priority != priority:
+                self.ongoing_requests.append(request)
+
     def contains(self, priority=-1):
         """
         Returns True if the request queue contains requests of the given priority.
@@ -167,7 +173,15 @@ class RequestHandler(QObject, metaclass=Singleton):
             self.logger.error(f"Exception: {e}")
             return
         finally:
-            self.ongoing_requests.remove(request)
+            # If we clear the ongoing_requests in another thread while this request is being processed,
+            # it will be removed from the list before we get here. This is fine, we just ignore the response.
+            if request in self.ongoing_requests:
+                self.ongoing_requests.remove(request)
+            else:
+                self.logger.debug(
+                    f"Ignoring response for {request}, already removed from ongoing requests."
+                )
+                return
         if response is not None:
             self.response_received.emit(
                 request.priority,
