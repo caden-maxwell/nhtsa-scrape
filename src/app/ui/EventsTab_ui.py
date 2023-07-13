@@ -15,23 +15,23 @@ class Ui_EventsTab(object):
         EventsTab.resize(465, 329)
         self.gridLayout = QtWidgets.QGridLayout(EventsTab)
         self.gridLayout.setObjectName("gridLayout")
-        self.eventLayout = QtWidgets.QGridLayout()
-        self.eventLayout.setObjectName("eventLayout")
-        self.gridLayout.addLayout(self.eventLayout, 1, 1, 1, 1)
         self.promptLabel = QtWidgets.QLabel(parent=EventsTab)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.promptLabel.sizePolicy().hasHeightForWidth())
+        self.promptLabel.setSizePolicy(sizePolicy)
         self.promptLabel.setObjectName("promptLabel")
         self.gridLayout.addWidget(self.promptLabel, 0, 0, 1, 1)
-        spacerItem = QtWidgets.QSpacerItem(
-            20,
-            40,
-            QtWidgets.QSizePolicy.Policy.Minimum,
-            QtWidgets.QSizePolicy.Policy.Expanding,
-        )
-        self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
         self.eventsList = QtWidgets.QListView(parent=EventsTab)
         self.eventsList.setMinimumSize(QtCore.QSize(100, 0))
         self.eventsList.setObjectName("eventsList")
-        self.gridLayout.addWidget(self.eventsList, 1, 0, 2, 1)
+        self.gridLayout.addWidget(self.eventsList, 1, 0, 1, 1)
+        self.eventLayout = QtWidgets.QGridLayout()
+        self.eventLayout.setObjectName("eventLayout")
+        self.gridLayout.addLayout(self.eventLayout, 1, 1, 1, 1)
         self.gridLayout.setColumnStretch(1, 1)
 
         self.retranslateUi(EventsTab)
