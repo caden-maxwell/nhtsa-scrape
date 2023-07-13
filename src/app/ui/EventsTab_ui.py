@@ -13,25 +13,26 @@ class Ui_EventsTab(object):
     def setupUi(self, EventsTab):
         EventsTab.setObjectName("EventsTab")
         EventsTab.resize(465, 329)
-        self.horizontalLayout = QtWidgets.QHBoxLayout(EventsTab)
-        self.horizontalLayout.setObjectName("horizontalLayout")
+        self.gridLayout = QtWidgets.QGridLayout(EventsTab)
+        self.gridLayout.setObjectName("gridLayout")
+        self.eventLayout = QtWidgets.QGridLayout()
+        self.eventLayout.setObjectName("eventLayout")
+        self.gridLayout.addLayout(self.eventLayout, 1, 1, 1, 1)
+        self.promptLabel = QtWidgets.QLabel(parent=EventsTab)
+        self.promptLabel.setObjectName("promptLabel")
+        self.gridLayout.addWidget(self.promptLabel, 0, 0, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+        self.gridLayout.addItem(spacerItem, 2, 1, 1, 1)
         self.eventsList = QtWidgets.QListView(parent=EventsTab)
         self.eventsList.setMinimumSize(QtCore.QSize(100, 0))
         self.eventsList.setObjectName("eventsList")
-        self.horizontalLayout.addWidget(self.eventsList)
-        self.eventLayout = QtWidgets.QGridLayout()
-        self.eventLayout.setObjectName("eventLayout")
-        self.label = QtWidgets.QLabel(parent=EventsTab)
-        self.label.setObjectName("label")
-        self.eventLayout.addWidget(
-            self.label,
-            0,
-            0,
-            1,
-            1,
-            QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter,
-        )
-        self.horizontalLayout.addLayout(self.eventLayout)
+        self.gridLayout.addWidget(self.eventsList, 1, 0, 2, 1)
+        self.gridLayout.setColumnStretch(1, 1)
 
         self.retranslateUi(EventsTab)
         QtCore.QMetaObject.connectSlotsByName(EventsTab)
@@ -39,4 +40,4 @@ class Ui_EventsTab(object):
     def retranslateUi(self, EventsTab):
         _translate = QtCore.QCoreApplication.translate
         EventsTab.setWindowTitle(_translate("EventsTab", "Events"))
-        self.label.setText(_translate("EventsTab", "Select an event to view."))
+        self.promptLabel.setText(_translate("EventsTab", "Select an event to view:"))
