@@ -358,12 +358,6 @@ class ImageViewerWidget(QWidget):
         qimg = QPixmap.fromImage(qimg)
         return qimg
 
-    def create_mouse_press_event(self, img: Image):
-        def mouse_press_event(event):
-            img.show()
-
-        return mouse_press_event
-
     def clear_images(self):
         for img in self.images:
             img.close()
