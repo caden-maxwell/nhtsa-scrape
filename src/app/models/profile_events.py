@@ -112,7 +112,7 @@ class ProfileEvents(QAbstractListModel):
             data = self.data_list[index.row()]
             return f"Case: {data[0]}, Vehicle: {data[1]}, Event: {data[2]}"
         if role == Qt.ItemDataRole.UserRole:
-            return self.data_list[index.row()]
+            return self.all_events()[index.row()]
         return None
 
     def all_events(self):
