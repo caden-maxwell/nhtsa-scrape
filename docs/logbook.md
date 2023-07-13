@@ -27,7 +27,9 @@
 | 7/2 | 7 | - Connected all the database tables. A new profile is created at scrape time, and events are added to it as they are scraped and processed. <br> - The case_events table is completely setup, and data viewer now populates with this data. <br> - Opening an existing scrape profile will now actually show the data that was scraped. <br> - Slightly changed database schema to make it easier to query certain things. <br> - Trying very hard to figure out what is going on with the plotting/csv part of the code. Pretty messy.|
 | 7/4 | 4 | - Added ability to view and export the scatterplot and csv data. <br> - After adding the scatterplot, I was seeing some pretty weird data points, so I went back to the main scraper and fixed some bugs and added some more edge case handling. |
 | 7/10 | 7 | - Added interactive scatterplot viewer. <br> - Scatterplot data and case labels can now be toggled. <br> - Scatterplot is saved to a unique scrape folder; separate saves do not overwrite each other. <br> - Multiple scrape profiles can be selected and opened/deleted at the same time. |
-| Total | 118 | - |
+| 7/12 | 6 | - Added event view for each event/case. <br> - Event view now dynamically loads case images, however it is still slow when scraping is ongoing. I am going to implement a way to pause scraping and resume when the user wants to. <br> - Added ability to view the case images in the event viewer. <br> - There isn't that much left to do besides some functionality to save the images. Another thing I probably need to do is be able to get images from the user's machine, if present, and use those in the event viewer instead of making redundant image requests. |
+| 7/13 | N/A | N/A |
+| Total | 124 | - |
 
 ---
 
