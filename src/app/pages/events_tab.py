@@ -48,6 +48,8 @@ class EventsTab(QWidget):
         self.events_pending = []
         self.responses = {}
 
+        self.previous_index = None
+
     def showEvent(self, event) -> None:
         self.update_scrollbar_size()
         return super().showEvent(event)
@@ -73,6 +75,12 @@ class EventsTab(QWidget):
         }
 
     def open_event_details(self, index):
+        # If index already open, ignore
+        if self.ui.eventsList.currentIndex() == self.previous_index:
+            return
+        self.previous_index = index
+        self.img_grid.clear_images()
+
         for i in reversed(range(self.ui.eventLayout.count())):
             self.ui.eventLayout.itemAt(i).widget().setParent(None)
 
@@ -145,7 +153,7 @@ class EventsTab(QWidget):
         img_form = soup.find("IMGForm")
 
         if not img_form:
-            print("No ImgForm found.")
+            self.logger.debug("No ImgForm found.")
             return
 
         vehicle_num = None
@@ -170,7 +178,6 @@ class EventsTab(QWidget):
         }
 
         img_set_lookup = {}
-        print(case_id, vehicle_num)
         for k, v in veh_img_areas.items():
             img_set_lookup[k] = [
                 (img.text, img["version"])
@@ -212,20 +219,7 @@ class EventsTab(QWidget):
         fileName = "i"
         while True:
             for img_element in img_elements:
-                img_url = (
-                    "https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID="
-                    + str(img_element[0])
-                    + "&CaseID="
-                    + caseid
-                    + "&Version="
-                    + str(img_element[1])
-                )
-                print(f"Image URL: {img_url}")
 
-                cookie = {"Cookie": response.headers["Set-Cookie"]}
-                response = requests.get(img_url, headers=cookie)
-                img = Image.open(BytesIO(response.content))
-                img.show()
                 g = input(
                     "Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                     "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: "
@@ -354,12 +348,16 @@ class ImageViewerWidget(QWidget):
         qimg = QImage(
             img.tobytes("raw", "RGB"), img.size[0], img.size[1], QImage.Format.Format_RGB888
         )
-        qimg = qimg.rgbSwapped()
         qimg = QPixmap.fromImage(qimg)
         return qimg
 
     def create_mouse_press_event(self, img: Image):
         def mouse_press_event(event):
-            print(f"Opening image: {img}")
             img.show()
         return mouse_press_event
+
+    def clear_images(self):
+        for img in self.images:
+            img.close()
+        self.images = []
+        self.update_images()
