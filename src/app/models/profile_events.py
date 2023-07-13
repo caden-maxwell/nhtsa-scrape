@@ -120,8 +120,8 @@ class ProfileEvents(QAbstractListModel):
         return [
             {
                 "case_id": event[0],
-                "vehicle_num": event[2],
-                "event_num": event[1],
+                "vehicle_num": event[1],
+                "event_num": event[2],
                 "make": event[3],
                 "model": event[4],
                 "model_year": event[5],

@@ -1,18 +1,14 @@
 import enum
-from io import BytesIO
 import json
 import logging
-import os
 from pathlib import Path
 import textwrap  # To make multiline strings look nice in the code
 import time
-import requests
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from bs4 import BeautifulSoup
-from PIL import Image, ImageFont, ImageDraw
-from numpy import exp
+import numpy
 
 from .request_handler import RequestHandler, Request
 
@@ -22,26 +18,25 @@ class Priority(enum.Enum):
 
     ALL_COMBOS = 0
     MODEL_COMBO = 1
-    IMAGE = 1
-    CASE = 2
-    CASE_LIST = 3
+    IMAGE = 2
+    CASE_FOR_IMAGE = 3
+    CASE = 4
+    CASE_LIST = 5
 
 
 class ScrapeEngine(QObject):
-    event_parsed = pyqtSignal(dict)
+    event_parsed = pyqtSignal(dict, bytes, str)
     started = pyqtSignal()
     completed = pyqtSignal()  # Used to signal that the scrape is *complete*
     finished = pyqtSignal()  # Used to signal that the scrape has *stopped*
+    CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+    CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
 
     def __init__(self, search_params, image_set, case_limit):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
-        self.CASE_URL = (
-            "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-        )
-        self.CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
 
         self.case_limit = case_limit
         self.image_set = image_set
@@ -143,22 +138,22 @@ class ScrapeEngine(QObject):
         )
         self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, str, str)
-    def handle_response(self, priority, url, response_text, cookie):
+    @pyqtSlot(int, str, bytes, str)
+    def handle_response(self, priority, url, response_content, cookie):
         if priority == Priority.CASE_LIST.value:
-            self.parse_case_list(url, response_text)
+            self.parse_case_list(url, response_content)
         elif priority == Priority.CASE.value:
-            self.parse_case(url, response_text, cookie)
+            self.parse_case(url, response_content, cookie)
         else:
             self.logger.error(
                 f"Scrape engine received response with invalid priority: {priority}."
             )
 
-    def parse_case_list(self, url, response_text):
+    def parse_case_list(self, url, response_content):
         if not self.running:
             return
 
-        if not response_text:
+        if not response_content:
             self.logger.error(f"Received empty response from {url}.")
             self.final_page = True
             return
@@ -168,7 +163,7 @@ class ScrapeEngine(QObject):
             self.complete()
             return
 
-        soup = BeautifulSoup(response_text, "html.parser")
+        soup = BeautifulSoup(response_content, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
             self.logger.warning(
@@ -222,11 +217,11 @@ class ScrapeEngine(QObject):
             )
         )
 
-    def parse_case(self, url, response_text, cookie):
+    def parse_case(self, url, response_content, cookie):
         if not self.running:
             return
 
-        if not response_text:
+        if not response_content:
             self.logger.error(f"Received empty response from {url}.")
             self.enqueue_extra_case()
             self.failed_cases += 1
@@ -237,7 +232,7 @@ class ScrapeEngine(QObject):
             self.complete()
             return
 
-        case_xml = BeautifulSoup(response_text, "xml")
+        case_xml = BeautifulSoup(response_content, "xml")
 
         case_id = case_xml.find("CaseForm").get("caseID")
         summary = case_xml.find("Summary").text
@@ -454,7 +449,7 @@ class ScrapeEngine(QObject):
             a_wt = alt_data["a_curb_weight"] * 2.20462
 
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
-            e = 0.5992 * exp(
+            e = 0.5992 * numpy.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
             TOT_dv = NASS_dv * (1.0 + e)
@@ -471,7 +466,7 @@ class ScrapeEngine(QObject):
             event_data.update(calcs)
 
             self.total_events += 1
-            self.event_parsed.emit(event_data)
+            self.event_parsed.emit(event_data, response_content, cookie)
 
         if failed_events >= len(key_events):
             self.logger.warning(

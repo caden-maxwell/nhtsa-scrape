@@ -63,18 +63,18 @@ class ScrapeMenu(QWidget):
             )
             self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, str, str)
-    def handle_response(self, priority, url, response_text, cookie):
+    @pyqtSlot(int, str, bytes, str)
+    def handle_response(self, priority, url, response_content, cookie):
         if priority == Priority.ALL_COMBOS.value:
-            self.update_all_dropdowns(response_text)
+            self.update_all_dropdowns(response_content)
         elif priority == Priority.MODEL_COMBO.value:
-            self.update_model_dropdown(response_text)
+            self.update_model_dropdown(response_content)
 
-    def update_all_dropdowns(self, response):
+    def update_all_dropdowns(self, response_content):
         """Parses the response from the NASS/CDS search website and populates the search fields."""
 
         # Parse response
-        soup = BeautifulSoup(response, "html.parser")
+        soup = BeautifulSoup(response_content, "html.parser")
         table = soup.find("table", id="searchTable")
         dropdowns = table.select("select")
 
@@ -137,11 +137,11 @@ class ScrapeMenu(QWidget):
         self.req_handler.clear_queue(Priority.MODEL_COMBO.value)
         self.req_handler.enqueue_request(request)
 
-    def update_model_dropdown(self, response):
+    def update_model_dropdown(self, response_content):
         """Populates the model dropdown with models from the response."""
 
         # Parse response
-        model_dcts = json.loads(response)
+        model_dcts = json.loads(response_content)
         models = []
         for model in model_dcts:
             models.append((model["Value"], model["Key"]))

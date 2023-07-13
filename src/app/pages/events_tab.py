@@ -1,8 +1,10 @@
+from datetime import datetime
+from io import BytesIO
 import logging
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QFont
+from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtGui import QPixmap, QFont, QImage
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
@@ -13,7 +15,11 @@ from PyQt6.QtWidgets import (
     QSizePolicy,
 )
 
+from bs4 import BeautifulSoup
+from PIL import Image
+
 from app.models import ProfileEvents
+from app.scrape import RequestHandler, Priority, Request, ScrapeEngine
 from app.ui.EventsTab_ui import Ui_EventsTab
 
 
@@ -25,7 +31,7 @@ class EventsTab(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.model = model
-        self.model.layoutChanged.connect(self.update_size)
+        self.model.layoutChanged.connect(self.update_scrollbar_size)
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
@@ -37,8 +43,13 @@ class EventsTab(QWidget):
         )
         self.ui.gridLayout.addWidget(self.img_grid, 2, 0, 1, 2)
 
+        self.request_handler = RequestHandler()
+        self.request_handler.response_received.connect(self.handle_response)
+        self.events_pending = []
+        self.responses = {}
+
     def showEvent(self, event) -> None:
-        self.update_size()
+        self.update_scrollbar_size()
         return super().showEvent(event)
 
     def keyPressEvent(self, event):
@@ -46,7 +57,7 @@ class EventsTab(QWidget):
             self.open_event_details(self.ui.eventsList.currentIndex())
         return super().keyPressEvent(event)
 
-    def update_size(self):
+    def update_scrollbar_size(self):
         scrollbar = self.ui.eventsList.verticalScrollBar()
         list_size = max(self.ui.eventsList.sizeHintForColumn(0), 200)
         scrollbar_width = 0
@@ -54,21 +65,40 @@ class EventsTab(QWidget):
             scrollbar_width = scrollbar.sizeHint().width()
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
 
+    def cache_response(self, case_id, response_content, cookie):
+        self.responses[case_id] = {
+            "cookie": cookie,
+            "xml": response_content,
+            "created": datetime.now(),
+        }
+
     def open_event_details(self, index):
         for i in reversed(range(self.ui.eventLayout.count())):
             self.ui.eventLayout.itemAt(i).widget().setParent(None)
 
-        # TODO: Download images from NHTSA if they don't already exist
-        img_paths = []
-        if self.images_dir.exists():
-            img_paths = [
-                str(img_path)
-                for img_path in self.images_dir.iterdir()
-                if img_path.is_file()
-            ]
-        self.img_grid.update_images(img_paths)
-
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
+        case_id = event_data["case_id"]
+
+        COOKIE_EXPIRED_SECS = 900  # Assume that the cookie expires after 15 minutes
+        if (
+            case_id in self.responses
+            and (datetime.now() - self.responses[case_id][1]).total_seconds()
+            < COOKIE_EXPIRED_SECS
+        ):
+            self.parse_case(
+                self.responses[case_id]["xml"], self.responses[case_id]["cookie"]
+            )
+            return
+
+        request = Request(
+            ScrapeEngine.CASE_URL + str(case_id), priority=Priority.CASE_FOR_IMAGE.value
+        )
+        self.request_handler.enqueue_request(request)
+        self.events_pending.append(
+            {"case_id": case_id, "vehicle_num": event_data["vehicle_num"]}
+        )
+        self.events_pending = list({val['case_id']:val for val in self.events_pending}.values())
+
         keys_to_keep = set(
             [
                 "make",
@@ -102,12 +132,30 @@ class EventsTab(QWidget):
             value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
             self.ui.eventLayout.addWidget(value_label, i + 1, 1)
 
-    def get_event_images(self, url, response_text, cookie):
-        return
+    @pyqtSlot(int, str, bytes, str)
+    def handle_response(self, priority, url, response_content, cookie):
+        if priority == Priority.CASE_FOR_IMAGE.value:
+            self.parse_case(response_content, cookie)
+        elif priority == Priority.IMAGE.value:
+            self.parse_image(response_content)
 
-        img_form = case_xml.find("IMGForm")
+    def parse_case(self, response_content, cookie):
+        soup = BeautifulSoup(response_content, "xml")
+        case_id = soup.find("CaseForm").get("caseID")
+        img_form = soup.find("IMGForm")
+
         if not img_form:
             print("No ImgForm found.")
+            return
+
+        vehicle_num = None
+        for pending in self.events_pending:
+            if pending["case_id"] == int(case_id):
+                vehicle_num = pending["vehicle_num"]
+                self.events_pending.remove(pending)
+                break
+        if not vehicle_num:
+            self.logger.warning("No matching pending event found.")
             return
 
         veh_img_areas = {
@@ -122,16 +170,32 @@ class EventsTab(QWidget):
         }
 
         img_set_lookup = {}
+        print(case_id, vehicle_num)
         for k, v in veh_img_areas.items():
             img_set_lookup[k] = [
                 (img.text, img["version"])
-                for img in img_form.find("Vehicle", {"VehicleNumber": event["voi"]})
+                for img in img_form.find("Vehicle", {"VehicleNumber": {vehicle_num}})
                 .find(v)
                 .find_all("image")
             ]
 
-        image_set = image_set.split(" ")[0]
+        image_set = "R"  # TODO: Get this from the UI. Default to right side for now.
+
         img_elements = img_set_lookup.get(image_set, [])
+        for img_element in img_elements:
+            img_id = img_element[0]
+            img_version = img_element[1]
+            img_url = f"https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={img_version}"
+
+            request = Request(
+                img_url, headers={"Cookie": cookie}, priority=Priority.IMAGE.value
+            )
+            self.request_handler.enqueue_request(request)
+
+    def parse_image(self, response_content):
+        img = Image.open(BytesIO(response_content))
+        self.img_grid.add_image(img)
+        return
 
         if not img_elements:
             print(
@@ -161,16 +225,6 @@ class EventsTab(QWidget):
                 cookie = {"Cookie": response.headers["Set-Cookie"]}
                 response = requests.get(img_url, headers=cookie)
                 img = Image.open(BytesIO(response.content))
-                draw = ImageDraw.Draw(img)
-                draw.rectangle(((0, 0), (300, 30)), fill="white")
-                tot_mph = str(float(tot) * 0.6214)
-                img_text = "Case No: " + caseid + " - NASS DV: " + tot_mph
-                draw.text(
-                    (0, 0),
-                    img_text,
-                    (220, 20, 60),
-                    font=ImageFont.truetype(r"C:\Windows\Fonts\Arial.ttf", 24),
-                )
                 img.show()
                 g = input(
                     "Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
@@ -252,7 +306,7 @@ class EventsTab(QWidget):
 class ImageViewerWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.image_paths = []
+        self.images = []
 
         self.v_layout = QGridLayout()
         self.scroll_area = QScrollArea()
@@ -275,26 +329,37 @@ class ImageViewerWidget(QWidget):
         self.v_layout.addWidget(self.no_images_label, 0, 0)
         self.no_images_label.setVisible(True)
 
-    def update_images(self, image_paths):
-        self.no_images_label.setVisible(not len(image_paths))
+    def add_image(self, img: Image.Image):
+        self.images.append(img)
+        self.update_images()
+
+    def update_images(self):
+        # Clear existing thumbnails
+        self.no_images_label.setVisible(not len(self.images))
         for i in reversed(range(self.thumbnails_layout.count())):
             widget = self.thumbnails_layout.itemAt(i).widget()
             self.thumbnails_layout.removeWidget(widget)
             widget.setParent(None)
 
         # Add new thumbnails to the layout
-        for image_path in image_paths:
+        for img in self.images:
             thumbnail = QLabel()
-            pixmap = QPixmap(image_path).scaledToHeight(150)
+            pixmap = self.convert_image_to_pixmap(img).scaledToHeight(150)
             thumbnail.setPixmap(pixmap)
             thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(image_path)
+            thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(img)
             self.thumbnails_layout.addWidget(thumbnail)
 
-    def create_mouse_press_event(self, image_path):
+    def convert_image_to_pixmap(self, img: Image.Image):
+        qimg = QImage(
+            img.tobytes("raw", "RGB"), img.size[0], img.size[1], QImage.Format.Format_RGB888
+        )
+        qimg = qimg.rgbSwapped()
+        qimg = QPixmap.fromImage(qimg)
+        return qimg
+
+    def create_mouse_press_event(self, img: Image):
         def mouse_press_event(event):
-            print(f"Opening image: {image_path}")
-
-            ### TODO: Open image in a new window
-
+            print(f"Opening image: {img}")
+            img.show()
         return mouse_press_event
