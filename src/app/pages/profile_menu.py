@@ -22,9 +22,6 @@ class ProfileMenu(QWidget):
         self.ui.setupUi(self)
 
         self.ui.listView.setModel(self.model)
-        self.ui.listView.setSelectionMode(
-            self.ui.listView.SelectionMode.ExtendedSelection
-        )
         self.ui.listView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
@@ -32,6 +29,7 @@ class ProfileMenu(QWidget):
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.openBtn.clicked.connect(self.handle_open)
+        self.ui.listView.doubleClicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
 
         self.data_viewers = []

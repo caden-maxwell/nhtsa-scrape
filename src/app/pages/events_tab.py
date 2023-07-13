@@ -1,7 +1,16 @@
 import logging
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QLabel, QGridLayout, QSizePolicy, QLayout
+from PyQt6.QtGui import QPixmap
+from PyQt6.QtWidgets import (
+    QWidget,
+    QLabel,
+    QGridLayout,
+    QHBoxLayout,
+    QScrollArea,
+    QLabel,
+    QSizePolicy,
+)
 
 from app.models import ProfileEvents
 from app.ui.EventsTab_ui import Ui_EventsTab
@@ -19,6 +28,12 @@ class EventsTab(QWidget):
 
         self.ui.eventsList.setModel(self.model)
         self.ui.eventsList.doubleClicked.connect(self.open_event_details)
+
+        self.img_grid = ImageViewerWidget()
+        self.img_grid.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
+        self.ui.gridLayout.addWidget(self.img_grid, 2, 0, 1, 2)
 
     def showEvent(self, event) -> None:
         self.update_size()
@@ -40,6 +55,18 @@ class EventsTab(QWidget):
     def open_event_details(self, index):
         for i in reversed(range(self.ui.eventLayout.count())):
             self.ui.eventLayout.itemAt(i).widget().setParent(None)
+
+        self.img_grid.update_images(
+            [
+                "src/test_images/image1.jpg",
+                "src/test_images/image2.jpg",
+                "src/test_images/image3.jpg",
+                "src/test_images/image4.jpg",
+                "src/test_images/image5.jpg",
+                "src/test_images/image6.jpg",
+                "src/test_images/image7.jpg",
+            ]
+        )
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         keys_to_keep = set(
@@ -76,3 +103,46 @@ class EventsTab(QWidget):
             self.ui.eventLayout.addWidget(value_label, i + 1, 1)
 
         self.ui.eventLayout.setColumnStretch(1, 2)
+
+
+class ImageViewerWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.image_paths = []
+
+        self.v_layout = QGridLayout()
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setFixedHeight(175)
+
+        self.thumbnails_widget = QWidget()
+        self.thumbnails_layout = QHBoxLayout()
+        self.thumbnails_widget.setLayout(self.thumbnails_layout)
+
+        self.scroll_area.setWidget(self.thumbnails_widget)
+        self.v_layout.addWidget(self.scroll_area)
+        self.setLayout(self.v_layout)
+
+    def update_images(self, image_paths):
+        # Clear existing thumbnails
+        for i in reversed(range(self.thumbnails_layout.count())):
+            widget = self.thumbnails_layout.itemAt(i).widget()
+            self.thumbnails_layout.removeWidget(widget)
+            widget.setParent(None)
+
+        # Add new thumbnails to the layout
+        for image_path in image_paths:
+            thumbnail = QLabel()
+            pixmap = QPixmap(image_path).scaledToHeight(150)
+            thumbnail.setPixmap(pixmap)
+            thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(image_path)
+            self.thumbnails_layout.addWidget(thumbnail)
+
+    def create_mouse_press_event(self, image_path):
+        def mouse_press_event(event):
+            print(f"Opening image: {image_path}")
+
+            ### TODO: Open image in a new window
+
+        return mouse_press_event

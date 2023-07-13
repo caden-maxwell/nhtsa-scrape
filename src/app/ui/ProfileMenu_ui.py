@@ -26,6 +26,9 @@ class Ui_ProfileMenu(object):
         self.topHLayout.setStretch(1, 1)
         self.verticalLayout.addLayout(self.topHLayout)
         self.listView = QtWidgets.QListView(parent=ProfileMenu)
+        self.listView.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
         self.listView.setObjectName("listView")
         self.verticalLayout.addWidget(self.listView)
         self.bottomHLayout = QtWidgets.QHBoxLayout()
