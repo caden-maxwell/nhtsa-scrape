@@ -80,6 +80,7 @@ class EventsTab(QWidget):
             return
         self.previous_index = index
         self.img_grid.clear_images()
+        self.request_handler.clear_queue(Priority.IMAGE.value)
 
         for i in reversed(range(self.ui.eventLayout.count())):
             self.ui.eventLayout.itemAt(i).widget().setParent(None)
@@ -105,7 +106,9 @@ class EventsTab(QWidget):
         self.events_pending.append(
             {"case_id": case_id, "vehicle_num": event_data["vehicle_num"]}
         )
-        self.events_pending = list({val['case_id']:val for val in self.events_pending}.values())
+        self.events_pending = list(
+            {val["case_id"]: val for val in self.events_pending}.values()
+        )
 
         keys_to_keep = set(
             [
@@ -139,6 +142,8 @@ class EventsTab(QWidget):
             )
             value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
             self.ui.eventLayout.addWidget(value_label, i + 1, 1)
+
+        self.ui.eventLayout.setColumnStretch(1, 1)
 
     @pyqtSlot(int, str, bytes, str)
     def handle_response(self, priority, url, response_content, cookie):
@@ -219,7 +224,6 @@ class EventsTab(QWidget):
         fileName = "i"
         while True:
             for img_element in img_elements:
-
                 g = input(
                     "Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
                     "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: "
@@ -341,12 +345,15 @@ class ImageViewerWidget(QWidget):
             pixmap = self.convert_image_to_pixmap(img).scaledToHeight(150)
             thumbnail.setPixmap(pixmap)
             thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(img)
+            thumbnail.mouseDoubleClickEvent = img.show
             self.thumbnails_layout.addWidget(thumbnail)
 
     def convert_image_to_pixmap(self, img: Image.Image):
         qimg = QImage(
-            img.tobytes("raw", "RGB"), img.size[0], img.size[1], QImage.Format.Format_RGB888
+            img.tobytes("raw", "RGB"),
+            img.size[0],
+            img.size[1],
+            QImage.Format.Format_RGB888,
         )
         qimg = QPixmap.fromImage(qimg)
         return qimg
@@ -354,6 +361,7 @@ class ImageViewerWidget(QWidget):
     def create_mouse_press_event(self, img: Image):
         def mouse_press_event(event):
             img.show()
+
         return mouse_press_event
 
     def clear_images(self):
