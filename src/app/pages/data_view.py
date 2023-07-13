@@ -44,7 +44,7 @@ class DataView(QWidget):
             Path(__file__).parent.parent.parent / "data" / dir_name
         ).resolve()
 
-        self.events_tab = EventsTab(self.model)
+        self.events_tab = EventsTab(self.model, self.data_dir)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
 
         self.ui.tabWidget.addTab(QWidget(), "Summary")

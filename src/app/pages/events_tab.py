@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPixmap, QFont
@@ -17,7 +18,7 @@ from app.ui.EventsTab_ui import Ui_EventsTab
 
 
 class EventsTab(QWidget):
-    def __init__(self, model: ProfileEvents):
+    def __init__(self, model: ProfileEvents, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
@@ -25,6 +26,7 @@ class EventsTab(QWidget):
 
         self.model = model
         self.model.layoutChanged.connect(self.update_size)
+        self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
         self.ui.eventsList.doubleClicked.connect(self.open_event_details)
@@ -56,17 +58,15 @@ class EventsTab(QWidget):
         for i in reversed(range(self.ui.eventLayout.count())):
             self.ui.eventLayout.itemAt(i).widget().setParent(None)
 
-        self.img_grid.update_images(
-            [
-                "src/test_images/image1.jpg",
-                "src/test_images/image2.jpg",
-                "src/test_images/image3.jpg",
-                "src/test_images/image4.jpg",
-                "src/test_images/image5.jpg",
-                "src/test_images/image6.jpg",
-                "src/test_images/image7.jpg",
+        # Get list of images paths from images directory
+        img_paths = []
+        if self.images_dir.exists():
+            img_paths = [
+                str(img_path)
+                for img_path in self.images_dir.iterdir()
+                if img_path.is_file()
             ]
-        )
+        self.img_grid.update_images(img_paths)
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         keys_to_keep = set(
@@ -111,7 +111,7 @@ class ImageViewerWidget(QWidget):
         self.v_layout = QGridLayout()
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setFixedHeight(175)
+        self.scroll_area.setFixedHeight(200)
 
         self.thumbnails = QWidget()
         self.thumbnails_layout = QHBoxLayout()
@@ -130,7 +130,7 @@ class ImageViewerWidget(QWidget):
         self.no_images_label.setVisible(True)
 
     def update_images(self, image_paths):
-        # Clear existing thumbnails
+        self.no_images_label.setVisible(not len(image_paths))
         for i in reversed(range(self.thumbnails_layout.count())):
             widget = self.thumbnails_layout.itemAt(i).widget()
             self.thumbnails_layout.removeWidget(widget)
@@ -143,24 +143,6 @@ class ImageViewerWidget(QWidget):
             thumbnail.setPixmap(pixmap)
             thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(image_path)
-            self.thumbnails_layout.addWidget(thumbnail)
-
-    def update_images(self, image_paths):
-        self.no_images_label.setVisible(not len(image_paths))
-        for i in reversed(range(self.thumbnails_layout.count())):
-            widget = self.thumbnails_layout.itemAt(i).widget()
-            self.thumbnails_layout.removeWidget(widget)
-            widget.setParent(None)
-
-        # Add new thumbnails to the layout
-        for image_path in image_paths:
-            thumbnail = QLabel()
-            pixmap = QPixmap(image_path).scaledToWidth(200)
-            thumbnail.setPixmap(pixmap)
-            thumbnail.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            thumbnail.mousePressEvent = self.create_mouse_press_event(
-                image_path
-            )  # Assign click event
             self.thumbnails_layout.addWidget(thumbnail)
 
     def create_mouse_press_event(self, image_path):
