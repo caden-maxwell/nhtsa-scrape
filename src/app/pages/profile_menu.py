@@ -48,6 +48,7 @@ class ProfileMenu(QWidget):
             self.logger.debug(f"Opening profile {profile_id}")
             new_viewer = DataView(profile_id)
             self.data_viewers.append(new_viewer)
+            new_viewer.exited.connect(lambda: self.data_viewers.remove(new_viewer))
             new_viewer.show()
 
     def handle_delete(self):

@@ -1,7 +1,7 @@
 import logging
 
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
+from PyQt6.QtGui import QPixmap, QFont
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
@@ -102,8 +102,6 @@ class EventsTab(QWidget):
             value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
             self.ui.eventLayout.addWidget(value_label, i + 1, 1)
 
-        self.ui.eventLayout.setColumnStretch(1, 2)
-
 
 class ImageViewerWidget(QWidget):
     def __init__(self):
@@ -115,13 +113,21 @@ class ImageViewerWidget(QWidget):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setFixedHeight(175)
 
-        self.thumbnails_widget = QWidget()
+        self.thumbnails = QWidget()
         self.thumbnails_layout = QHBoxLayout()
-        self.thumbnails_widget.setLayout(self.thumbnails_layout)
+        self.thumbnails.setLayout(self.thumbnails_layout)
 
-        self.scroll_area.setWidget(self.thumbnails_widget)
+        self.scroll_area.setWidget(self.thumbnails)
         self.v_layout.addWidget(self.scroll_area)
         self.setLayout(self.v_layout)
+
+        self.no_images_label = QLabel("There are no images to display")
+        font = QFont()
+        font.setPointSize(14)
+        self.no_images_label.setFont(font)
+        self.no_images_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.v_layout.addWidget(self.no_images_label, 0, 0)
+        self.no_images_label.setVisible(True)
 
     def update_images(self, image_paths):
         # Clear existing thumbnails
@@ -137,6 +143,24 @@ class ImageViewerWidget(QWidget):
             thumbnail.setPixmap(pixmap)
             thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             thumbnail.mouseDoubleClickEvent = self.create_mouse_press_event(image_path)
+            self.thumbnails_layout.addWidget(thumbnail)
+
+    def update_images(self, image_paths):
+        self.no_images_label.setVisible(not len(image_paths))
+        for i in reversed(range(self.thumbnails_layout.count())):
+            widget = self.thumbnails_layout.itemAt(i).widget()
+            self.thumbnails_layout.removeWidget(widget)
+            widget.setParent(None)
+
+        # Add new thumbnails to the layout
+        for image_path in image_paths:
+            thumbnail = QLabel()
+            pixmap = QPixmap(image_path).scaledToWidth(200)
+            thumbnail.setPixmap(pixmap)
+            thumbnail.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            thumbnail.mousePressEvent = self.create_mouse_press_event(
+                image_path
+            )  # Assign click event
             self.thumbnails_layout.addWidget(thumbnail)
 
     def create_mouse_press_event(self, image_path):

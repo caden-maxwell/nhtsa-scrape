@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_EventsTab(object):
     def setupUi(self, EventsTab):
         EventsTab.setObjectName("EventsTab")
-        EventsTab.resize(465, 329)
+        EventsTab.resize(548, 377)
         self.gridLayout = QtWidgets.QGridLayout(EventsTab)
         self.gridLayout.setObjectName("gridLayout")
         self.promptLabel = QtWidgets.QLabel(parent=EventsTab)
@@ -25,13 +25,13 @@ class Ui_EventsTab(object):
         self.promptLabel.setSizePolicy(sizePolicy)
         self.promptLabel.setObjectName("promptLabel")
         self.gridLayout.addWidget(self.promptLabel, 0, 0, 1, 1)
+        self.eventLayout = QtWidgets.QGridLayout()
+        self.eventLayout.setObjectName("eventLayout")
+        self.gridLayout.addLayout(self.eventLayout, 1, 1, 1, 1)
         self.eventsList = QtWidgets.QListView(parent=EventsTab)
         self.eventsList.setMinimumSize(QtCore.QSize(100, 0))
         self.eventsList.setObjectName("eventsList")
         self.gridLayout.addWidget(self.eventsList, 1, 0, 1, 1)
-        self.eventLayout = QtWidgets.QGridLayout()
-        self.eventLayout.setObjectName("eventLayout")
-        self.gridLayout.addLayout(self.eventLayout, 1, 1, 1, 1)
         self.gridLayout.setColumnStretch(1, 1)
 
         self.retranslateUi(EventsTab)

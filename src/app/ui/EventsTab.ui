@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>465</width>
-    <height>329</height>
+    <width>548</width>
+    <height>377</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,6 +27,9 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="1">
+    <layout class="QGridLayout" name="eventLayout"/>
+   </item>
    <item row="1" column="0">
     <widget class="QListView" name="eventsList">
      <property name="minimumSize">
@@ -36,9 +39,6 @@
       </size>
      </property>
     </widget>
-   </item>
-   <item row="1" column="1">
-    <layout class="QGridLayout" name="eventLayout"/>
    </item>
   </layout>
  </widget>
