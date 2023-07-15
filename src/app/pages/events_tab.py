@@ -24,6 +24,8 @@ from app.ui.EventsTab_ui import Ui_EventsTab
 
 
 class EventsTab(QWidget):
+    COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
+
     def __init__(self, model: ProfileEvents, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
@@ -31,7 +33,7 @@ class EventsTab(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.model = model
-        self.model.layoutChanged.connect(self.update_scrollbar_size)
+        self.model.layoutChanged.connect(self.update_list_size)
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
@@ -46,12 +48,12 @@ class EventsTab(QWidget):
         self.request_handler = RequestHandler()
         self.request_handler.response_received.connect(self.handle_response)
         self.events_pending = []
-        self.responses = {}
+        self.response_cache = {}
 
         self.previous_index = None
 
     def showEvent(self, event) -> None:
-        self.update_scrollbar_size()
+        self.update_list_size()
         return super().showEvent(event)
 
     def keyPressEvent(self, event):
@@ -59,7 +61,7 @@ class EventsTab(QWidget):
             self.open_event_details(self.ui.eventsList.currentIndex())
         return super().keyPressEvent(event)
 
-    def update_scrollbar_size(self):
+    def update_list_size(self):
         scrollbar = self.ui.eventsList.verticalScrollBar()
         list_size = max(self.ui.eventsList.sizeHintForColumn(0), 200)
         scrollbar_width = 0
@@ -68,14 +70,13 @@ class EventsTab(QWidget):
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
 
     def cache_response(self, case_id, response_content, cookie):
-        self.responses[case_id] = {
+        self.response_cache[case_id] = {
             "cookie": cookie,
             "xml": response_content,
             "created": datetime.now(),
         }
 
     def open_event_details(self, index):
-        # If index already open, ignore
         if self.ui.eventsList.currentIndex() == self.previous_index:
             return
         self.previous_index = index
@@ -88,14 +89,14 @@ class EventsTab(QWidget):
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         case_id = event_data["case_id"]
 
-        COOKIE_EXPIRED_SECS = 900  # Assume that the cookie expires after 15 minutes
+        # If we have a cached response for this case, use it
         if (
-            case_id in self.responses
-            and (datetime.now() - self.responses[case_id][1]).total_seconds()
-            < COOKIE_EXPIRED_SECS
+            case_id in self.response_cache
+            and (datetime.now() - self.response_cache[case_id][1]).total_seconds()
+            < self.COOKIE_EXPIRED_SECS
         ):
             self.parse_case(
-                self.responses[case_id]["xml"], self.responses[case_id]["cookie"]
+                self.response_cache[case_id]["xml"], self.response_cache[case_id]["cookie"]
             )
             return
 
@@ -106,9 +107,7 @@ class EventsTab(QWidget):
         self.events_pending.append(
             {"case_id": case_id, "vehicle_num": event_data["vehicle_num"]}
         )
-        self.events_pending = list(
-            {val["case_id"]: val for val in self.events_pending}.values()
-        )
+        print(self.events_pending)
 
         keys_to_keep = set(
             [
@@ -207,98 +206,6 @@ class EventsTab(QWidget):
     def parse_image(self, response_content):
         img = Image.open(BytesIO(response_content))
         self.img_grid.add_image(img)
-        return
-
-        if not img_elements:
-            print(
-                f"No images found for image set {image_set}. Attempting to set to defaults..."
-            )
-            veh_dmg_areas = {
-                2: img_set_lookup["F"],
-                5: img_set_lookup["B"],
-                4: img_set_lookup["L"],
-                3: img_set_lookup["R"],
-            }
-            img_elements = veh_dmg_areas.get(int(payload["ddlPrimaryDamage"]), [])
-
-        fileName = "i"
-        while True:
-            for img_element in img_elements:
-                g = input(
-                    "Select: [NE]xt Image, [SA]ve Image, [DE]lete Case, [FT]ront, [FL]ront Left, [LE]ft,"
-                    "[BL]ack Left, [BA]ck, [BR]ack Right, [RI]ght, [FR]ront Right: "
-                )
-
-                def check_image_set(image_set):
-                    if not self.image_set:
-                        self.image_set = img_set_lookup["F"]
-                        if "F" in self.search_payload["ddlPrimaryDamage"]:
-                            self.image_set = img_set_lookup["F"]
-                        elif "R" in self.search_payload["ddlPrimaryDamage"]:
-                            self.image_set = img_set_lookup["R"]
-                        elif "B" in self.search_payload["ddlPrimaryDamage"]:
-                            self.image_set = img_set_lookup["B"]
-                        elif "L" in self.search_payload["ddlPrimaryDamage"]:
-                            self.image_set = img_set_lookup["L"]
-                        print("Empty Image Set")
-                        return self.image_set
-                    else:
-                        return self.image_set
-
-                if "sa" in g.lower():
-                    caseid_path = (
-                        os.getcwd()
-                        + "/"
-                        + self.search_payload["ddlStartModelYear"]
-                        + "_"
-                        + self.search_payload["ddlEndModelYear"]
-                        + "_"
-                        + self.search_payload["ddlMake"]
-                        + "_"
-                        + self.search_payload["ddlModel"]
-                        + "_"
-                        + self.search_payload["ddlPrimaryDamage"]
-                    )
-                    if not os.path.exists(caseid_path):
-                        os.makedirs(caseid_path)
-                    os.chdir(caseid_path)
-
-                    img_num = str(img_element[0])
-                    fileName = caseid_path + "//" + img_num + ".jpg"
-                    img.save(fileName)
-                    g = "de"
-                    break
-                elif "ne" in g.lower():
-                    continue
-                elif "de" in g.lower():
-                    break
-                elif "ft" in g.lower():
-                    img_elements = check_image_set(front_images)
-                    break
-                elif "fr" in g.lower():
-                    img_elements = check_image_set(frontright_images)
-                    break
-                elif "ri" in g.lower():
-                    img_elements = check_image_set(right_images)
-                    break
-                elif "br" in g.lower():
-                    img_elements = check_image_set(backright_images)
-                    break
-                elif "ba" in g.lower():
-                    img_elements = check_image_set(back_images)
-                    break
-                elif "bl" in g.lower():
-                    img_elements = check_image_set(backleft_images)
-                    break
-                elif "le" in g.lower():
-                    img_elements = check_image_set(left_images)
-                    break
-                elif "fl" in g.lower():
-                    img_elements = check_image_set(frontleft_images)
-                    break
-                img.close()
-            if "de" in g.lower():
-                break
 
 
 class ImageViewerWidget(QWidget):
@@ -342,13 +249,13 @@ class ImageViewerWidget(QWidget):
         # Add new thumbnails to the layout
         for img in self.images:
             thumbnail = QLabel()
-            pixmap = self.convert_image_to_pixmap(img).scaledToHeight(150)
+            pixmap = self.img_to_pixmap(img).scaledToHeight(150)
             thumbnail.setPixmap(pixmap)
             thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             thumbnail.mouseDoubleClickEvent = img.show
             self.thumbnails_layout.addWidget(thumbnail)
 
-    def convert_image_to_pixmap(self, img: Image.Image):
+    def img_to_pixmap(self, img: Image.Image):
         qimg = QImage(
             img.tobytes("raw", "RGB"),
             img.size[0],
