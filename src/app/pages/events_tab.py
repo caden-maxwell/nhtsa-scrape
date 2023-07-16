@@ -32,6 +32,14 @@ class EventsTab(QWidget):
         self.ui.eventsList.doubleClicked.connect(self.open_event_details)
         self.ui.scrapeBtn.clicked.connect(self.scrape_images)
         self.ui.discardBtn.clicked.connect(self.discard_event)
+        self.ui.imgSetCombo.addItem("Front", "F")
+        self.ui.imgSetCombo.addItem("Back", "B")
+        self.ui.imgSetCombo.addItem("Left", "L")
+        self.ui.imgSetCombo.addItem("Right", "R")
+        self.ui.imgSetCombo.addItem("Front Left", "FL")
+        self.ui.imgSetCombo.addItem("Front Right", "FR")
+        self.ui.imgSetCombo.addItem("Back Left", "BL")
+        self.ui.imgSetCombo.addItem("Back Right", "BR")
 
         self.no_images_label = QLabel("There are no images to display")
         font = QFont()
@@ -47,6 +55,10 @@ class EventsTab(QWidget):
         self.response_cache = {}
         self.case_veh_img_ids = {}
         self.vehicle_imgs = {}
+
+        if self.model.index(0, 0).isValid():
+            self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
+            self.open_event_details(self.model.index(0, 0))
 
     def showEvent(self, event) -> None:
         self.update_list_size()
@@ -128,7 +140,9 @@ class EventsTab(QWidget):
             self.ui.eventLayoutRight.addWidget(value_label, i + 1, 1)
 
     def scrape_images(self):
-        event_data = self.model.data(self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole)
+        event_data = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        )
         case_id = int(event_data["case_id"])
         vehicle_num = int(event_data["vehicle_num"])
 
@@ -172,12 +186,6 @@ class EventsTab(QWidget):
             self.logger.debug("No ImgForm found.")
             return
 
-        pending_veh_nums = [
-            key[1]
-            for key in self.case_veh_img_ids.keys()
-            if key[0] == case_id and not self.case_veh_img_ids[key]
-        ]
-
         veh_img_areas = {
             "F": "Front",
             "B": "Back",
@@ -189,7 +197,11 @@ class EventsTab(QWidget):
             "BR": "Backrightoblique",
         }
 
-        for vehicle_num in pending_veh_nums:
+        vehicle_nums = [
+            key[1] for key in self.case_veh_img_ids.keys() if key[0] == case_id
+        ]
+
+        for vehicle_num in vehicle_nums:
             veh_img_form = img_form.find("Vehicle", {"VehicleNumber": {vehicle_num}})
             if not veh_img_form:
                 self.logger.warning(
@@ -205,30 +217,36 @@ class EventsTab(QWidget):
                 images = img_area_form.find_all("image")
                 img_set_lookup[key] = [(img.text, img["version"]) for img in images]
 
-            image_set = "R"  # TODO: Get the actual value from the UI.
+            image_set = self.ui.imgSetCombo.currentData()
 
-            img_elements = img_set_lookup.get(image_set, [])
+            img_elements = img_set_lookup.get(image_set)
+            img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), [])
             for img_element in img_elements:
                 img_id = img_element[0]
                 img_version = img_element[1]
                 img_url = f"https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={img_version}"
-
                 request = Request(
                     img_url, headers={"Cookie": cookie}, priority=Priority.IMAGE.value
                 )
                 self.request_handler.enqueue_request(request)
-                self.case_veh_img_ids[(case_id, vehicle_num)].append(int(img_id))
+                img_ids.append(int(img_id))
+            self.case_veh_img_ids[(case_id, vehicle_num)] = img_ids
 
     def parse_image(self, url, response_content):
         img_id = int(url.split("&")[1].split("=")[1])
-        img = Image.open(BytesIO(response_content))
-        self.vehicle_imgs[img_id] = img
-        self.update_images()
+        vals = self.case_veh_img_ids.values()
+        img_ids = [img_id for img_id_list in vals for img_id in img_id_list]
+        if img_id in img_ids:
+            img = Image.open(BytesIO(response_content))
+            self.vehicle_imgs[img_id] = img
+            self.update_images()
 
     def update_images(self):
         current_idx = self.ui.eventsList.currentIndex()
         event_data = self.model.data(current_idx, Qt.ItemDataRole.UserRole)
-        img_ids = self.case_veh_img_ids.get((int(event_data["case_id"]), int(event_data["vehicle_num"])), [])
+        img_ids = self.case_veh_img_ids.get(
+            (int(event_data["case_id"]), int(event_data["vehicle_num"])), []
+        )
         images = [self.vehicle_imgs.get(img_id) for img_id in img_ids]
         images = [img for img in images if img]
 
@@ -253,5 +271,4 @@ class EventsTab(QWidget):
             img.size[1],
             QImage.Format.Format_RGB888,
         )
-        qimg = QPixmap.fromImage(qimg)
-        return qimg
+        return QPixmap.fromImage(qimg)
