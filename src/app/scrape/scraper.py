@@ -32,14 +32,12 @@ class ScrapeEngine(QObject):
     CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
     CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
 
-    def __init__(self, search_params, image_set, case_limit):
+    def __init__(self, search_params, case_limit):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
-
         self.case_limit = case_limit
-        self.image_set = image_set
 
         # Get default search payload and update with user input
         payload_path = Path(__file__).parent / "payload.json"
@@ -126,7 +124,6 @@ class ScrapeEngine(QObject):
                 Primary Damage: {self.search_payload['ddlPrimaryDamage']},
                 Secondary Damage: {self.search_payload['lSecondaryDamage']},
                 Case Limit: {self.case_limit},
-                Image Set: {self.image_set}
             }}"""
             )
         )

@@ -32,19 +32,6 @@ class ScrapeMenu(QWidget):
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
-        self.ui.imageSetCombo.addItems(
-            [
-                "All",
-                "F - Front",
-                "FL - Front Left",
-                "FR - Front Right",
-                "B - Back",
-                "BL - Back Left",
-                "BR - Back Right",
-                "L - Left",
-                "R - Right",
-            ]
-        )
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.ui.casesSpin.setValue(40)
@@ -166,9 +153,7 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        image_set = self.ui.imageSetCombo.currentText()
         case_limit = self.ui.casesSpin.value()
-
         self.scrape_engine = ScrapeEngine(
             {
                 "ddlMake": self.ui.makeCombo.currentData(),
@@ -180,7 +165,6 @@ class ScrapeMenu(QWidget):
                 "tDeltaVFrom": self.ui.dvMinSpin.value(),
                 "tDeltaVTo": self.ui.dvMaxSpin.value(),
             },
-            image_set,
             case_limit,
         )
         self.scrape_engine.completed.connect(self.handle_scrape_complete)
