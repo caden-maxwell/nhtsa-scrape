@@ -265,12 +265,12 @@ class ProfileEvents(QAbstractListModel):
                 INSERT OR IGNORE INTO scrape_profile_events (
                     profile_id,
                     case_id,
-                    event_num,
-                    vehicle_num
+                    vehicle_num,
+                    event_num
                 )
                 VALUES (?, ?, ?, ?)
                 """,
-                (self.profile[0], case_id, event_num, vehicle_num),
+                (self.profile[0], case_id, vehicle_num, event_num),
             )
             self.db.commit()
             self.logger.debug(
@@ -281,25 +281,33 @@ class ProfileEvents(QAbstractListModel):
             return
         self.refresh_events()
 
-    def delete_event(self, index):
+    def delete_event(self, index: QModelIndex):
         try:
             data = self.data_list[index.row()]
+            print(f"Deleting: Case {data[0]} Vehicle {data[1]} Event {data[2]}")
+            self.cursor.execute(
+                """
+                DELETE FROM scrape_profile_events
+                WHERE case_id = ? AND vehicle_num = ? AND event_num = ? AND profile_id = ?
+                """,
+                (data[0], data[1], data[2], self.profile[0]),
+            )
             self.cursor.execute(
                 """
                 DELETE FROM case_events
-                WHERE (case_id, event_num, vehicle_num) = ?
+                WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
                 """,
-                (data[0],),
+                (data[0], data[1], data[2]),
             )
             self.db.commit()
         except sqlite3.Error as e:
-            self.logger.error("Error deleting case:", e)
+            self.logger.error(f"Error deleting case: {e}")
             return
         except IndexError:
             self.logger.error("Error deleting case: index out of range")
             return
         self.logger.debug(
-            f"Deleted event: Case {data[1]} Event {data[2]} Vehicle {data[3]}"
+            f"Deleted event: Case {data[0]} Vehicle {data[1]} Event {data[2]}"
         )
         self.refresh_events()
 
@@ -308,8 +316,8 @@ class ProfileEvents(QAbstractListModel):
             self.cursor.execute(
                 """
                 SELECT * FROM case_events
-                WHERE (case_id, event_num, vehicle_num) IN (
-                    SELECT case_id, event_num, vehicle_num FROM scrape_profile_events
+                WHERE (case_id, vehicle_num, event_num) IN (
+                    SELECT case_id, vehicle_num, event_num FROM scrape_profile_events
                     WHERE profile_id = ?
                 )
                 """,

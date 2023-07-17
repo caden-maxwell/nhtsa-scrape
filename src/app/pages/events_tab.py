@@ -1,11 +1,19 @@
 from datetime import datetime
 from io import BytesIO
 import logging
+import os
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QModelIndex
 from PyQt6.QtGui import QPixmap, QFont, QImage
-from PyQt6.QtWidgets import QWidget, QLabel, QLabel
+from PyQt6.QtWidgets import (
+    QWidget,
+    QLabel,
+    QLabel,
+    QGridLayout,
+    QHBoxLayout,
+    QPushButton,
+)
 
 from bs4 import BeautifulSoup
 from PIL import Image
@@ -29,9 +37,9 @@ class EventsTab(QWidget):
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
-        self.ui.eventsList.doubleClicked.connect(self.open_event_details)
+        self.ui.eventsList.clicked.connect(self.open_event_details)
         self.ui.scrapeBtn.clicked.connect(self.scrape_images)
-        self.ui.discardBtn.clicked.connect(self.discard_event)
+        self.ui.discardBtn.clicked.connect(self.delete_event)
         self.ui.imgSetCombo.addItem("Front", "F")
         self.ui.imgSetCombo.addItem("Back", "B")
         self.ui.imgSetCombo.addItem("Left", "L")
@@ -85,59 +93,23 @@ class EventsTab(QWidget):
         }
 
     def open_event_details(self, index):
-        self.update_images()
-
-        for i in reversed(range(self.ui.eventLayoutLeft.count())):
-            self.ui.eventLayoutLeft.itemAt(i).widget().setParent(None)
-
-        for i in reversed(range(self.ui.eventLayoutRight.count())):
-            self.ui.eventLayoutRight.itemAt(i).widget().setParent(None)
-
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
 
-        keys_left_side = set(
-            ["make", "model", "model_year", "curb_weight", "dmg_loc", "underride"]
-        )
+        # Left side of event view data
+        self.ui.makeLineEdit.setText(event_data["make"])
+        self.ui.modelLineEdit.setText(event_data["model"])
+        self.ui.yearLineEdit.setText(str(event_data["model_year"]))
+        self.ui.curbWeightLineEdit.setText(str(event_data["curb_weight"]))
+        self.ui.dmgLocLineEdit.setText(event_data["dmg_loc"])
+        self.ui.underrideLineEdit.setText(event_data["underride"])
 
-        left_col_data = {k: v for k, v in event_data.items() if k in keys_left_side}
-        for i, (key, value) in enumerate(left_col_data.items()):
-            key_label = QLabel(str(key) + ":")
-            key_label.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse
-            )
-            key_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-            font = key_label.font()
-            font.setWeight(QFont.Weight.Bold)
-            key_label.setFont(font)
-            self.ui.eventLayoutLeft.addWidget(key_label, i + 1, 0)
+        # Right side of event view data
+        self.ui.cBarLineEdit.setText(f"{event_data['c_bar']:.4f}")
+        self.ui.nassDVLineEdit.setText(f"{event_data['NASS_dv']:.4f}")
+        self.ui.nassVCLineEdit.setText(f"{event_data['NASS_vc']:.4f}")
+        self.ui.totDVLineEdit.setText(f"{event_data['TOT_dv']:.4f}")
 
-            value_label = QLabel(str(value))
-            value_label.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse
-            )
-            value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-            self.ui.eventLayoutLeft.addWidget(value_label, i + 1, 1)
-
-        keys_right_side = set(["c_bar", "NASS_dv", "NASS_vc", "TOT_dv"])
-
-        event_data_right = {k: v for k, v in event_data.items() if k in keys_right_side}
-        for i, (key, value) in enumerate(event_data_right.items()):
-            key_label = QLabel(str(key) + ":")
-            key_label.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse
-            )
-            key_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-            font = key_label.font()
-            font.setWeight(QFont.Weight.Bold)
-            key_label.setFont(font)
-            self.ui.eventLayoutRight.addWidget(key_label, i + 1, 0)
-
-            value_label = QLabel(f"{value:.2f}")
-            value_label.setTextInteractionFlags(
-                Qt.TextInteractionFlag.TextSelectableByMouse
-            )
-            value_label.setAlignment(Qt.AlignmentFlag.AlignTop)
-            self.ui.eventLayoutRight.addWidget(value_label, i + 1, 1)
+        self.update_images(index)
 
     def scrape_images(self):
         event_data = self.model.data(
@@ -165,8 +137,11 @@ class EventsTab(QWidget):
             )
             self.request_handler.enqueue_request(request)
 
-    def discard_event(self):
-        pass
+    def delete_event(self):
+        self.model.delete_event(self.ui.eventsList.currentIndex())
+        self.ui.eventsList.clearSelection()
+        self.__clear_event_details()
+        self.update_images()
 
     @pyqtSlot(int, str, bytes, str)
     def handle_response(self, priority, url, response_content, cookie):
@@ -239,30 +214,65 @@ class EventsTab(QWidget):
         if img_id in img_ids:
             img = Image.open(BytesIO(response_content))
             self.vehicle_imgs[img_id] = img
-            self.update_images()
+            self.update_images(self.ui.eventsList.currentIndex())
 
-    def update_images(self):
-        current_idx = self.ui.eventsList.currentIndex()
-        event_data = self.model.data(current_idx, Qt.ItemDataRole.UserRole)
+    def update_images(self, index: QModelIndex = None):
+        if not index or not index.isValid():
+            self.__remove_images()
+            self.no_images_label.setVisible(True)
+            return
+
+        event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         img_ids = self.case_veh_img_ids.get(
             (int(event_data["case_id"]), int(event_data["vehicle_num"])), []
         )
-        images = [self.vehicle_imgs.get(img_id) for img_id in img_ids]
-        images = [img for img in images if img]
+        images = [(img_id, img) for img_id in img_ids if (img := self.vehicle_imgs.get(img_id))]
 
+        self.__remove_images()
         self.no_images_label.setVisible(not len(images))
+
+        for img_id, img in images:
+            thumbnail = ImageThumbnail(img_id, img, self.images_dir)
+            self.ui.thumbnailsLayout.addWidget(thumbnail)
+
+    def __remove_images(self):
         for i in reversed(range(self.ui.thumbnailsLayout.count())):
             widget = self.ui.thumbnailsLayout.itemAt(i).widget()
             self.ui.thumbnailsLayout.removeWidget(widget)
             widget.setParent(None)
 
-        for img in images:
-            thumbnail = QLabel()
-            pixmap = self.img_to_pixmap(img).scaledToHeight(150)
-            thumbnail.setPixmap(pixmap)
-            thumbnail.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-            thumbnail.mouseDoubleClickEvent = img.show
-            self.ui.thumbnailsLayout.addWidget(thumbnail)
+
+class ImageThumbnail(QWidget):
+    def __init__(self, img_id: int, image: Image.Image, images_dir: Path):
+        super().__init__()
+        self.img_id = img_id
+        self.image = image
+        self.images_dir = images_dir
+
+        layout = QGridLayout()
+        self.thumbnail_label = QLabel()
+        pixmap = self.img_to_pixmap(self.image).scaledToHeight(160)
+        self.thumbnail_label.setPixmap(pixmap)
+        self.thumbnail_label.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        self.setFixedSize(pixmap.size())
+
+        layout.addWidget(self.thumbnail_label, 0, 0)
+
+        h_layout = QHBoxLayout()
+
+        self.open_button = QPushButton("Open")
+        self.open_button.setVisible(False)
+        self.open_button.clicked.connect(self.open_image)
+        h_layout.addWidget(self.open_button)
+
+        self.save_button = QPushButton("Save")
+        self.save_button.setVisible(False)
+        self.save_button.clicked.connect(self.save_image)
+        h_layout.addWidget(self.save_button)
+
+        layout.addLayout(h_layout, 0, 0, Qt.AlignmentFlag.AlignBottom)
+
+        self.setLayout(layout)
 
     def img_to_pixmap(self, img: Image.Image):
         qimg = QImage(
@@ -272,3 +282,35 @@ class EventsTab(QWidget):
             QImage.Format.Format_RGB888,
         )
         return QPixmap.fromImage(qimg)
+
+    def save_image(self):
+        self.save_button.setEnabled(False)
+        self.save_button.setText("Saving...")
+        self.save_button.repaint()
+        os.makedirs(self.images_dir, exist_ok=True)
+
+        path = self.images_dir / f"{self.img_id}.png"
+        i = 1
+        while path.exists():
+            path = self.images_dir / f"{self.img_id}({i}).png"
+            i += 1
+
+        self.image.save(path, "PNG")
+        self.save_button.setText("Saved!")
+        self.save_button.repaint()
+        QTimer.singleShot(2500, self.reset_save_button)
+
+    def reset_save_button(self):
+        self.save_button.setText("Save")
+        self.save_button.setEnabled(True)
+
+    def open_image(self):
+        self.image.show()
+
+    def enterEvent(self, event):
+        self.open_button.setVisible(True)
+        self.save_button.setVisible(True)
+
+    def leaveEvent(self, event):
+        self.open_button.setVisible(False)
+        self.save_button.setVisible(False)
