@@ -62,61 +62,85 @@ class Ui_EventsTab(object):
         font.setBold(True)
         self.makeLabel.setFont(font)
         self.makeLabel.setObjectName("makeLabel")
-        self.formLayoutLeft.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.makeLabel)
+        self.formLayoutLeft.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.makeLabel
+        )
         self.makeLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.makeLineEdit.setReadOnly(True)
         self.makeLineEdit.setObjectName("makeLineEdit")
-        self.formLayoutLeft.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.makeLineEdit)
+        self.formLayoutLeft.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.makeLineEdit
+        )
         self.modelLabel = QtWidgets.QLabel(parent=self.eventDataLeft)
         font = QtGui.QFont()
         font.setBold(True)
         self.modelLabel.setFont(font)
         self.modelLabel.setObjectName("modelLabel")
-        self.formLayoutLeft.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.modelLabel)
+        self.formLayoutLeft.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.modelLabel
+        )
         self.modelLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.modelLineEdit.setReadOnly(True)
         self.modelLineEdit.setObjectName("modelLineEdit")
-        self.formLayoutLeft.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.modelLineEdit)
+        self.formLayoutLeft.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.modelLineEdit
+        )
         self.yearLabel = QtWidgets.QLabel(parent=self.eventDataLeft)
         font = QtGui.QFont()
         font.setBold(True)
         self.yearLabel.setFont(font)
         self.yearLabel.setObjectName("yearLabel")
-        self.formLayoutLeft.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.yearLabel)
+        self.formLayoutLeft.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.yearLabel
+        )
         self.yearLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.yearLineEdit.setReadOnly(True)
         self.yearLineEdit.setObjectName("yearLineEdit")
-        self.formLayoutLeft.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.yearLineEdit)
+        self.formLayoutLeft.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.yearLineEdit
+        )
         self.curbWeightLabel = QtWidgets.QLabel(parent=self.eventDataLeft)
         font = QtGui.QFont()
         font.setBold(True)
         self.curbWeightLabel.setFont(font)
         self.curbWeightLabel.setObjectName("curbWeightLabel")
-        self.formLayoutLeft.setWidget(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.curbWeightLabel)
+        self.formLayoutLeft.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.curbWeightLabel
+        )
         self.curbWeightLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.curbWeightLineEdit.setReadOnly(True)
         self.curbWeightLineEdit.setObjectName("curbWeightLineEdit")
-        self.formLayoutLeft.setWidget(3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.curbWeightLineEdit)
+        self.formLayoutLeft.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.curbWeightLineEdit
+        )
         self.dmgLocLabel = QtWidgets.QLabel(parent=self.eventDataLeft)
         font = QtGui.QFont()
         font.setBold(True)
         self.dmgLocLabel.setFont(font)
         self.dmgLocLabel.setObjectName("dmgLocLabel")
-        self.formLayoutLeft.setWidget(4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.dmgLocLabel)
+        self.formLayoutLeft.setWidget(
+            4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.dmgLocLabel
+        )
         self.dmgLocLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.dmgLocLineEdit.setReadOnly(True)
         self.dmgLocLineEdit.setObjectName("dmgLocLineEdit")
-        self.formLayoutLeft.setWidget(4, QtWidgets.QFormLayout.ItemRole.FieldRole, self.dmgLocLineEdit)
+        self.formLayoutLeft.setWidget(
+            4, QtWidgets.QFormLayout.ItemRole.FieldRole, self.dmgLocLineEdit
+        )
         self.underrideLabel = QtWidgets.QLabel(parent=self.eventDataLeft)
         font = QtGui.QFont()
         font.setBold(True)
         self.underrideLabel.setFont(font)
         self.underrideLabel.setObjectName("underrideLabel")
-        self.formLayoutLeft.setWidget(5, QtWidgets.QFormLayout.ItemRole.LabelRole, self.underrideLabel)
+        self.formLayoutLeft.setWidget(
+            5, QtWidgets.QFormLayout.ItemRole.LabelRole, self.underrideLabel
+        )
         self.underrideLineEdit = QtWidgets.QLineEdit(parent=self.eventDataLeft)
         self.underrideLineEdit.setReadOnly(True)
         self.underrideLineEdit.setObjectName("underrideLineEdit")
-        self.formLayoutLeft.setWidget(5, QtWidgets.QFormLayout.ItemRole.FieldRole, self.underrideLineEdit)
+        self.formLayoutLeft.setWidget(
+            5, QtWidgets.QFormLayout.ItemRole.FieldRole, self.underrideLineEdit
+        )
         self.horizontalLayout.addWidget(self.eventDataLeft)
         self.line = QtWidgets.QFrame(parent=self.eventDataWidget)
         self.line.setFrameShape(QtWidgets.QFrame.Shape.VLine)
@@ -133,45 +157,63 @@ class Ui_EventsTab(object):
         font.setBold(True)
         self.cBarLabel.setFont(font)
         self.cBarLabel.setObjectName("cBarLabel")
-        self.formLayoutRight.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.cBarLabel)
+        self.formLayoutRight.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.cBarLabel
+        )
         self.cBarLineEdit = QtWidgets.QLineEdit(parent=self.eventDataRight)
         self.cBarLineEdit.setReadOnly(True)
         self.cBarLineEdit.setObjectName("cBarLineEdit")
-        self.formLayoutRight.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.cBarLineEdit)
+        self.formLayoutRight.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.cBarLineEdit
+        )
         self.nassDVLabel = QtWidgets.QLabel(parent=self.eventDataRight)
         font = QtGui.QFont()
         font.setBold(True)
         self.nassDVLabel.setFont(font)
         self.nassDVLabel.setObjectName("nassDVLabel")
-        self.formLayoutRight.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.nassDVLabel)
+        self.formLayoutRight.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.nassDVLabel
+        )
         self.nassDVLineEdit = QtWidgets.QLineEdit(parent=self.eventDataRight)
         self.nassDVLineEdit.setReadOnly(True)
         self.nassDVLineEdit.setObjectName("nassDVLineEdit")
-        self.formLayoutRight.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.nassDVLineEdit)
+        self.formLayoutRight.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.nassDVLineEdit
+        )
         self.nassVCLabel = QtWidgets.QLabel(parent=self.eventDataRight)
         font = QtGui.QFont()
         font.setBold(True)
         self.nassVCLabel.setFont(font)
         self.nassVCLabel.setObjectName("nassVCLabel")
-        self.formLayoutRight.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.nassVCLabel)
+        self.formLayoutRight.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.nassVCLabel
+        )
         self.nassVCLineEdit = QtWidgets.QLineEdit(parent=self.eventDataRight)
         self.nassVCLineEdit.setReadOnly(True)
         self.nassVCLineEdit.setObjectName("nassVCLineEdit")
-        self.formLayoutRight.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.nassVCLineEdit)
+        self.formLayoutRight.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.nassVCLineEdit
+        )
         self.totDVLabel = QtWidgets.QLabel(parent=self.eventDataRight)
         font = QtGui.QFont()
         font.setBold(True)
         self.totDVLabel.setFont(font)
         self.totDVLabel.setObjectName("totDVLabel")
-        self.formLayoutRight.setWidget(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totDVLabel)
+        self.formLayoutRight.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totDVLabel
+        )
         self.totDVLineEdit = QtWidgets.QLineEdit(parent=self.eventDataRight)
         self.totDVLineEdit.setReadOnly(True)
         self.totDVLineEdit.setObjectName("totDVLineEdit")
-        self.formLayoutRight.setWidget(3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totDVLineEdit)
+        self.formLayoutRight.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totDVLineEdit
+        )
         self.horizontalLayout.addWidget(self.eventDataRight)
         self.mainGrid.addWidget(self.eventDataWidget, 3, 1, 1, 1)
         self.promptLabel = QtWidgets.QLabel(parent=EventsTab)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.promptLabel.sizePolicy().hasHeightForWidth())

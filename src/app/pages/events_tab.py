@@ -92,7 +92,20 @@ class EventsTab(QWidget):
             "created": datetime.now(),
         }
 
-    def open_event_details(self, index):
+    def open_event_details(self, index: QModelIndex):
+        if not index or not index.isValid():
+            self.ui.makeLineEdit.setText("")
+            self.ui.modelLineEdit.setText("")
+            self.ui.yearLineEdit.setText("")
+            self.ui.curbWeightLineEdit.setText("")
+            self.ui.dmgLocLineEdit.setText("")
+            self.ui.underrideLineEdit.setText("")
+            self.ui.cBarLineEdit.setText("")
+            self.ui.nassDVLineEdit.setText("")
+            self.ui.nassVCLineEdit.setText("")
+            self.ui.totDVLineEdit.setText("")
+            return
+
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
 
         # Left side of event view data
@@ -139,9 +152,8 @@ class EventsTab(QWidget):
 
     def delete_event(self):
         self.model.delete_event(self.ui.eventsList.currentIndex())
-        self.ui.eventsList.clearSelection()
-        self.__clear_event_details()
-        self.update_images()
+        self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
+        self.open_event_details(self.model.index(0, 0))
 
     @pyqtSlot(int, str, bytes, str)
     def handle_response(self, priority, url, response_content, cookie):
@@ -226,7 +238,11 @@ class EventsTab(QWidget):
         img_ids = self.case_veh_img_ids.get(
             (int(event_data["case_id"]), int(event_data["vehicle_num"])), []
         )
-        images = [(img_id, img) for img_id in img_ids if (img := self.vehicle_imgs.get(img_id))]
+        images = [
+            (img_id, img)
+            for img_id in img_ids
+            if (img := self.vehicle_imgs.get(img_id))
+        ]
 
         self.__remove_images()
         self.no_images_label.setVisible(not len(images))
