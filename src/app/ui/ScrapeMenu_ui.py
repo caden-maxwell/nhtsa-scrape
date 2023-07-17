@@ -18,7 +18,9 @@ class Ui_ScrapeMenu(object):
         self.topHLayout = QtWidgets.QHBoxLayout()
         self.topHLayout.setObjectName("topHLayout")
         self.backBtn = QtWidgets.QPushButton(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.backBtn.sizePolicy().hasHeightForWidth())
@@ -26,7 +28,9 @@ class Ui_ScrapeMenu(object):
         self.backBtn.setObjectName("backBtn")
         self.topHLayout.addWidget(self.backBtn)
         self.mainTitle = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.mainTitle.sizePolicy().hasHeightForWidth())
@@ -55,7 +59,9 @@ class Ui_ScrapeMenu(object):
         self.deltaLayout = QtWidgets.QGridLayout()
         self.deltaLayout.setObjectName("deltaLayout")
         self.label_8 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_8.sizePolicy().hasHeightForWidth())
@@ -63,7 +69,9 @@ class Ui_ScrapeMenu(object):
         self.label_8.setObjectName("label_8")
         self.deltaLayout.addWidget(self.label_8, 1, 2, 1, 1)
         self.label_4 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_4.sizePolicy().hasHeightForWidth())
@@ -79,7 +87,9 @@ class Ui_ScrapeMenu(object):
         self.dvMinSpin.setObjectName("dvMinSpin")
         self.deltaLayout.addWidget(self.dvMinSpin, 1, 1, 1, 1)
         self.label_3 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_3.sizePolicy().hasHeightForWidth())
@@ -90,7 +100,9 @@ class Ui_ScrapeMenu(object):
         self.vehicleLayout = QtWidgets.QVBoxLayout()
         self.vehicleLayout.setObjectName("vehicleLayout")
         self.makeLabel = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.makeLabel.sizePolicy().hasHeightForWidth())
@@ -102,7 +114,9 @@ class Ui_ScrapeMenu(object):
         self.makeCombo.setObjectName("makeCombo")
         self.vehicleLayout.addWidget(self.makeCombo)
         self.modelLabel = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.modelLabel.sizePolicy().hasHeightForWidth())
@@ -132,7 +146,9 @@ class Ui_ScrapeMenu(object):
         self.yearsLayout = QtWidgets.QGridLayout()
         self.yearsLayout.setObjectName("yearsLayout")
         self.label_7 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_7.sizePolicy().hasHeightForWidth())
@@ -144,7 +160,9 @@ class Ui_ScrapeMenu(object):
         self.startYearCombo.setObjectName("startYearCombo")
         self.yearsLayout.addWidget(self.startYearCombo, 1, 1, 1, 1)
         self.label_6 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Preferred
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_6.sizePolicy().hasHeightForWidth())
@@ -156,7 +174,9 @@ class Ui_ScrapeMenu(object):
         self.endYearCombo.setObjectName("endYearCombo")
         self.yearsLayout.addWidget(self.endYearCombo, 1, 3, 1, 1)
         self.label_5 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_5.sizePolicy().hasHeightForWidth())
@@ -167,7 +187,9 @@ class Ui_ScrapeMenu(object):
         self.damageLayout = QtWidgets.QVBoxLayout()
         self.damageLayout.setObjectName("damageLayout")
         self.label = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
@@ -179,7 +201,9 @@ class Ui_ScrapeMenu(object):
         self.pDmgCombo.setObjectName("pDmgCombo")
         self.damageLayout.addWidget(self.pDmgCombo)
         self.label_2 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_2.sizePolicy().hasHeightForWidth())
@@ -194,7 +218,9 @@ class Ui_ScrapeMenu(object):
         self.numCasesLayout = QtWidgets.QVBoxLayout()
         self.numCasesLayout.setObjectName("numCasesLayout")
         self.label_9 = QtWidgets.QLabel(parent=ScrapeMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Fixed
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.label_9.sizePolicy().hasHeightForWidth())
@@ -215,7 +241,12 @@ class Ui_ScrapeMenu(object):
         self.verticalLayout.addWidget(self.line)
         self.bottomHLayout = QtWidgets.QHBoxLayout()
         self.bottomHLayout.setObjectName("bottomHLayout")
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.bottomHLayout.addItem(spacerItem)
         self.submitBtn = QtWidgets.QPushButton(parent=ScrapeMenu)
         self.submitBtn.setEnabled(False)
