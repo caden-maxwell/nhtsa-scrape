@@ -173,6 +173,10 @@ class EventsTab(QWidget):
             self.logger.debug("No ImgForm found.")
             return
 
+        vehicle_nums = [
+            key[1] for key in self.case_veh_img_ids.keys() if key[0] == case_id
+        ]
+
         veh_img_areas = {
             "F": "Front",
             "B": "Back",
@@ -183,10 +187,6 @@ class EventsTab(QWidget):
             "BL": "Frontrightoblique",
             "BR": "Backrightoblique",
         }
-
-        vehicle_nums = [
-            key[1] for key in self.case_veh_img_ids.keys() if key[0] == case_id
-        ]
 
         for vehicle_num in vehicle_nums:
             veh_img_form = img_form.find("Vehicle", {"VehicleNumber": {vehicle_num}})
@@ -209,14 +209,15 @@ class EventsTab(QWidget):
             img_elements = img_set_lookup.get(image_set)
             img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), [])
             for img_element in img_elements:
-                img_id = img_element[0]
+                img_id = int(img_element[0])
                 img_version = img_element[1]
                 img_url = f"https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={img_version}"
                 request = Request(
                     img_url, headers={"Cookie": cookie}, priority=Priority.IMAGE.value
                 )
-                self.request_handler.enqueue_request(request)
-                img_ids.append(int(img_id))
+                if img_id not in img_ids:
+                    self.request_handler.enqueue_request(request)
+                    img_ids.append(img_id)
             self.case_veh_img_ids[(case_id, vehicle_num)] = img_ids
 
     def parse_image(self, url, response_content):
