@@ -57,7 +57,7 @@ class DataView(QWidget):
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
         self.model.add_event(event)
-        self.events_tab.cache_response(event["case_id"], response_content, cookie)
+        self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
 
         file = "random.csv"

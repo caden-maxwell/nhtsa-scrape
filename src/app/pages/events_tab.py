@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QModelIndex
+from PyQt6.QtCore import Qt, pyqtSlot, QModelIndex
 from PyQt6.QtGui import QPixmap, QFont, QImage
 from PyQt6.QtWidgets import (
     QWidget,
@@ -38,7 +38,7 @@ class EventsTab(QWidget):
 
         self.ui.eventsList.setModel(self.model)
         self.ui.eventsList.clicked.connect(self.open_event_details)
-        self.ui.scrapeBtn.clicked.connect(self.scrape_images)
+        self.ui.scrapeBtn.clicked.connect(self.get_case_for_img)
         self.ui.discardBtn.clicked.connect(self.delete_event)
         self.ui.imgSetCombo.addItem("Front", "F")
         self.ui.imgSetCombo.addItem("Back", "B")
@@ -124,7 +124,7 @@ class EventsTab(QWidget):
 
         self.update_images(index)
 
-    def scrape_images(self):
+    def get_case_for_img(self):
         event_data = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         )
@@ -134,14 +134,9 @@ class EventsTab(QWidget):
         if not self.case_veh_img_ids.get((case_id, event_data["vehicle_num"])):
             self.case_veh_img_ids[(case_id, vehicle_num)] = []
 
-        if (
-            case_id in self.response_cache
-            and (
-                datetime.now() - self.response_cache[case_id]["created"]
-            ).total_seconds()
-            < self.COOKIE_EXPIRED_SECS
-        ):
-            cached_case = self.response_cache[case_id]
+        cached_case = self.response_cache.get(case_id)
+        if self.cached_and_valid(case_id):
+            self.logger.debug(f"Using cached case ({case_id})")
             self.parse_case(cached_case["xml"], cached_case["cookie"])
         else:
             request = Request(
@@ -149,6 +144,15 @@ class EventsTab(QWidget):
                 priority=Priority.CASE_FOR_IMAGE.value,
             )
             self.request_handler.enqueue_request(request)
+
+    def cached_and_valid(self, case_id):
+        """Check if the case has been cached and if the cookie is still valid."""
+        cached_case = self.response_cache.get(case_id)
+        return (
+            cached_case
+            and (datetime.now() - cached_case["created"]).total_seconds()
+            < self.COOKIE_EXPIRED_SECS
+        )
 
     def delete_event(self):
         self.model.delete_event(self.ui.eventsList.currentIndex())
@@ -220,7 +224,7 @@ class EventsTab(QWidget):
                     img_ids.append(img_id)
             self.case_veh_img_ids[(case_id, vehicle_num)] = img_ids
 
-    def parse_image(self, url, response_content):
+    def parse_image(self, url: str, response_content: bytes):
         img_id = int(url.split("&")[1].split("=")[1])
         vals = self.case_veh_img_ids.values()
         img_ids = [img_id for img_id_list in vals for img_id in img_id_list]
@@ -315,11 +319,6 @@ class ImageThumbnail(QWidget):
         self.image.save(path, "PNG")
         self.save_button.setText("Saved!")
         self.save_button.repaint()
-        QTimer.singleShot(2500, self.reset_save_button)
-
-    def reset_save_button(self):
-        self.save_button.setText("Save")
-        self.save_button.setEnabled(True)
 
     def open_image(self):
         self.image.show()
