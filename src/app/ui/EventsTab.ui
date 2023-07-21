@@ -30,6 +30,13 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QPushButton" name="stopBtn">
+        <property name="text">
+         <string>Stop Image Scrape</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

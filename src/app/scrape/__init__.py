@@ -1,2 +1,2 @@
-from .request_handler import RequestHandler, Request
+from .request_handler import RequestHandler, RequestQueueItem
 from .scraper import ScrapeEngine, Priority

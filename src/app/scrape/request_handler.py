@@ -7,7 +7,7 @@ import time
 from PyQt6.QtCore import QObject, pyqtSignal
 
 
-class Request:
+class RequestQueueItem:
     def __init__(
         self,
         url: str,
@@ -15,12 +15,14 @@ class Request:
         params: dict = {},
         headers: dict = {},
         priority=0,
+        extra_data={},
     ):
         self.url = url
         self.params = params
         self.method = method
         self.headers = headers
         self.priority = priority
+        self.extra_data = extra_data
 
     def __str__(self):
         return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
@@ -48,7 +50,7 @@ class Singleton(type(QObject), type):
 class RequestHandler(QObject, metaclass=Singleton):
     started = pyqtSignal()
     stopped = pyqtSignal()
-    response_received = pyqtSignal(int, str, bytes, str)
+    response_received = pyqtSignal(int, str, bytes, str, dict)
     _instance = None
 
     def __init__(self):
@@ -70,10 +72,10 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.stopped.emit()
         self.running = False
 
-    def enqueue_request(self, request: Request):
+    def enqueue_request(self, request: RequestQueueItem):
         self.request_queue.put(request)
 
-    def clear_queue(self, priority=-1):
+    def clear_queue(self, priority=-1, match_data={}):
         if priority == -1:
             self.request_queue = queue.PriorityQueue()
             return
@@ -81,37 +83,52 @@ class RequestHandler(QObject, metaclass=Singleton):
         requests = self.request_queue.queue
         self.request_queue.queue = []
         for request in requests:
-            if request.priority != priority:
+            if not self.__priority_data_match(request, priority, match_data):
                 self.request_queue.put(request)
 
         ongoing_requests = self.ongoing_requests
         self.ongoing_requests = []
         for request in ongoing_requests:
-            if request.priority != priority:
+            if not self.__priority_data_match(request, priority, match_data):
                 self.ongoing_requests.append(request)
 
-    def contains(self, priority=-1):
+    def contains(self, priority=-1, match_data={}):
         """
         Returns True if the request queue contains requests of the given priority.
         Priority of -1 returns True if the queue is not empty.
         """
+        return (
+            len(self.get_queued_requests(priority, match_data)) > 0
+            or len(self.get_ongoing_requests(priority, match_data)) > 0
+        )
+
+    def get_queued_requests(self, priority=-1, match_data={}):
         if priority == -1:
-            return not self.request_queue.empty()
+            return self.request_queue.queue
 
+        queued_requests = []
         for request in self.request_queue.queue:
-            if request.priority == priority:
-                return True
-        return False
+            if self.__priority_data_match(request, priority, match_data):
+                queued_requests.append(request)
+        return queued_requests
 
-    def get_ongoing_requests(self, priority=-1):
+    def get_ongoing_requests(self, priority=-1, match_data={}):
         if priority == -1:
             return self.ongoing_requests
 
         ongoing_requests = []
         for request in self.ongoing_requests:
-            if request.priority == priority:
+            if self.__priority_data_match(request, priority, match_data):
                 ongoing_requests.append(request)
         return ongoing_requests
+
+    def __priority_data_match(
+        self, request: RequestQueueItem, priority: int, match_data: dict
+    ):
+        """Return True if the request matches the given priority and match_data, but only if match_data is not empty."""
+        return request.priority == priority and (
+            request.extra_data == match_data or not match_data
+        )
 
     def process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -121,15 +138,14 @@ class RequestHandler(QObject, metaclass=Singleton):
                     continue
 
                 if self.request_queue.qsize() <= 10:
-                    self.rate_limit = 0.70
+                    self.rate_limit = 0.60
                 elif self.request_queue.qsize() <= 20:
-                    self.rate_limit = 1.15
+                    self.rate_limit = 1.20
                 elif self.request_queue.qsize() <= 30:
                     self.rate_limit = 1.80
                 else:
-                    self.rate_limit = 3.40
+                    self.rate_limit = 2.40
 
-                # Randomize rate limit by +/- 33%
                 rand_time = self.rate_limit + random.uniform(
                     -self.rate_limit / 3, self.rate_limit / 2
                 )
@@ -142,7 +158,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                 while time.time() - start < rand_time and self.running:
                     time.sleep(0.01)
 
-    def send_request(self, request: Request):
+    def send_request(self, request: RequestQueueItem):
         response = None
         self.ongoing_requests.append(request)
         try:
@@ -188,4 +204,5 @@ class RequestHandler(QObject, metaclass=Singleton):
                 request.url,
                 response.content,
                 response.headers.get("Set-Cookie", ""),
+                request.extra_data,
             )

@@ -19,7 +19,7 @@ from bs4 import BeautifulSoup
 from PIL import Image
 
 from app.models import ProfileEvents
-from app.scrape import RequestHandler, Priority, Request, ScrapeEngine
+from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
 from app.ui.EventsTab_ui import Ui_EventsTab
 
 
@@ -38,7 +38,8 @@ class EventsTab(QWidget):
 
         self.ui.eventsList.setModel(self.model)
         self.ui.eventsList.clicked.connect(self.open_event_details)
-        self.ui.scrapeBtn.clicked.connect(self.get_case_for_img)
+        self.ui.scrapeBtn.clicked.connect(self.scrape_btn_clicked)
+        self.ui.stopBtn.clicked.connect(self.stop_btn_clicked)
         self.ui.discardBtn.clicked.connect(self.delete_event)
         self.ui.imgSetCombo.addItem("Front", "F")
         self.ui.imgSetCombo.addItem("Back", "B")
@@ -61,8 +62,7 @@ class EventsTab(QWidget):
         self.request_handler.response_received.connect(self.handle_response)
 
         self.response_cache = {}
-        self.case_veh_img_ids = {}
-        self.vehicle_imgs = {}
+        self.case_veh_img_ids: dict[tuple[int, int], dict[int, None | Image.Image]] = {}
 
         if self.model.index(0, 0).isValid():
             self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
@@ -100,13 +100,20 @@ class EventsTab(QWidget):
             self.ui.curbWeightLineEdit.setText("")
             self.ui.dmgLocLineEdit.setText("")
             self.ui.underrideLineEdit.setText("")
+
             self.ui.cBarLineEdit.setText("")
             self.ui.nassDVLineEdit.setText("")
             self.ui.nassVCLineEdit.setText("")
             self.ui.totDVLineEdit.setText("")
+
+            self.ui.scrapeBtn.setEnabled(False)
+            self.ui.stopBtn.setVisible(False)
+            self.ui.scrapeBtn.repaint()
+            self.ui.stopBtn.repaint()
             return
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
+        self.update_buttons(event_data)
 
         # Left side of event view data
         self.ui.makeLineEdit.setText(event_data["make"])
@@ -124,26 +131,68 @@ class EventsTab(QWidget):
 
         self.update_images(index)
 
-    def get_case_for_img(self):
+    def update_buttons(self, event_data):
+        case_id = int(event_data["case_id"])
+        vehicle_num = int(event_data["vehicle_num"])
+        img_extra_data = {"case_id": case_id, "vehicle_num": vehicle_num}
+        case_extra_data = {"case_id": case_id}
+        if self.request_handler.contains(
+            Priority.IMAGE.value, img_extra_data
+        ) or self.request_handler.contains(
+            Priority.CASE_FOR_IMAGE.value, case_extra_data
+        ):
+            self.ui.scrapeBtn.setText("Scraping...")
+            self.ui.scrapeBtn.setEnabled(False)
+            self.ui.stopBtn.setVisible(True)
+        else:
+            print(False)
+            self.ui.scrapeBtn.setText("Scrape Images")
+            self.ui.scrapeBtn.setEnabled(True)
+            self.ui.stopBtn.setVisible(False)
+        self.ui.scrapeBtn.repaint()
+        self.ui.stopBtn.repaint()
+
+    def scrape_btn_clicked(self):
         event_data = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         )
+
         case_id = int(event_data["case_id"])
         vehicle_num = int(event_data["vehicle_num"])
 
-        if not self.case_veh_img_ids.get((case_id, event_data["vehicle_num"])):
-            self.case_veh_img_ids[(case_id, vehicle_num)] = []
+        self.case_veh_img_ids[(case_id, vehicle_num)] = self.case_veh_img_ids.get(
+            (case_id, vehicle_num), {}
+        )
 
         cached_case = self.response_cache.get(case_id)
         if self.cached_and_valid(case_id):
             self.logger.debug(f"Using cached case ({case_id})")
             self.parse_case(cached_case["xml"], cached_case["cookie"])
         else:
-            request = Request(
+            request = RequestQueueItem(
                 ScrapeEngine.CASE_URL + str(case_id),
                 priority=Priority.CASE_FOR_IMAGE.value,
+                extra_data={"case_id": case_id},
             )
+            self.ui.scrapeBtn.setText("Scraping...")
+            self.ui.scrapeBtn.setEnabled(False)
+            self.ui.stopBtn.setVisible(True)
             self.request_handler.enqueue_request(request)
+
+    def stop_btn_clicked(self):
+        event_data = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        )
+
+        extra_data = {"case_id": int(event_data["case_id"])}
+        self.request_handler.clear_queue(Priority.CASE_FOR_IMAGE.value, extra_data)
+
+        extra_data.update({"vehicle_num": int(event_data["vehicle_num"])})
+        self.request_handler.clear_queue(Priority.IMAGE.value, extra_data)
+
+        self.ui.scrapeBtn.setText("Scrape Images")
+        self.ui.scrapeBtn.setEnabled(True)
+        self.ui.stopBtn.setVisible(False)
 
     def cached_and_valid(self, case_id):
         """Check if the case has been cached and if the cookie is still valid."""
@@ -159,12 +208,12 @@ class EventsTab(QWidget):
         self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
         self.open_event_details(self.model.index(0, 0))
 
-    @pyqtSlot(int, str, bytes, str)
-    def handle_response(self, priority, url, response_content, cookie):
+    @pyqtSlot(int, str, bytes, str, dict)
+    def handle_response(self, priority, url, response_content, cookie, extra_data):
         if priority == Priority.CASE_FOR_IMAGE.value:
             self.parse_case(response_content, cookie)
         elif priority == Priority.IMAGE.value:
-            self.parse_image(url, response_content)
+            self.parse_image(url, response_content, extra_data)
 
     def parse_case(self, response_content, cookie):
         soup = BeautifulSoup(response_content, "xml")
@@ -211,27 +260,39 @@ class EventsTab(QWidget):
             image_set = self.ui.imgSetCombo.currentData()
 
             img_elements = img_set_lookup.get(image_set)
-            img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), [])
+            img_id_dict = self.case_veh_img_ids.get((case_id, vehicle_num), {})
             for img_element in img_elements:
                 img_id = int(img_element[0])
                 img_version = img_element[1]
                 img_url = f"https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={img_version}"
-                request = Request(
-                    img_url, headers={"Cookie": cookie}, priority=Priority.IMAGE.value
+                request = RequestQueueItem(
+                    img_url,
+                    headers={"Cookie": cookie},
+                    priority=Priority.IMAGE.value,
+                    extra_data={"case_id": case_id, "vehicle_num": vehicle_num},
                 )
-                if img_id not in img_ids:
+                if img_id_dict.get(img_id) is None:
                     self.request_handler.enqueue_request(request)
-                    img_ids.append(img_id)
-            self.case_veh_img_ids[(case_id, vehicle_num)] = img_ids
+                    img_id_dict.update({img_id: None})
+            self.case_veh_img_ids[(case_id, vehicle_num)] = img_id_dict
+        event_data = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        )
+        self.update_buttons(event_data)
 
-    def parse_image(self, url: str, response_content: bytes):
-        img_id = int(url.split("&")[1].split("=")[1])
+    def parse_image(self, url: str, response_content: bytes, extra_data: dict):
         vals = self.case_veh_img_ids.values()
-        img_ids = [img_id for img_id_list in vals for img_id in img_id_list]
-        if img_id in img_ids:
-            img = Image.open(BytesIO(response_content))
-            self.vehicle_imgs[img_id] = img
-            self.update_images(self.ui.eventsList.currentIndex())
+        img_id = int(url.split("&")[1].split("=")[1])
+        for img_id_dict in vals:
+            if img_id in img_id_dict.keys():
+                img_id_dict[img_id] = Image.open(BytesIO(response_content))
+                self.update_images(self.ui.eventsList.currentIndex())
+                break
+
+        event_data = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        )
+        self.update_buttons(event_data)
 
     def update_images(self, index: QModelIndex = None):
         if not index or not index.isValid():
@@ -241,13 +302,9 @@ class EventsTab(QWidget):
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         img_ids = self.case_veh_img_ids.get(
-            (int(event_data["case_id"]), int(event_data["vehicle_num"])), []
+            (int(event_data["case_id"]), int(event_data["vehicle_num"])), {}
         )
-        images = [
-            (img_id, img)
-            for img_id in img_ids
-            if (img := self.vehicle_imgs.get(img_id))
-        ]
+        images = [(img_id, img) for img_id, img in img_ids.items() if img]
 
         self.__remove_images()
         self.no_images_label.setVisible(not len(images))
