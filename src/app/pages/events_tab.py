@@ -110,6 +110,9 @@ class EventsTab(QWidget):
             self.ui.stopBtn.setVisible(False)
             self.ui.scrapeBtn.repaint()
             self.ui.stopBtn.repaint()
+
+            self.no_images_label.setVisible(True)
+            self.__clear_thumbnails()
             return
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
@@ -129,7 +132,24 @@ class EventsTab(QWidget):
         self.ui.nassVCLineEdit.setText(f"{event_data['NASS_vc']:.4f}")
         self.ui.totDVLineEdit.setText(f"{event_data['TOT_dv']:.4f}")
 
-        self.update_images(index)
+        # Clear and repopulate image thumbnails
+        img_ids = self.case_veh_img_ids.get(
+            (int(event_data["case_id"]), int(event_data["vehicle_num"])), {}
+        )
+        images = [(img_id, img) for img_id, img in img_ids.items() if img]
+
+        self.no_images_label.setVisible(not len(images))
+        self.__clear_thumbnails()
+
+        for img_id, img in images:
+            thumbnail = ImageThumbnail(img_id, img, self.images_dir)
+            self.ui.thumbnailsLayout.addWidget(thumbnail)
+
+    def __clear_thumbnails(self):
+        for i in reversed(range(self.ui.thumbnailsLayout.count())):
+            widget = self.ui.thumbnailsLayout.itemAt(i).widget()
+            self.ui.thumbnailsLayout.removeWidget(widget)
+            widget.setParent(None)
 
     def update_buttons(self, event_data):
         case_id = int(event_data["case_id"])
@@ -167,7 +187,6 @@ class EventsTab(QWidget):
         if self.cached_and_valid(case_id):
             self.logger.debug(f"Using cached case ({case_id})")
             self.parse_case(cached_case["xml"], cached_case["cookie"])
-            self.update_buttons(event_data)
         else:
             request = RequestQueueItem(
                 ScrapeEngine.CASE_URL + str(case_id),
@@ -175,6 +194,7 @@ class EventsTab(QWidget):
                 extra_data={"case_id": case_id},
             )
             self.request_handler.enqueue_request(request)
+        self.update_buttons(event_data)
 
     def stop_btn_clicked(self):
         event_data = self.model.data(
@@ -281,36 +301,24 @@ class EventsTab(QWidget):
     def parse_image(self, url: str, response_content: bytes, extra_data: dict):
         vals = self.case_veh_img_ids.values()
         img_id = int(url.split("&")[1].split("=")[1])
-        for img_id_dict in vals:
-            if img_id in img_id_dict.keys():
-                img_id_dict[img_id] = Image.open(BytesIO(response_content))
-                self.update_images(self.ui.eventsList.currentIndex())
-                break
-
-    def update_images(self, index: QModelIndex = None):
-        if not index or not index.isValid():
-            self.__remove_images()
-            self.no_images_label.setVisible(True)
-            return
-
-        event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
-        img_ids = self.case_veh_img_ids.get(
-            (int(event_data["case_id"]), int(event_data["vehicle_num"])), {}
+        event_data = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         )
-        images = [(img_id, img) for img_id, img in img_ids.items() if img]
+        for img_id_dict in vals:
+            if img_id not in img_id_dict.keys():
+                continue
+            img = Image.open(BytesIO(response_content))
+            img_id_dict[img_id] = img
+            case_match = int(event_data["case_id"]) == extra_data["case_id"]
+            veh_match = int(event_data["vehicle_num"]) == extra_data["vehicle_num"]
+            if case_match and veh_match:
+                self.__add_thumbnail(img_id, img)
+            break
 
-        self.__remove_images()
-        self.no_images_label.setVisible(not len(images))
-
-        for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.images_dir)
-            self.ui.thumbnailsLayout.addWidget(thumbnail)
-
-    def __remove_images(self):
-        for i in reversed(range(self.ui.thumbnailsLayout.count())):
-            widget = self.ui.thumbnailsLayout.itemAt(i).widget()
-            self.ui.thumbnailsLayout.removeWidget(widget)
-            widget.setParent(None)
+    def __add_thumbnail(self, img_id: int, image: Image.Image):
+        self.no_images_label.setVisible(False)
+        thumbnail = ImageThumbnail(img_id, image, self.images_dir)
+        self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
 class ImageThumbnail(QWidget):
