@@ -293,11 +293,19 @@ class ProfileEvents(QAbstractListModel):
             )
             self.cursor.execute(
                 """
-                DELETE FROM case_events
+                SELECT * FROM scrape_profile_events
                 WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
                 """,
                 (data[0], data[1], data[2]),
             )
+            if self.cursor.fetchone() is None:
+                self.cursor.execute(
+                    """
+                    DELETE FROM case_events
+                    WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
+                    """,
+                    (data[0], data[1], data[2]),
+                )
             self.db.commit()
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting case: {e}")
