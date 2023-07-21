@@ -1,74 +1,99 @@
 [Back to SDP Overview](README.md)
 
-# Data Model and Database Design Document
+---
 
-## Project Overview
-
-- **Project Title:** [Your project title]
-- **Project Description:** [Provide a brief overview of the project and its purpose]
-
-## Entity Relationship Diagram (ERD)
-
-- [Include an entity relationship diagram illustrating the data entities and their relationships]
-- [Specify the tables, primary keys, foreign keys, and cardinality]
+# Database Design Document
 
 ## Data Entities
 
-1. [Entity 1]
-    - **Description:** [Provide a brief description of the entity]
-    - **Attributes:** [List the attributes of the entity with their data types and constraints]
-    - **Relationships:** [Specify the relationships with other entities]
+1. **Cases**
+    - **Description:** Represents a CrashViewer case from the NASS/CDS database
+    - **Attributes:** Case ID, case number, summary, case profiles that this case might be associated with
+    - **Relationships:** Has a many-to-many relationship with Case Profiles. Has a one-to-many relationship with Vehicles.
+2. **Event**
+    - **Description:** Represents an event in a CrashViewer case from the NASS/CDS database
+    - **Attributes:** Case id, vehicle number, year, make, model, curb weight, damage location, underride, EDR report, total delta-v (kmph), longitudinal delta-v, lateral delta-v, smash l, crush, alt vehicle number, alt vehicle year, alt vehicle make, alt vehicle model, alt vehicle curb weight, average crush in inches, total delta-v (mph), NASS_vc, e, tot_dv (I am unsure of what NASS_vc, e, and tot_dv actually mean as of now)
+    - **Relationships:** Has a many-to-one relationship with Cases. Has a one-to-many relationship with Case Images.
+2. **Case Profiles**
+    - **Description:** Represents a case profile that is created by a user.
+    - **Attributes:** profile_id, name, description, date_created, date_modified, cases
+    - **Relationships:** Has a many-to-many relationship with Cases.
+4. **Case Images**
+    - **Description:** Represents an image associated with a case.
+    - **Attributes:** image_id, case_id, image_name, image_path, date_created, date_modified
+    - **Relationships:** Has a many-to-one relationship with Vehicles.
 
-2. [Entity 2]
-    - **Description:** [Provide a brief description of the entity]
-    - **Attributes:** [List the attributes of the entity with their data types and constraints]
-    - **Relationships:** [Specify the relationships with other entities]
+## Database SQL Schema
 
-## Database Schema
+```sql
+CREATE TABLE Cases (
+    case_id INTEGER PRIMARY KEY,
+    case_num TEXT,
+    summary TEXT
+);
 
-- [Describe the database schema and structure]
-- [Specify the tables, columns, and relationships]
+CREATE TABLE Events (
+    case_id INTEGER,
+    event_num INTEGER.
+    vehicle_num INTEGER,
+    year INTEGER,
+    make TEXT,
+    model TEXT,
+    curb_weight INTEGER,
+    dmg_location TEXT,
+    underride TEXT,
+    edr TEXT,
+    total_dv INTEGER,
+    long_dv INTEGER,
+    lateral_dv INTEGER,
+    smashl INTEGER,
+    crush0 INTEGER,
+    crush1 INTEGER,
+    crush2 INTEGER,
+    crush3 INTEGER,
+    crush4 INTEGER,
+    a_vehicle_num INTEGER,
+    a_year INTEGER,
+    a_make TEXT,
+    a_model TEXT,
+    a_curb_weight INTEGER,
+    c_bar INTEGER,
+    NASS_dv INTEGER,
+    NASS_vc INTEGER,
+    e INTEGER,
+    TOT_dv INTEGER,
+    PRIMARY KEY (case_id, event_num, vehicle_num),
+    FOREIGN KEY (case_id) REFERENCES Cases(case_id)
+);
 
-## Data Constraints
+CREATE TABLE CaseProfiles (
+    profile_id INTEGER PRIMARY KEY,
+    name TEXT,
+    description TEXT,
+    date_created TEXT,
+    date_modified TEXT
+);
 
-- [Define any constraints or rules that govern the data]
-- [Specify primary key constraints, unique constraints, foreign key constraints, etc.]
+CREATE TABLE CaseImages (
+    image_id INTEGER PRIMARY KEY,
+    vehicle_num INTEGER,
+    case_id INTEGER,
+    image_name TEXT,
+    image_path TEXT,
+    date_created TEXT,
+    date_modified TEXT,
+    FOREIGN KEY (case_id) REFERENCES Cases(case_id)
+);
 
-## Indexes
+CREATE TABLE CaseProfileCasesMapping (
+    profile_id INTEGER,
+    case_id INTEGER,
+    PRIMARY KEY (profile_id, case_id),
+    FOREIGN KEY (profile_id) REFERENCES CaseProfiles(profile_id),
+    FOREIGN KEY (case_id) REFERENCES Cases(case_id)
+);
+```
 
-- [Identify any indexes to improve query performance]
-- [Specify the columns or combinations of columns to be indexed]
+---
 
-## Data Dictionary
-
-- [Provide a dictionary of data entities and their attributes]
-- [Include descriptions, data types, constraints, and other relevant details]
-
-## Data Migration Plan
-
-- [Outline the plan for migrating existing data, if applicable]
-- [Specify any data conversion or transformation steps]
-
-## Data Access and Security
-
-- [Discuss the access controls and security measures for the database]
-- [Specify user roles, permissions, and authentication mechanisms]
-
-## Data Backup and Recovery
-
-- [Outline the backup and recovery procedures for the database]
-- [Specify the frequency, storage locations, and restoration processes]
-
-## Data Archiving and Purging
-
-- [Define the data archiving and purging strategies]
-- [Specify the criteria and frequency for archiving or purging data]
-
-## Glossary
-
-- [Define any key terms or acronyms used in the document]
-
-## Revision History
-
-- [Record any changes made to the document and the corresponding dates]
-
+[Back to SDP Overview](README.md)

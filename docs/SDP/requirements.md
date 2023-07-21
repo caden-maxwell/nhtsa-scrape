@@ -24,7 +24,7 @@
     2. The results of the multi-case analysis will be updated in real time as the user adds or removes cases. Immediate results include:
         - The Case ID (and corresponding image ID)
         - Average crush in inches
-        - NASS Delta-V
+        - Delta-V in mph
         - NASS vc (not sure what this means)
         - Total Delta-V
     3. The user may also view a scatterplot (change in velocity vs. crush) of the selected cases, complete with an equation for the line of best fit and an R^2 value. This scatterplot will also be updated in real time as the user adds or removes cases. An example scatterplot is shown below:<br>
