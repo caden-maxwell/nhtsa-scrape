@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'c:\Users\Caden\Desktop\nhtsa-scrape\src\app\ui\ScrapeMenu.ui'
+# Form implementation generated from reading ui file 'c:\Users\aweso\projects\nhtsa-scrape\src\app\ui\ScrapeMenu.ui'
 #
 # Created by: PyQt6 UI code generator 6.5.1
 #
@@ -266,7 +266,7 @@ class Ui_ScrapeMenu(object):
         self.mainTitle.setText(_translate("ScrapeMenu", "New Scrape"))
         self.label_8.setText(_translate("ScrapeMenu", "to"))
         self.label_4.setText(_translate("ScrapeMenu", "From"))
-        self.label_3.setText(_translate("ScrapeMenu", "Delta V:"))
+        self.label_3.setText(_translate("ScrapeMenu", "Delta V (mph):"))
         self.makeLabel.setText(_translate("ScrapeMenu", "Make:"))
         self.modelLabel.setText(_translate("ScrapeMenu", "Model:"))
         self.label_7.setText(_translate("ScrapeMenu", "to"))
