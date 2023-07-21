@@ -18,6 +18,10 @@ class Ui_MainMenu(object):
         self.mainVLayout = QtWidgets.QVBoxLayout()
         self.mainVLayout.setObjectName("mainVLayout")
         self.mainTitle = QtWidgets.QLabel(parent=MainMenu)
+        font = QtGui.QFont()
+        font.setPointSize(18)
+        font.setBold(True)
+        self.mainTitle.setFont(font)
         self.mainTitle.setObjectName("mainTitle")
         self.mainVLayout.addWidget(
             self.mainTitle, 0, QtCore.Qt.AlignmentFlag.AlignHCenter
@@ -77,7 +81,7 @@ class Ui_MainMenu(object):
     def retranslateUi(self, MainMenu):
         _translate = QtCore.QCoreApplication.translate
         MainMenu.setWindowTitle(_translate("MainMenu", "Form"))
-        self.mainTitle.setText(_translate("MainMenu", "NHTSA Scraper Tool"))
+        self.mainTitle.setText(_translate("MainMenu", "NHTSA Scrape Tool"))
         self.scrapeBtn.setText(_translate("MainMenu", "New Scrape"))
         self.openBtn.setText(_translate("MainMenu", "Open Existing Profile"))
         self.logsBtn.setText(_translate("MainMenu", "Open Application Logs"))
