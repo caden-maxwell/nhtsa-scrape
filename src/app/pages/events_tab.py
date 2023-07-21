@@ -232,10 +232,11 @@ class EventsTab(QWidget):
         elif priority == Priority.IMAGE.value:
             self.parse_image(url, response_content, extra_data)
 
-        event_data = self.model.data(
-            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        )
-        self.update_buttons(event_data)
+        if self.ui.eventsList.currentIndex().isValid():
+            event_data = self.model.data(
+                self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+            )
+            self.update_buttons(event_data)
 
     def parse_case(self, response_content, cookie):
         soup = BeautifulSoup(response_content, "xml")
