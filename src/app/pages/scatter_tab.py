@@ -108,10 +108,8 @@ class ScatterTab(QWidget):
             label.set_visible(visible)
 
     def update_legend(self):
-        legend = self.ax.get_legend()
-        if not legend:
-            return
-        legend.remove()
+        if legend := self.ax.get_legend():
+            legend.remove()
         if self.ui.nassDataBtn.isChecked() and self.ui.totalDataBtn.isChecked():
             self.ax.legend(
                 self.nass_plots + self.tot_plots,
@@ -124,6 +122,7 @@ class ScatterTab(QWidget):
             self.ax.legend(self.tot_plots, self.tot_legend, loc="upper left")
         else:
             self.ax.legend(loc="upper left").set_visible(False)
+        self.ax.get_legend().set_draggable(True)
 
     def update_plot(self):
         self.ax.clear()
@@ -202,7 +201,9 @@ class ScatterTab(QWidget):
 
         self.ax.set_xlabel("Crush (inches)", fontsize=20)
         self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
-        self.ax.legend(self.nass_legend + self.tot_legend, loc="upper left")
+        self.ax.legend(
+            self.nass_legend + self.tot_legend, loc="upper left"
+        ).set_draggable(True)
 
         self.update_nass_data()
         self.update_tot_data()

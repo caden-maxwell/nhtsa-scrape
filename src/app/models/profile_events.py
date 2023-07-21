@@ -284,7 +284,6 @@ class ProfileEvents(QAbstractListModel):
     def delete_event(self, index: QModelIndex):
         try:
             data = self.data_list[index.row()]
-            print(f"Deleting: Case {data[0]} Vehicle {data[1]} Event {data[2]}")
             self.cursor.execute(
                 """
                 DELETE FROM scrape_profile_events
