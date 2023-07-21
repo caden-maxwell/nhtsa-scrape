@@ -10,7 +10,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from bs4 import BeautifulSoup
 import numpy
 
-from .request_handler import RequestHandler, Request
+from .request_handler import RequestHandler, RequestQueueItem
 
 
 class Priority(enum.Enum):
@@ -95,7 +95,6 @@ class ScrapeEngine(QObject):
     def check_complete(self):
         if (
             not self.req_handler.contains(Priority.CASE.value)
-            and not self.req_handler.get_ongoing_requests(Priority.CASE.value)
             and self.final_page
             and self.running
         ):
@@ -106,7 +105,9 @@ class ScrapeEngine(QObject):
             caseid = self.extra_cases.pop()
             self.logger.debug(f"Enqueuing extra case: {caseid}")
             self.req_handler.enqueue_request(
-                Request(f"{self.CASE_URL}{caseid}", priority=Priority.CASE.value)
+                RequestQueueItem(
+                    f"{self.CASE_URL}{caseid}", priority=Priority.CASE.value
+                )
             )
 
     def scrape(self):
@@ -127,7 +128,7 @@ class ScrapeEngine(QObject):
             }}"""
             )
         )
-        request = Request(
+        request = RequestQueueItem(
             self.CASE_LIST_URL,
             method="POST",
             params=self.search_payload,
@@ -135,8 +136,8 @@ class ScrapeEngine(QObject):
         )
         self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, bytes, str)
-    def handle_response(self, priority, url, response_content, cookie):
+    @pyqtSlot(int, str, bytes, str, dict)
+    def handle_response(self, priority, url, response_content, cookie, extra_data):
         if priority == Priority.CASE_LIST.value:
             self.parse_case_list(url, response_content)
         elif priority == Priority.CASE.value:
@@ -192,7 +193,9 @@ class ScrapeEngine(QObject):
         )
         for case_id in case_ids:
             self.req_handler.enqueue_request(
-                Request(f"{self.CASE_URL}{case_id}", priority=Priority.CASE.value)
+                RequestQueueItem(
+                    f"{self.CASE_URL}{case_id}", priority=Priority.CASE.value
+                )
             )
 
         total_pages = int(page_dropdown.find_all("option")[-1].text)
@@ -206,7 +209,7 @@ class ScrapeEngine(QObject):
         self.logger.debug(f"Queueing page {self.current_page}...")
 
         self.req_handler.enqueue_request(
-            Request(
+            RequestQueueItem(
                 self.CASE_LIST_URL,
                 method="POST",
                 params=self.search_payload,

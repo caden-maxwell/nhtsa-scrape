@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QWidget
 from bs4 import BeautifulSoup
 
 from app.models.scrape_profiles import ScrapeProfiles
-from app.scrape import RequestHandler, ScrapeEngine, Request, Priority
+from app.scrape import RequestHandler, ScrapeEngine, RequestQueueItem, Priority
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 
 from . import DataView
@@ -44,14 +44,14 @@ class ScrapeMenu(QWidget):
         if not self.req_handler.contains(
             priority=Priority.ALL_COMBOS.value
         ):  # We only ever need one of these requests at a time
-            request = Request(
+            request = RequestQueueItem(
                 "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
                 priority=Priority.ALL_COMBOS.value,
             )
             self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, bytes, str)
-    def handle_response(self, priority, url, response_content, cookie):
+    @pyqtSlot(int, str, bytes, str, dict)
+    def handle_response(self, priority, url, response_content, cookie, extra_data):
         if priority == Priority.ALL_COMBOS.value:
             self.update_all_dropdowns(response_content)
         elif priority == Priority.MODEL_COMBO.value:
@@ -115,7 +115,7 @@ class ScrapeMenu(QWidget):
 
     def fetch_models(self, make):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
-        request = Request(
+        request = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/",
             method="POST",
             params={"make": make},
