@@ -1,1 +1,10 @@
 *.log
+__pycache__
+.vscode
+*.sqlite3
+venv
+build
+dist
+*.png
+*.jpg
+*.csv
