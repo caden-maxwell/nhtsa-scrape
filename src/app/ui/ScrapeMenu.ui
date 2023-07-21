@@ -118,7 +118,7 @@
           </sizepolicy>
          </property>
          <property name="text">
-          <string>Delta V:</string>
+          <string>Delta V (mph):</string>
          </property>
         </widget>
        </item>
