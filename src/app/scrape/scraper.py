@@ -342,7 +342,7 @@ class ScrapeEngine(QObject):
                     f"No CDCevent found for event {event['en']} in case {case_id}."
                 )
 
-            if not total_dv or not lat_dv or not long_dv:
+            if total_dv is None or lat_dv is None or long_dv is None:
                 self.logger.warning(
                     f"Delta-V not found for event {event['en']} in case {case_id}."
                 )

@@ -221,9 +221,15 @@ class EventsTab(QWidget):
         )
 
     def delete_event(self):
-        self.model.delete_event(self.ui.eventsList.currentIndex())
-        self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
-        self.open_event_details(self.model.index(0, 0))
+        index = self.ui.eventsList.currentIndex()
+        self.model.delete_event(index)
+
+        if index.row() >= self.model.rowCount():
+            index = self.model.index(self.model.rowCount() - 1, 0)
+        print(index.row())
+
+        self.ui.eventsList.setCurrentIndex(index)
+        self.open_event_details(index)
 
     @pyqtSlot(int, str, bytes, str, dict)
     def handle_response(self, priority, url, response_content, cookie, extra_data):
