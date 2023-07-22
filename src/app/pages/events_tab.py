@@ -226,7 +226,6 @@ class EventsTab(QWidget):
 
         if index.row() >= self.model.rowCount():
             index = self.model.index(self.model.rowCount() - 1, 0)
-        print(index.row())
 
         self.ui.eventsList.setCurrentIndex(index)
         self.open_event_details(index)

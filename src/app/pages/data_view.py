@@ -52,8 +52,6 @@ class DataView(QWidget):
         self.ui.tabWidget.addTab(self.scatter_tab, "Scatterplot")
         self.ui.tabWidget.addTab(QWidget(), "Data Table")
 
-        self.scatter_tab.update_plot()
-
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
         self.model.add_event(event)

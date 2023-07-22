@@ -56,6 +56,10 @@ class ScatterTab(QWidget):
         self.tot_labels = []
         self.tot_legend = []
 
+    def showEvent(self, event) -> None:
+        self.update_plot()
+        return super().showEvent(event)
+
     def save_figure(self):
         os.makedirs(self.data_dir, exist_ok=True)
         path = self.data_dir / "scatterplot.png"
