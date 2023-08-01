@@ -2,7 +2,8 @@ import logging
 from pathlib import Path
 import sqlite3
 
-from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
+from PyQt6.QtGui import QColor
 
 
 class ProfileEvents(QAbstractListModel):
@@ -63,6 +64,7 @@ class ProfileEvents(QAbstractListModel):
                     NASS_vc INTEGER,
                     e INTEGER,
                     TOT_dv INTEGER,
+                    ignored INTEGER DEFAULT 0,
                     PRIMARY KEY (case_id, event_num, vehicle_num),
                     FOREIGN KEY (case_id) REFERENCES cases(case_id)
                 );
@@ -108,12 +110,20 @@ class ProfileEvents(QAbstractListModel):
         return len(self.data_list)
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < len(self.data_list)):
+            return QVariant()
+
+        data = self.all_events()[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
-            data = self.data_list[index.row()]
-            return f"{index.row() + 1}. Case: {data[0]}, Vehicle: {data[1]}, Event: {data[2]}"
-        if role == Qt.ItemDataRole.UserRole:
-            return self.all_events()[index.row()]
-        return None
+            name = f"{index.row() + 1}. Case: {data['case_id']}, Vehicle: {data['vehicle_num']}, Event: {data['event_num']}"
+            return name
+        elif role == Qt.ItemDataRole.UserRole:
+            return data
+        elif role == Qt.ItemDataRole.FontRole:
+            return data["ignored"]
+
+        return QVariant()
+
 
     def all_events(self):
         """Return events as list of dictionaries"""
@@ -145,6 +155,7 @@ class ProfileEvents(QAbstractListModel):
                 "NASS_vc": event[28],
                 "e": event[29],
                 "TOT_dv": event[30],
+                "ignored": event[31],
             }
             for event in self.data_list
         ]
@@ -181,6 +192,7 @@ class ProfileEvents(QAbstractListModel):
             NASS_vc = event["NASS_vc"]
             e = event["e"]
             TOT_dv = event["TOT_dv"]
+            IGNORED = 0 # Default to not ignored
 
             self.cursor.execute(
                 """
@@ -222,9 +234,10 @@ class ProfileEvents(QAbstractListModel):
                     NASS_dv,
                     NASS_vc,
                     e,
-                    TOT_dv
+                    TOT_dv,
+                    ignored
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     case_id,
@@ -258,6 +271,7 @@ class ProfileEvents(QAbstractListModel):
                     NASS_vc,
                     e,
                     TOT_dv,
+                    IGNORED,
                 ),
             )
             self.cursor.execute(
@@ -277,7 +291,7 @@ class ProfileEvents(QAbstractListModel):
                 f"Added case event {event_num} from case {case_id} to scrape profile {self.profile[1]}."
             )
         except (sqlite3.Error, KeyError) as err:
-            self.logger.error("Error adding case:", err)
+            self.logger.error(f"Error adding case: {err}")
             return
         self.refresh_events()
 
@@ -315,6 +329,29 @@ class ProfileEvents(QAbstractListModel):
             return
         self.logger.debug(
             f"Deleted event: Case {data[0]} Vehicle {data[1]} Event {data[2]}"
+        )
+        self.refresh_events()
+
+    def toggle_ignored(self, index: QModelIndex):
+        try:
+            data = self.data_list[index.row()]
+            self.cursor.execute(
+                """
+                UPDATE case_events
+                SET ignored = NOT ignored
+                WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
+                """,
+                (data[0], data[1], data[2]),
+            )
+            self.db.commit()
+        except sqlite3.Error as e:
+            self.logger.error(f"Error toggling ignored: {e}")
+            return
+        except IndexError:
+            self.logger.error("Error toggling ignored: index out of range")
+            return
+        self.logger.debug(
+            f"Toggled ignored: Case {data[0]} Vehicle {data[1]} Event {data[2]}"
         )
         self.refresh_events()
 
