@@ -235,9 +235,13 @@ class EventsTab(QWidget):
 
     def delete_event(self):
         msg_box = QMessageBox()
-        msg_box.setText("Are you sure you want to delete this event?"
-                        "\nThis action cannot be undone.")
-        msg_box.setStandardButtons(QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes)
+        msg_box.setText(
+            "Are you sure you want to delete this event?"
+            "\nThis action cannot be undone."
+        )
+        msg_box.setStandardButtons(
+            QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes
+        )
         msg_box.setDefaultButton(QMessageBox.StandardButton.No)
         msg_box.setIcon(QMessageBox.Icon.Warning)
         msg_box.setWindowTitle("Delete Event")

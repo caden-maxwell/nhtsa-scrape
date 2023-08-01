@@ -137,11 +137,12 @@ class ScatterTab(QWidget):
         case_ids = []
         nass_vc = []
         for event in self.model.all_events():
-            xdata.append(event["c_bar"])
-            y1data.append(event["NASS_dv"])
-            y2data.append(event["TOT_dv"])
-            case_ids.append(event["case_id"])
-            nass_vc.append(event["NASS_vc"])
+            if not event["ignored"]:
+                xdata.append(event["c_bar"])
+                y1data.append(event["NASS_dv"])
+                y2data.append(event["TOT_dv"])
+                case_ids.append(event["case_id"])
+                nass_vc.append(event["NASS_vc"])
 
         if len(xdata) < 2:
             self.canvas.draw()
