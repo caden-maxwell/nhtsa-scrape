@@ -124,7 +124,6 @@ class ProfileEvents(QAbstractListModel):
 
         return QVariant()
 
-
     def all_events(self):
         """Return events as list of dictionaries"""
         return [
@@ -192,7 +191,7 @@ class ProfileEvents(QAbstractListModel):
             NASS_vc = event["NASS_vc"]
             e = event["e"]
             TOT_dv = event["TOT_dv"]
-            IGNORED = 0 # Default to not ignored
+            IGNORED = 0  # Default to not ignored
 
             self.cursor.execute(
                 """
