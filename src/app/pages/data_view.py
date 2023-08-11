@@ -40,9 +40,7 @@ class DataView(QWidget):
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
         )
         dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
-        self.data_dir = (
-            Path(__file__).parent.parent / "data" / dir_name
-        ).resolve()
+        self.data_dir = (Path(__file__).parent.parent / "data" / dir_name).resolve()
 
         self.events_tab = EventsTab(self.model, self.data_dir)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
@@ -61,27 +59,32 @@ class DataView(QWidget):
         file = "random.csv"
         df = pandas.DataFrame(self.model.all_events())
         os.makedirs(self.data_dir, exist_ok=True)
-        df.to_csv(self.data_dir / file, index=False)
-        with open(self.data_dir / file, "a") as f:
-            writer = csv.writer(f)
+        try:
+            df.to_csv(self.data_dir / file, index=False)
+            with open(self.data_dir / file, "a") as f:
+                writer = csv.writer(f)
 
-            case_ids = df["case_id"].unique()
-            event_str = ", ".join(str(id) for id in case_ids[:-1])
-            event_str = (
-                event_str + f", and {case_ids[-1]}."
-                if len(case_ids) > 1
-                else event_str + "."
-            )
+                case_ids = df["case_id"].unique()
+                event_str = ", ".join(str(id) for id in case_ids[:-1])
+                event_str = (
+                    event_str + f", and {case_ids[-1]}."
+                    if len(case_ids) > 1
+                    else event_str + "."
+                )
 
-            minval = round(df["NASS_dv"].min(), 1)
-            mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
-            maxval = round(df["NASS_dv"].max(), 1)
-            maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
+                minval = round(df["NASS_dv"].min(), 1)
+                mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
+                maxval = round(df["NASS_dv"].max(), 1)
+                maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
 
-            dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
+                dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
 
-            par = event_str + " " + dv_msg
-            writer.writerows([[], [par]])
+                par = event_str + " " + dv_msg
+                writer.writerows([[], [par]])
+        except PermissionError:
+            self.logger.exception("Could not write to file: Permission denied.")
+        except Exception as e:
+            self.logger.exception(f"Could not write to file: {e}")
 
     @pyqtSlot()
     def scrape_complete(self):
