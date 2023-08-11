@@ -8,3 +8,4 @@ dist
 *.png
 *.jpg
 *.csv
+*.spec

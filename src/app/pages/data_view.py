@@ -41,7 +41,7 @@ class DataView(QWidget):
         )
         dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
         self.data_dir = (
-            Path(__file__).parent.parent.parent / "data" / dir_name
+            Path(__file__).parent.parent / "data" / dir_name
         ).resolve()
 
         self.events_tab = EventsTab(self.model, self.data_dir)
