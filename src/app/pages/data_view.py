@@ -8,8 +8,6 @@ import re
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
-import pandas
-
 from . import ScatterTab
 from . import EventsTab
 from app.models import ProfileEvents
@@ -56,35 +54,35 @@ class DataView(QWidget):
         self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
 
-        file = "random.csv"
-        df = pandas.DataFrame(self.model.all_events())
-        os.makedirs(self.data_dir, exist_ok=True)
-        try:
-            df.to_csv(self.data_dir / file, index=False)
-            with open(self.data_dir / file, "a") as f:
-                writer = csv.writer(f)
+        # file = "random.csv"
+        # df = pandas.DataFrame(self.model.all_events())
+        # os.makedirs(self.data_dir, exist_ok=True)
+        # try:
+        #     df.to_csv(self.data_dir / file, index=False)
+        #     with open(self.data_dir / file, "a") as f:
+        #         writer = csv.writer(f)
 
-                case_ids = df["case_id"].unique()
-                event_str = ", ".join(str(id) for id in case_ids[:-1])
-                event_str = (
-                    event_str + f", and {case_ids[-1]}."
-                    if len(case_ids) > 1
-                    else event_str + "."
-                )
+        #         case_ids = df["case_id"].unique()
+        #         event_str = ", ".join(str(id) for id in case_ids[:-1])
+        #         event_str = (
+        #             event_str + f", and {case_ids[-1]}."
+        #             if len(case_ids) > 1
+        #             else event_str + "."
+        #         )
 
-                minval = round(df["NASS_dv"].min(), 1)
-                mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
-                maxval = round(df["NASS_dv"].max(), 1)
-                maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
+        #         minval = round(df["NASS_dv"].min(), 1)
+        #         mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
+        #         maxval = round(df["NASS_dv"].max(), 1)
+        #         maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
 
-                dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
+        #         dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
 
-                par = event_str + " " + dv_msg
-                writer.writerows([[], [par]])
-        except PermissionError:
-            self.logger.exception("Could not write to file: Permission denied.")
-        except Exception as e:
-            self.logger.exception(f"Could not write to file: {e}")
+        #         par = event_str + " " + dv_msg
+        #         writer.writerows([[], [par]])
+        # except PermissionError:
+        #     self.logger.error("Could not write to file: Permission denied.")
+        # except Exception as e:
+        #     self.logger.error(f"Could not write to file: {e}")
 
     @pyqtSlot()
     def scrape_complete(self):
