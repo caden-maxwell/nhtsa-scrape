@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from . import ScatterTab
 from . import EventsTab
+from . import CSVTab
 from app.models import ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
 
@@ -22,7 +23,6 @@ class DataView(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
-        self.model.refresh_events()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
@@ -42,11 +42,12 @@ class DataView(QWidget):
 
         self.events_tab = EventsTab(self.model, self.data_dir)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
+        self.csv_tab = CSVTab(profile_id, self.data_dir)
 
         self.ui.tabWidget.addTab(QWidget(), "Summary")
         self.ui.tabWidget.addTab(self.events_tab, "Events")
         self.ui.tabWidget.addTab(self.scatter_tab, "Scatterplot")
-        self.ui.tabWidget.addTab(QWidget(), "Data Table")
+        self.ui.tabWidget.addTab(self.csv_tab, "Data Table")
 
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
