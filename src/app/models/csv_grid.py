@@ -36,7 +36,7 @@ class CSVGrid(QAbstractTableModel):
 
     def columnCount(self, parent=QModelIndex()):
         if self.rowCount():
-            return self.data_list[0]
+            return len(self.data_list[0])
         return 0
 
     def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
