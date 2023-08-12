@@ -3,7 +3,6 @@ from pathlib import Path
 import sqlite3
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
-from PyQt6.QtGui import QColor
 
 
 class ProfileEvents(QAbstractListModel):
@@ -93,9 +92,9 @@ class ProfileEvents(QAbstractListModel):
             ).fetchone()
             if self.profile is None:
                 raise ValueError(f"Profile ID {profile_id} does not exist.")
-
         except (ValueError, sqlite3.Error) as e:
             self.logger.error(e)
+        self.refresh_events()
 
     def close_database(self):
         try:
