@@ -46,7 +46,7 @@ class CSVGrid(QAbstractTableModel):
         if role == Qt.ItemDataRole.DisplayRole:
             return "Hello"
             
-        return super().data(index, role)
+        return QVariant()
 
     def refresh_grid(self):
         try:
