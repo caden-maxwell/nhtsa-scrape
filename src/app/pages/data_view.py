@@ -54,6 +54,7 @@ class DataView(QWidget):
         self.model.add_event(event)
         self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
+        self.csv_tab.refresh()
 
         # file = "random.csv"
         # df = pandas.DataFrame(self.model.all_events())
