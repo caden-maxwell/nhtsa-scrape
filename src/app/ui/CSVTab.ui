@@ -17,10 +17,10 @@
    <item row="1" column="0">
     <widget class="QTableView" name="tableView"/>
    </item>
-   <item row="2" column="0">
+   <item row="0" column="0">
     <widget class="QPushButton" name="saveBtn">
      <property name="text">
-      <string>Save to CSV File</string>
+      <string>Save Data to CSV</string>
      </property>
     </widget>
    </item>
