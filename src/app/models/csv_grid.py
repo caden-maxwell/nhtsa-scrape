@@ -13,7 +13,7 @@ class CSVGrid(QAbstractTableModel):
         self.db = None
         self.cursor = None
         self.profile = None
-        self.data_list = []
+        self.__data_list = []
 
         try:
             db_path = Path(__file__).parent / "db.sqlite3"
@@ -32,21 +32,31 @@ class CSVGrid(QAbstractTableModel):
         self.refresh_grid()
 
     def rowCount(self, parent=QModelIndex()):
-        return len(self.data_list)
+        return len(self.__data_list)
 
     def columnCount(self, parent=QModelIndex()):
         if self.rowCount():
-            return len(self.data_list[0])
+            return len(self.__data_list[0])
         return 0
 
     def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid() or not (0 <= index.row() < len(self.data_list)):
+        if not index.isValid() or not (0 <= index.row() < len(self.__data_list)):
             return QVariant()
 
         if role == Qt.ItemDataRole.DisplayRole:
-            return "Hello"
-            
+            return str(self.__data_list[index.row()][index.column()])
         return QVariant()
+
+    def all_data(self):
+        return self.__data_list
+
+    def headerData(self, section: int, orientation, role=Qt.ItemDataRole.DisplayRole):
+        if role == Qt.ItemDataRole.DisplayRole:
+            if orientation == Qt.Orientation.Horizontal:
+                return self.cursor.description[section][0]
+            elif orientation == Qt.Orientation.Vertical:
+                return str(section + 1)
+        return super().headerData(section, orientation, role)
 
     def refresh_grid(self):
         try:
@@ -62,7 +72,9 @@ class CSVGrid(QAbstractTableModel):
             )
             self.temp_list = self.cursor.fetchall()
             IGNORED_IDX = 31
-            self.data_list = [event for event in self.temp_list if event[IGNORED_IDX]]
+            self.__data_list = [
+                event for event in self.temp_list if not event[IGNORED_IDX]
+            ]
             self.layoutChanged.emit()
         except sqlite3.Error as e:
             self.logger.error("Error refreshing data:", e)

@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file 'c:\Users\aweso\projects\nhtsa-scrape\src\app\ui\CSVTab.ui'
+# Form implementation generated from reading ui file 'c:\Users\Caden\Desktop\nhtsa-scrape\src\app\ui\CSVTab.ui'
 #
 # Created by: PyQt6 UI code generator 6.5.1
 #
@@ -20,7 +20,7 @@ class Ui_CSVTab(object):
         self.gridLayout.addWidget(self.tableView, 1, 0, 1, 1)
         self.saveBtn = QtWidgets.QPushButton(parent=CSVTab)
         self.saveBtn.setObjectName("saveBtn")
-        self.gridLayout.addWidget(self.saveBtn, 2, 0, 1, 1)
+        self.gridLayout.addWidget(self.saveBtn, 0, 0, 1, 1)
 
         self.retranslateUi(CSVTab)
         QtCore.QMetaObject.connectSlotsByName(CSVTab)
@@ -28,4 +28,4 @@ class Ui_CSVTab(object):
     def retranslateUi(self, CSVTab):
         _translate = QtCore.QCoreApplication.translate
         CSVTab.setWindowTitle(_translate("CSVTab", "Form"))
-        self.saveBtn.setText(_translate("CSVTab", "Save to CSV File"))
+        self.saveBtn.setText(_translate("CSVTab", "Save Data to CSV"))
