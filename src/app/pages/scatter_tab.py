@@ -75,7 +75,7 @@ class ScatterTab(QWidget):
             bbox_inches="tight",
             pad_inches=0.75,
         )
-        self.logger.info(f"Saved figure to {self.data_dir / 'scatterplot.png'}")
+        self.logger.info(f"Saved figure to {path}")
 
     def btn_update(self, btn_func):
         btn_func()

@@ -18,17 +18,23 @@ class CSVTab(QWidget):
 
         self.model = CSVGrid(profile_id)
         self.ui.tableView.setModel(self.model)
-        IGNORED_COL = 31
-        self.ui.tableView.setColumnHidden(IGNORED_COL, True)
         self.ui.saveBtn.clicked.connect(self.save_csv)
 
         self.data_dir = data_dir
 
     def showEvent(self, event):
-        self.model.refresh_grid()
+        self.refresh()
         return super().showEvent(event)
+    
+    def refresh(self):
+        self.model.refresh_grid()
+        IGNORED_COL = 31
+        self.ui.tableView.setColumnHidden(IGNORED_COL, True)
 
     def save_csv(self):
+        self.ui.saveBtn.setEnabled(False)
+        self.ui.saveBtn.setText("Saving...")
+        self.ui.saveBtn.repaint()
         os.makedirs(self.data_dir, exist_ok=True)
         try:
             csv_path = self.data_dir / "scrape_data.csv"
@@ -42,4 +48,7 @@ class CSVTab(QWidget):
         except Exception as e:
             self.logger.error(f"Error saving CSV: {e}")
             return
+        finally:
+            self.ui.saveBtn.setEnabled(True)
+            self.ui.saveBtn.setText("Save Data to CSV")
         self.logger.info(f"Saved CSV to {csv_path}.")
