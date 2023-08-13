@@ -497,7 +497,6 @@ for i, caseid in enumerate(all_caseid):
                 temp["image"] = img_num
                 # temp['a_damloc'] = genvehform[n_an].deformationlocation.text
                 contents.append(temp)
-                print(temp)
                 temp = {}
 
 

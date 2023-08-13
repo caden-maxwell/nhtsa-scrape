@@ -8,10 +8,9 @@ import re
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
-import pandas
-
 from . import ScatterTab
 from . import EventsTab
+from . import CSVTab
 from app.models import ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
 
@@ -24,7 +23,6 @@ class DataView(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.model = ProfileEvents(profile_id)
-        self.model.refresh_events()
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
@@ -40,50 +38,53 @@ class DataView(QWidget):
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
         )
         dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
-        self.data_dir = (
-            Path(__file__).parent.parent.parent / "data" / dir_name
-        ).resolve()
+        self.data_dir = (Path(__file__).parent.parent / "data" / dir_name).resolve()
 
         self.events_tab = EventsTab(self.model, self.data_dir)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
+        self.csv_tab = CSVTab(profile_id, self.data_dir)
 
         self.ui.tabWidget.addTab(QWidget(), "Summary")
         self.ui.tabWidget.addTab(self.events_tab, "Events")
         self.ui.tabWidget.addTab(self.scatter_tab, "Scatterplot")
-        self.ui.tabWidget.addTab(QWidget(), "Data Table")
-
-        self.scatter_tab.update_plot()
+        self.ui.tabWidget.addTab(self.csv_tab, "Data Table")
 
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
         self.model.add_event(event)
         self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
+        self.csv_tab.refresh()
 
-        file = "random.csv"
-        df = pandas.DataFrame(self.model.all_events())
-        os.makedirs(self.data_dir, exist_ok=True)
-        df.to_csv(self.data_dir / file, index=False)
-        with open(self.data_dir / file, "a") as f:
-            writer = csv.writer(f)
+        # file = "random.csv"
+        # df = pandas.DataFrame(self.model.all_events())
+        # os.makedirs(self.data_dir, exist_ok=True)
+        # try:
+        #     df.to_csv(self.data_dir / file, index=False)
+        #     with open(self.data_dir / file, "a") as f:
+        #         writer = csv.writer(f)
 
-            case_ids = df["case_id"].unique()
-            event_str = ", ".join(str(id) for id in case_ids[:-1])
-            event_str = (
-                event_str + f", and {case_ids[-1]}."
-                if len(case_ids) > 1
-                else event_str + "."
-            )
+        #         case_ids = df["case_id"].unique()
+        #         event_str = ", ".join(str(id) for id in case_ids[:-1])
+        #         event_str = (
+        #             event_str + f", and {case_ids[-1]}."
+        #             if len(case_ids) > 1
+        #             else event_str + "."
+        #         )
 
-            minval = round(df["NASS_dv"].min(), 1)
-            mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
-            maxval = round(df["NASS_dv"].max(), 1)
-            maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
+        #         minval = round(df["NASS_dv"].min(), 1)
+        #         mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
+        #         maxval = round(df["NASS_dv"].max(), 1)
+        #         maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
 
-            dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
+        #         dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
 
-            par = event_str + " " + dv_msg
-            writer.writerows([[], [par]])
+        #         par = event_str + " " + dv_msg
+        #         writer.writerows([[], [par]])
+        # except PermissionError:
+        #     self.logger.error("Could not write to file: Permission denied.")
+        # except Exception as e:
+        #     self.logger.error(f"Could not write to file: {e}")
 
     @pyqtSlot()
     def scrape_complete(self):
