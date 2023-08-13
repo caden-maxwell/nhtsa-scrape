@@ -342,7 +342,7 @@ class ScrapeEngine(QObject):
                     f"No CDCevent found for event {event['en']} in case {case_id}."
                 )
 
-            if not total_dv or not lat_dv or not long_dv:
+            if total_dv is None or lat_dv is None or long_dv is None:
                 self.logger.warning(
                     f"Delta-V not found for event {event['en']} in case {case_id}."
                 )
@@ -439,7 +439,8 @@ class ScrapeEngine(QObject):
                 }
 
             # Avg crush in inches
-            c_bar = 0.393701 * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:4])) / 5
+            # -----------------------------------------------------------\|/ 4 or 5 here?
+            c_bar = 0.393701 * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
 
             # NASS DV in MPH
             NASS_dv = float(total_dv) * 0.621371

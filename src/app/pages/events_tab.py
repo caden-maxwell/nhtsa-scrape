@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, pyqtSlot, QModelIndex
-from PyQt6.QtGui import QPixmap, QFont, QImage
+from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QPushButton,
+    QMessageBox,
+    QStyledItemDelegate,
 )
 
 from bs4 import BeautifulSoup
@@ -37,9 +39,13 @@ class EventsTab(QWidget):
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
+        delegate = CustomItemDelegate()
+        self.ui.eventsList.setItemDelegate(delegate)
+
         self.ui.eventsList.clicked.connect(self.open_event_details)
         self.ui.scrapeBtn.clicked.connect(self.scrape_btn_clicked)
         self.ui.stopBtn.clicked.connect(self.stop_btn_clicked)
+        self.ui.ignoreBtn.clicked.connect(self.ignore_event)
         self.ui.discardBtn.clicked.connect(self.delete_event)
         self.ui.imgSetCombo.addItem("Front", "F")
         self.ui.imgSetCombo.addItem("Back", "B")
@@ -113,6 +119,8 @@ class EventsTab(QWidget):
 
             self.no_images_label.setVisible(True)
             self.__clear_thumbnails()
+
+            self.ui.ignoreBtn.setText("Ignore Event")
             return
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
@@ -144,6 +152,11 @@ class EventsTab(QWidget):
         for img_id, img in images:
             thumbnail = ImageThumbnail(img_id, img, self.images_dir)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
+
+        if self.model.data(index, Qt.ItemDataRole.FontRole):
+            self.ui.ignoreBtn.setText("Unignore Event")
+        else:
+            self.ui.ignoreBtn.setText("Ignore Event")
 
     def __clear_thumbnails(self):
         for i in reversed(range(self.ui.thumbnailsLayout.count())):
@@ -221,9 +234,35 @@ class EventsTab(QWidget):
         )
 
     def delete_event(self):
-        self.model.delete_event(self.ui.eventsList.currentIndex())
-        self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
-        self.open_event_details(self.model.index(0, 0))
+        msg_box = QMessageBox()
+        msg_box.setText(
+            "Are you sure you want to delete this event?"
+            "\nThis action cannot be undone."
+        )
+        msg_box.setStandardButtons(
+            QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes
+        )
+        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
+        msg_box.setIcon(QMessageBox.Icon.Warning)
+        msg_box.setWindowTitle("Delete Event")
+        msg_box.exec()
+
+        if msg_box.result() == QMessageBox.StandardButton.No:
+            return
+
+        index = self.ui.eventsList.currentIndex()
+        self.model.delete_event(index)
+
+        if index.row() >= self.model.rowCount():
+            index = self.model.index(self.model.rowCount() - 1, 0)
+
+        self.ui.eventsList.setCurrentIndex(index)
+        self.open_event_details(index)
+
+    def ignore_event(self):
+        index = self.ui.eventsList.currentIndex()
+        self.model.toggle_ignored(index)
+        self.open_event_details(index)
 
     @pyqtSlot(int, str, bytes, str, dict)
     def handle_response(self, priority, url, response_content, cookie, extra_data):
@@ -389,3 +428,13 @@ class ImageThumbnail(QWidget):
     def leaveEvent(self, event):
         self.open_button.setVisible(False)
         self.save_button.setVisible(False)
+
+
+class CustomItemDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        ignored = index.data(Qt.ItemDataRole.FontRole)
+        if ignored:
+            option.palette.setColor(QPalette.ColorRole.Text, QColor("gray"))
+        else:
+            option.palette.setColor(QPalette.ColorRole.Text, QColor("black"))
+        super().paint(painter, option, index)

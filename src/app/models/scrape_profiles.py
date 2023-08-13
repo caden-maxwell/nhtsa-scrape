@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 import sqlite3
 from sqlite3 import Error
@@ -11,12 +12,14 @@ class ScrapeProfiles(QAbstractListModel):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         try:
-            db_path = Path(__file__).parent / "db.sqlite3"
-            self.db = sqlite3.connect(db_path)
+            parent_dirs = Path(__file__).parent
+            os.makedirs(parent_dirs, exist_ok=True)
+            self.db = sqlite3.connect(parent_dirs / "db.sqlite3")
             self.cursor = self.db.cursor()
         except Error as e:
             self.logger.error(e)
             self.db = None
+            return
 
         self.cursor.execute(
             """

@@ -15,7 +15,7 @@
     "lSecondaryDamage": -1,
     "tDeltaVFrom": "",
     "tDeltaVTo": "",
-    "rDeltaV": "kmph",
+    "rDeltaV": "mph",
     "tBarrierFrom": "",
     "tBarrierTo": "",
     "rBarrier": "kmph",

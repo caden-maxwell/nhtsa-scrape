@@ -56,6 +56,10 @@ class ScatterTab(QWidget):
         self.tot_labels = []
         self.tot_legend = []
 
+    def showEvent(self, event) -> None:
+        self.update_plot()
+        return super().showEvent(event)
+
     def save_figure(self):
         os.makedirs(self.data_dir, exist_ok=True)
         path = self.data_dir / "scatterplot.png"
@@ -71,7 +75,7 @@ class ScatterTab(QWidget):
             bbox_inches="tight",
             pad_inches=0.75,
         )
-        self.logger.info(f"Saved figure to {self.data_dir / 'scatterplot.png'}")
+        self.logger.info(f"Saved figure to {path}")
 
     def btn_update(self, btn_func):
         btn_func()
@@ -133,11 +137,12 @@ class ScatterTab(QWidget):
         case_ids = []
         nass_vc = []
         for event in self.model.all_events():
-            xdata.append(event["c_bar"])
-            y1data.append(event["NASS_dv"])
-            y2data.append(event["TOT_dv"])
-            case_ids.append(event["case_id"])
-            nass_vc.append(event["NASS_vc"])
+            if not event["ignored"]:
+                xdata.append(event["c_bar"])
+                y1data.append(event["NASS_dv"])
+                y2data.append(event["TOT_dv"])
+                case_ids.append(event["case_id"])
+                nass_vc.append(event["NASS_vc"])
 
         if len(xdata) < 2:
             self.canvas.draw()
