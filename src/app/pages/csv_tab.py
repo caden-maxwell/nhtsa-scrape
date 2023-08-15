@@ -25,7 +25,7 @@ class CSVTab(QWidget):
     def showEvent(self, event):
         self.refresh()
         return super().showEvent(event)
-    
+
     def refresh(self):
         self.model.refresh_grid()
         IGNORED_COL = 31

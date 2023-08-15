@@ -65,16 +65,12 @@ class CSVGrid(QAbstractTableModel):
                 SELECT * FROM case_events
                 WHERE (case_id, vehicle_num, event_num) IN (
                     SELECT case_id, vehicle_num, event_num FROM scrape_profile_events
-                    WHERE profile_id = ?
+                    WHERE profile_id = ? AND ignored = 0
                 )
                 """,
                 (self.profile[0],),
             )
-            self.temp_list = self.cursor.fetchall()
-            IGNORED_IDX = 31
-            self.__data_list = [
-                event for event in self.temp_list if not event[IGNORED_IDX]
-            ]
+            self.__data_list = self.cursor.fetchall()
             self.layoutChanged.emit()
         except sqlite3.Error as e:
             self.logger.error("Error refreshing data:", e)

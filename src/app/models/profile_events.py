@@ -63,7 +63,6 @@ class ProfileEvents(QAbstractListModel):
                     NASS_vc INTEGER,
                     e INTEGER,
                     TOT_dv INTEGER,
-                    ignored INTEGER DEFAULT 0,
                     PRIMARY KEY (case_id, event_num, vehicle_num),
                     FOREIGN KEY (case_id) REFERENCES cases(case_id)
                 );
@@ -74,8 +73,9 @@ class ProfileEvents(QAbstractListModel):
                 CREATE TABLE IF NOT EXISTS scrape_profile_events (
                     profile_id INTEGER,
                     case_id INTEGER,
-                    event_num INTEGER,
                     vehicle_num INTEGER,
+                    event_num INTEGER,
+                    ignored INTEGER DEFAULT 0,
                     FOREIGN KEY (profile_id)
                         REFERENCES scrape_profiles(profile_id),
                     FOREIGN KEY (case_id, event_num, vehicle_num)
@@ -190,7 +190,6 @@ class ProfileEvents(QAbstractListModel):
             NASS_vc = event["NASS_vc"]
             e = event["e"]
             TOT_dv = event["TOT_dv"]
-            IGNORED = 0  # Default to not ignored
 
             self.cursor.execute(
                 """
@@ -232,10 +231,9 @@ class ProfileEvents(QAbstractListModel):
                     NASS_dv,
                     NASS_vc,
                     e,
-                    TOT_dv,
-                    ignored
+                    TOT_dv
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     case_id,
@@ -269,7 +267,6 @@ class ProfileEvents(QAbstractListModel):
                     NASS_vc,
                     e,
                     TOT_dv,
-                    IGNORED,
                 ),
             )
             self.cursor.execute(
@@ -310,7 +307,7 @@ class ProfileEvents(QAbstractListModel):
                 """,
                 (data[0], data[1], data[2]),
             )
-            if self.cursor.fetchone() is None:
+            if not self.cursor.fetchall():
                 self.cursor.execute(
                     """
                     DELETE FROM case_events
@@ -335,11 +332,11 @@ class ProfileEvents(QAbstractListModel):
             data = self.data_list[index.row()]
             self.cursor.execute(
                 """
-                UPDATE case_events
+                UPDATE scrape_profile_events
                 SET ignored = NOT ignored
-                WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
+                WHERE case_id = ? AND vehicle_num = ? AND event_num = ? AND profile_id = ?
                 """,
-                (data[0], data[1], data[2]),
+                (data[0], data[1], data[2], self.profile[0]),
             )
             self.db.commit()
         except sqlite3.Error as e:
@@ -357,6 +354,16 @@ class ProfileEvents(QAbstractListModel):
         try:
             self.cursor.execute(
                 """
+                SELECT case_id, vehicle_num, event_num, ignored
+                FROM scrape_profile_events
+                WHERE profile_id = ?
+                """,
+                (self.profile[0],),
+            )
+            selected = self.cursor.fetchall()
+            selected.sort()
+            self.cursor.execute(
+                """
                 SELECT * FROM case_events
                 WHERE (case_id, vehicle_num, event_num) IN (
                     SELECT case_id, vehicle_num, event_num FROM scrape_profile_events
@@ -366,9 +373,13 @@ class ProfileEvents(QAbstractListModel):
                 (self.profile[0],),
             )
             self.data_list = self.cursor.fetchall()
+            self.data_list.sort()
+            ignored_vals = [t[3] for t in selected]
+            for i, val in enumerate(ignored_vals):
+                self.data_list[i] += (val,)
             self.layoutChanged.emit()
         except sqlite3.Error as e:
-            self.logger.error("Error refreshing data:", e)
+            self.logger.error(f"Error refreshing data: {e}")
             return
         self.logger.debug("Refreshed data.")
 
