@@ -129,6 +129,8 @@ class ScatterTab(QWidget):
         self.ax.get_legend().set_draggable(True)
 
     def update_plot(self):
+        if not self.isVisible():
+            return
         self.ax.clear()
 
         xdata = []
