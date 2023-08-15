@@ -12,11 +12,12 @@ from .data_view import DataView
 class ProfileMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, db_handler):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
-        self.model = ScrapeProfiles()
+        self.db_handler = db_handler
+        self.model = ScrapeProfiles(self.db_handler)
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
@@ -46,7 +47,7 @@ class ProfileMenu(QWidget):
         for idx in selected:
             profile_id = idx.data(role=Qt.ItemDataRole.UserRole)[0]
             self.logger.debug(f"Opening profile {profile_id}")
-            new_viewer = DataView(profile_id)
+            new_viewer = DataView(self.db_handler, profile_id)
             self.data_viewers.append(new_viewer)
             new_viewer.exited.connect(lambda: self.data_viewers.remove(new_viewer))
             new_viewer.show()

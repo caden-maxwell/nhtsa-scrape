@@ -18,11 +18,11 @@ from app.ui.DataView_ui import Ui_DataView
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, profile_id):
+    def __init__(self, db_handler, profile_id):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
-        self.model = ProfileEvents(profile_id)
+        self.model = ProfileEvents(db_handler, profile_id)
 
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
@@ -42,7 +42,7 @@ class DataView(QWidget):
 
         self.events_tab = EventsTab(self.model, self.data_dir)
         self.scatter_tab = ScatterTab(self.model, self.data_dir)
-        self.csv_tab = CSVTab(profile_id, self.data_dir)
+        self.csv_tab = CSVTab(db_handler, profile_id, self.data_dir)
 
         self.ui.tabWidget.addTab(QWidget(), "Summary")
         self.ui.tabWidget.addTab(self.events_tab, "Events")
@@ -91,7 +91,7 @@ class DataView(QWidget):
         # Create a dialog to tell the user that the scrape is complete
 
         dialog = QMessageBox()
-        if not len(self.model.data_list):
+        if not len(self.model.all_events()):
             dialog.setText(
                 "Scrape complete. No events were found.\nDelete this profile?"
             )

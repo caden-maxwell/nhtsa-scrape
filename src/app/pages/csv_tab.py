@@ -10,13 +10,13 @@ from app.ui.CSVTab_ui import Ui_CSVTab
 
 
 class CSVTab(QWidget):
-    def __init__(self, profile_id, data_dir: Path):
+    def __init__(self, db_handler, profile_id, data_dir: Path):
         super().__init__()
         self.ui = Ui_CSVTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = CSVGrid(profile_id)
+        self.model = CSVGrid(db_handler, profile_id)
         self.ui.tableView.setModel(self.model)
         self.ui.saveBtn.clicked.connect(self.save_csv)
 
@@ -43,7 +43,7 @@ class CSVTab(QWidget):
                 csv_path = self.data_dir / f"scrape_data({i}).csv"
                 i += 1
             with open(csv_path, "w") as f:
-                for event in self.model.all_data():
+                for event in self.model.all_events():
                     f.write(",".join([str(x) for x in event[:31]]) + "\n")
         except Exception as e:
             self.logger.error(f"Error saving CSV: {e}")

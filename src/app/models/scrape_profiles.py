@@ -1,162 +1,47 @@
 import logging
-import os
-from pathlib import Path
-import sqlite3
-from sqlite3 import Error
 
-from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt
+from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
+
+from . import DatabaseHandler
 
 
 class ScrapeProfiles(QAbstractListModel):
-    def __init__(self):
+    def __init__(self, db_handler: DatabaseHandler):
         super().__init__()
         self.logger = logging.getLogger(__name__)
-        try:
-            parent_dirs = Path(__file__).parent
-            os.makedirs(parent_dirs, exist_ok=True)
-            self.db = sqlite3.connect(parent_dirs / "db.sqlite3")
-            self.cursor = self.db.cursor()
-        except Error as e:
-            self.logger.error(e)
-            self.db = None
-            return
 
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS scrape_profiles (
-                profile_id INTEGER PRIMARY KEY,
-                name TEXT,
-                description TEXT,
-                date_created INTEGER,
-                date_modified INTEGER
-            );
-            """
-        )
-        self.db.commit()
+        self.db_handler = db_handler
+        self._data = []
 
-        self.data_list = []
-
-    def close_database(self):
-        try:
-            self.cursor.close()
-            self.db.close()
-            self.db = None
-            self.cursor = None
-        except sqlite3.Error as e:
-            self.logger.error(f"Error closing database: {e}")
-
-    def rowCount(self, parent=QModelIndex()):
-        return len(self.data_list)
+    def rowCount(self, parent: QModelIndex = ...) -> int:
+        return len(self._data)
 
     def data(self, index, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount()):
+            return QVariant()
+
         if role == Qt.ItemDataRole.DisplayRole:
-            data = self.data_list[index.row()]
+            data = self._data[index.row()]
             return f"{data[1]}"
         elif role == Qt.ItemDataRole.UserRole:
-            return self.data_list[index.row()]
-        return None
+            return self._data[index.row()]
 
-    def add_profile(self, data: dict):
-        try:
-            name = data["name"]
-            description = data["description"]
-            date_created = data["created"]
-            date_modified = data["modified"]
-            self.cursor.execute(
-                """
-                INSERT INTO scrape_profiles (
-                    name,
-                    description,
-                    date_created,
-                    date_modified
-                )
-                VALUES (?, ?, ?, ?)
-                """,
-                (name, description, date_created, date_modified),
-            )
-            self.db.commit()
-            self.logger.debug(f"Added profile: {name}")
-        except (KeyError, sqlite3.Error) as e:
-            self.logger.error(f"Error adding profile: {e}")
-            return
+        return QVariant()
+
+    def add_profile(self, profile: dict):
+        profile_id = self.db_handler.add_profile(profile)
         self.refresh_profiles()
-        return self.cursor.lastrowid
+        return profile_id
 
     def delete_profiles(self, indices: list[QModelIndex]):
-        try:
-            for index in indices:
-                data = self.data_list[index.row()]
-                profile_id = data[0]
-
-                # Delete all case events that belong to this profile
-                # and are not referred to by another profile
-                self.cursor.execute(
-                    """
-                    SELECT case_id, event_num, vehicle_num
-                    FROM scrape_profile_events
-                    WHERE profile_id = ?;
-                    """,
-                    (profile_id,),
-                )
-                case_events = self.cursor.fetchall()
-                for case_event in case_events:
-                    case_id, event_num, vehicle_num = case_event
-                    self.cursor.execute(
-                        """
-                        SELECT COUNT(*)
-                        FROM scrape_profile_events
-                        WHERE case_id = ?
-                            AND event_num = ?
-                            AND vehicle_num = ?
-                            AND profile_id != ?;
-                        """,
-                        (case_id, event_num, vehicle_num, profile_id),
-                    )
-                    count = self.cursor.fetchone()[0]
-
-                    if count < 1:
-                        self.cursor.execute(
-                            """
-                            DELETE FROM case_events
-                            WHERE case_id = ?
-                                AND event_num = ?
-                                AND vehicle_num = ?;
-                            """,
-                            (case_id, event_num, vehicle_num),
-                        )
-
-                # Delete all scrape_profile_events belonging to this profile
-                # and the profile itself
-                self.cursor.execute(
-                    """
-                    DELETE FROM scrape_profile_events
-                    WHERE profile_id = ?;
-                    """,
-                    (profile_id,),
-                )
-                self.cursor.execute(
-                    """
-                    DELETE FROM scrape_profiles
-                    WHERE profile_id = ?
-                    """,
-                    (profile_id,),
-                )
-                self.db.commit()
-                self.logger.debug(f"Deleted profile: '{data[1]}'")
-        except (IndexError, sqlite3.Error) as e:
-            self.logger.error(f"Error deleting profile: {e}")
-            return
+        for index in indices:
+            if not index.isValid() or not (0 <= index.row() < self.rowCount()):
+                continue
+            data = self._data[index.row()]
+            self.db_handler.delete_profile(data[0], data[1])
         self.refresh_profiles()
 
     def refresh_profiles(self):
-        try:
-            self.cursor.execute("SELECT * FROM scrape_profiles")
-            self.data_list = self.cursor.fetchall()
-            self.layoutChanged.emit()
-        except sqlite3.Error as e:
-            self.logger.error(f"Error refreshing data: {e}")
-            return
+        self._data = self.db_handler.get_profiles()
+        self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")
-
-    def __del__(self):
-        self.close_database()

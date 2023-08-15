@@ -17,7 +17,7 @@ from . import DataView
 class ScrapeMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, db_handler):
         super().__init__()
 
         self.ui = Ui_ScrapeMenu()
@@ -26,6 +26,7 @@ class ScrapeMenu(QWidget):
         self.logger = logging.getLogger(__name__)
         self.scrape_engine = None
         self.engine_thread = None
+        self.db_handler = db_handler
 
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
@@ -195,8 +196,8 @@ class ScrapeMenu(QWidget):
             "modified": int(now.timestamp()),
         }
 
-        profile_id = ScrapeProfiles().add_profile(new_profile)
-        self.data_viewer = DataView(profile_id)
+        profile_id = ScrapeProfiles(self.db_handler).add_profile(new_profile)
+        self.data_viewer = DataView(self.db_handler, profile_id)
         self.data_viewer.show()
 
         self.scrape_engine.event_parsed.connect(self.data_viewer.add_event)
