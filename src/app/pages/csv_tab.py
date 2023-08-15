@@ -27,6 +27,8 @@ class CSVTab(QWidget):
         return super().showEvent(event)
 
     def refresh(self):
+        if not self.isVisible():
+            return
         self.model.refresh_grid()
         IGNORED_COL = 31
         self.ui.tableView.setColumnHidden(IGNORED_COL, True)
