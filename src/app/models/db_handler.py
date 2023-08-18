@@ -434,7 +434,7 @@ class DatabaseHandler:
         self.logger.debug(
             f"Toggled ignored for event: Case {event[0]} Vehicle {event[1]} Event {event[2]}"
         )
-    
+
     def get_headers(self, table_name: str):
         cursor = self.connection.cursor()
         try:

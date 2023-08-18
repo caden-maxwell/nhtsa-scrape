@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
-from PyQt6.QtWidgets import QWidget, QMessageBox
+from PyQt6.QtWidgets import QWidget
 
 from . import ScatterTab
 from . import EventsTab
@@ -55,54 +55,3 @@ class DataView(QWidget):
         self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
         self.csv_tab.refresh()
-
-        # file = "random.csv"
-        # df = pandas.DataFrame(self.model.all_events())
-        # os.makedirs(self.data_dir, exist_ok=True)
-        # try:
-        #     df.to_csv(self.data_dir / file, index=False)
-        #     with open(self.data_dir / file, "a") as f:
-        #         writer = csv.writer(f)
-
-        #         case_ids = df["case_id"].unique()
-        #         event_str = ", ".join(str(id) for id in case_ids[:-1])
-        #         event_str = (
-        #             event_str + f", and {case_ids[-1]}."
-        #             if len(case_ids) > 1
-        #             else event_str + "."
-        #         )
-
-        #         minval = round(df["NASS_dv"].min(), 1)
-        #         mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
-        #         maxval = round(df["NASS_dv"].max(), 1)
-        #         maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
-
-        #         dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
-
-        #         par = event_str + " " + dv_msg
-        #         writer.writerows([[], [par]])
-        # except PermissionError:
-        #     self.logger.error("Could not write to file: Permission denied.")
-        # except Exception as e:
-        #     self.logger.error(f"Could not write to file: {e}")
-
-    @pyqtSlot()
-    def scrape_complete(self):
-        # Create a dialog to tell the user that the scrape is complete
-
-        dialog = QMessageBox()
-        if not len(self.model.all_events()):
-            dialog.setText(
-                "Scrape complete. No events were found.\nDelete this profile?"
-            )
-            dialog.setStandardButtons(
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-            )
-            dialog.setDefaultButton(QMessageBox.StandardButton.Yes)
-        else:
-            dialog.setText("Scrape complete.")
-            dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
-            dialog.setDefaultButton(QMessageBox.StandardButton.Ok)
-        dialog.setIcon(QMessageBox.Icon.Information)
-        dialog.setWindowTitle("Scrape Complete")
-        dialog.exec()

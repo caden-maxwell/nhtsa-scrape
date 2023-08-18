@@ -27,8 +27,7 @@ class Priority(enum.Enum):
 class ScrapeEngine(QObject):
     event_parsed = pyqtSignal(dict, bytes, str)
     started = pyqtSignal()
-    completed = pyqtSignal()  # Used to signal that the scrape is *complete*
-    finished = pyqtSignal()  # Used to signal that the scrape has *stopped*
+    completed = pyqtSignal()
     CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
     CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
 
@@ -62,7 +61,6 @@ class ScrapeEngine(QObject):
 
     def stop(self):
         self.running = False
-        self.finished.emit()
 
     def complete(self):
         # Order matters here, otherwise the request handler will start making

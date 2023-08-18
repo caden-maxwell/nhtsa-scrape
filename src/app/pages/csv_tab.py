@@ -54,3 +54,25 @@ class CSVTab(QWidget):
             self.ui.saveBtn.setEnabled(True)
             self.ui.saveBtn.setText("Save Data to CSV")
         self.logger.info(f"Saved CSV to {csv_path}.")
+
+        # df.to_csv(self.data_dir / file, index=False)
+        # with open(self.data_dir / file, "a") as f:
+        #     writer = csv.writer(f)
+
+        #     case_ids = df["case_id"].unique()
+        #     event_str = ", ".join(str(id) for id in case_ids[:-1])
+        #     event_str = (
+        #         event_str + f", and {case_ids[-1]}."
+        #         if len(case_ids) > 1
+        #         else event_str + "."
+        #     )
+
+        #     minval = round(df["NASS_dv"].min(), 1)
+        #     mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
+        #     maxval = round(df["NASS_dv"].max(), 1)
+        #     maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
+
+        #     dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
+
+        #     par = event_str + " " + dv_msg
+        #     writer.writerows([[], [par]])
