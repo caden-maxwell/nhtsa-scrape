@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from bs4 import BeautifulSoup
 
@@ -33,9 +33,9 @@ class ScrapeMenu(QWidget):
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
+        self.ui.noMaxCheckbox.clicked.connect(self.toggle_max_cases)
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
-        self.ui.casesSpin.setValue(40)
         self.engine_timer = QTimer()
 
         self.data_viewer = None
@@ -154,7 +154,12 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        case_limit = self.ui.casesSpin.value()
+        # We're just going to assume that no scrape should ever have even close to 10000 cases
+        case_limit = (
+            self.ui.casesSpin.value()
+            if not self.ui.noMaxCheckbox.isChecked()
+            else 10000
+        )
         self.scrape_engine = ScrapeEngine(
             {
                 "ddlMake": self.ui.makeCombo.currentData(),
@@ -216,10 +221,19 @@ class ScrapeMenu(QWidget):
         self.engine_thread.quit()
         self.engine_thread.wait()
 
-        self.data_viewer.scrape_complete()
+        dialog = QMessageBox()
+        dialog.setText("Scrape complete.")
+        dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+        dialog.setDefaultButton(QMessageBox.StandardButton.Ok)
+        dialog.setIcon(QMessageBox.Icon.Information)
+        dialog.setWindowTitle("Scrape Complete")
+        dialog.exec()
 
         self.ui.submitBtn.setEnabled(True)
         self.ui.submitBtn.setText("Scrape")
+
+    def toggle_max_cases(self, checked):
+        self.ui.casesSpin.setEnabled(not checked)
 
     def cleanup(self):
         self.engine_timer.stop()
