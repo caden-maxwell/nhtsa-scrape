@@ -173,7 +173,7 @@ class RequestHandler(QObject, metaclass=Singleton):
 
                 start = time.time()
                 while time.time() - start < rand_time and self.running:
-                    time.sleep(0.01)
+                    time.sleep(0.01)  # Avoid busy waiting
 
     def send_request(self, request: RequestQueueItem):
         response = None
@@ -215,7 +215,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                     f"Ignoring response for {request}, already removed from ongoing requests."
                 )
                 return
-        if response is not None:
+        if response is not None and self.running:
             self.response_received.emit(
                 request.priority,
                 request.url,
