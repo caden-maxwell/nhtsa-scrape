@@ -35,7 +35,8 @@ class EventsTab(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.model = model
-        self.model.layoutChanged.connect(self.update_list_size)
+        self.current_index_vals = None
+        self.model.layoutChanged.connect(self.list_changed)
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
@@ -75,7 +76,7 @@ class EventsTab(QWidget):
             self.open_event_details(self.model.index(0, 0))
 
     def showEvent(self, event) -> None:
-        self.update_list_size()
+        self.list_changed()
         return super().showEvent(event)
 
     def keyPressEvent(self, event):
@@ -83,13 +84,20 @@ class EventsTab(QWidget):
             self.open_event_details(self.ui.eventsList.currentIndex())
         return super().keyPressEvent(event)
 
-    def update_list_size(self):
+    def list_changed(self):
         scrollbar = self.ui.eventsList.verticalScrollBar()
         list_size = max(self.ui.eventsList.sizeHintForColumn(0), 200)
         scrollbar_width = 0
         if scrollbar.isVisible():
             scrollbar_width = scrollbar.sizeHint().width()
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
+
+        if self.current_index_vals:
+            # In the case that another event is inserted before the currently
+            # selected event, we need to find the new index of the current one
+            # and select it again.
+            index = self.model.index_from_vals(*self.current_index_vals)
+            self.ui.eventsList.setCurrentIndex(index)
 
     def cache_response(self, case_id, response_content, cookie):
         self.response_cache[case_id] = {
@@ -125,6 +133,12 @@ class EventsTab(QWidget):
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         self.update_buttons(event_data)
+        case_id = int(event_data["case_id"])
+        vehicle_num = int(event_data["vehicle_num"])
+
+        # We need to get the unique values for this index so we can find it later
+        # if another event is inserted before it in the list
+        self.current_index_vals = (case_id, vehicle_num, event_data["event_num"])
 
         # Left side of event view data
         self.ui.makeLineEdit.setText(event_data["make"])
@@ -141,9 +155,7 @@ class EventsTab(QWidget):
         self.ui.totDVLineEdit.setText(f"{event_data['TOT_dv']:.4f}")
 
         # Clear and repopulate image thumbnails
-        img_ids = self.case_veh_img_ids.get(
-            (int(event_data["case_id"]), int(event_data["vehicle_num"])), {}
-        )
+        img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), {})
         images = [(img_id, img) for img_id, img in img_ids.items() if img]
 
         self.no_images_label.setVisible(not len(images))
@@ -262,7 +274,11 @@ class EventsTab(QWidget):
     def ignore_event(self):
         index = self.ui.eventsList.currentIndex()
         self.model.toggle_ignored(index)
-        self.open_event_details(index)
+
+        if self.model.data(index, Qt.ItemDataRole.FontRole):
+            self.ui.ignoreBtn.setText("Unignore Event")
+        else:
+            self.ui.ignoreBtn.setText("Ignore Event")
 
     @pyqtSlot(int, str, bytes, str, dict)
     def handle_response(self, priority, url, response_content, cookie, extra_data):

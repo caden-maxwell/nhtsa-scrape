@@ -73,6 +73,16 @@ class ProfileEvents(QAbstractListModel):
             for event in self._data
         ]
 
+    def index_from_vals(self, case_id, vehicle_num, event_num):
+        for i, event in enumerate(self._data):
+            if (
+                event[0] == case_id
+                and event[1] == vehicle_num
+                and event[2] == event_num
+            ):
+                return self.index(i)
+        return QModelIndex()
+
     def add_event(self, event):
         self.db_handler.add_event(event, self.profile[0])
         self.refresh_events()
