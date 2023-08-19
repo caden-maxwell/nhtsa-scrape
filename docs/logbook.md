@@ -37,8 +37,9 @@
 | 8/11 | 2 | - Fixed an error caused by a directory not being found to save data to in the standalone executable on Windows. <br> - Fixed an edge case that caused a crash when the CSV was already open in another application at the same time as writing. |
 | 8/12 | 4 | - UI changes in the scrape menu to make things less cluttered. <br> - Created a new model for the table viewer and tackled bugs related to that. <br> - Table for data is now viewable and can be saved as a CSV in the same way that the scatterplot is saved. <br> - Still need to add some additional information to the CSV like the bottom summary, image ID, etc. |
 | 8/14 | 6 | - Fixed a bug that would reset the "ignored" tag on previously scraped data when scraping a new profile that had some of the same events. <br> - Set up a new database handler to get ready for a second scrape engine (for the CISS database). |
-| 8/15 | N/A | N/A |
-| Total | 155 | - |
+| 8/19 | 8 | - Added rate limit settings to settings page. <br> - Added <code>settings.json</code>. <br> - Integrated rate limit settings to automatically save to file and update the request handler. <br> - Made an absolute minimum limit to the rate limiter just in case someone is careless (0.2s). <br> - TODO for tomorrow: Add scrape menu params and statistics to scrape summary tab in data viewer. <br> Another TODO for tomorrow: Add something to keep track of which case events failed to parse and the reason it failed (maybe add another tab for this called "Failed Parses" or something). |
+| 8/20 | N/A | N/A |
+| Total | 158 | --- |
 
 ---
 

@@ -4,6 +4,7 @@ import queue
 import random
 import requests
 import time
+
 from PyQt6.QtCore import QObject, pyqtSignal
 
 
@@ -51,6 +52,9 @@ class RequestHandler(QObject, metaclass=Singleton):
     started = pyqtSignal()
     stopped = pyqtSignal()
     response_received = pyqtSignal(int, str, bytes, str, dict)
+    DEFAULT_MIN_RATE_LIMIT = 0.75
+    DEFAULT_MAX_RATE_LIMIT = 2.50
+    ABS_MIN_RATE_LIMIT = 0.2
     _instance = None
 
     def __init__(self):
@@ -62,6 +66,9 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.rate_limit = 2.5
         self.ongoing_requests = []
         self.timeout = 4
+
+        self.min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
+        self.max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
 
     def start(self):
         self.running = True
@@ -130,21 +137,31 @@ class RequestHandler(QObject, metaclass=Singleton):
             request.extra_data == match_data or not match_data
         )
 
+    def update_min_rate_limit(self, value):
+        self.min_rate_limit = value
+    
+    def update_max_rate_limit(self, value):
+        self.max_rate_limit = value
+
     def process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
                 if self.request_queue.empty():
-                    time.sleep(0.1)
+                    time.sleep(0.1)  # Avoid busy waiting
                     continue
 
+                # Adjust rate limit based on queue size and settings
+                interval = (self.max_rate_limit - self.min_rate_limit) / 4
                 if self.request_queue.qsize() <= 10:
-                    self.rate_limit = 0.60
+                    self.rate_limit = self.min_rate_limit
                 elif self.request_queue.qsize() <= 20:
-                    self.rate_limit = 1.20
+                    self.rate_limit = self.min_rate_limit + interval
                 elif self.request_queue.qsize() <= 30:
-                    self.rate_limit = 1.80
+                    self.rate_limit = self.min_rate_limit + interval * 2
+                elif self.request_queue.qsize() <= 40:
+                    self.rate_limit = self.min_rate_limit + interval * 3
                 else:
-                    self.rate_limit = 2.40
+                    self.rate_limit = self.max_rate_limit
 
                 rand_time = self.rate_limit + random.uniform(
                     -self.rate_limit / 3, self.rate_limit / 2
