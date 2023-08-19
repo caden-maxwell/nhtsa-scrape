@@ -39,7 +39,8 @@ class ScrapeEngine(QObject):
         self.case_limit = case_limit
 
         # Get default search payload and update with user input
-        payload_path = Path(__file__).parent / "payload.json"
+        payload_path = Path(__file__).parent.parent / "resources" / "payload.json"
+        self.search_payload = {}
         with open(payload_path, "r") as f:
             self.search_payload = dict(json.load(f))
         self.search_payload.update(search_params)

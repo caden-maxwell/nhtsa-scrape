@@ -1,0 +1,4 @@
+{
+    "minRateLimit": 0.5,
+    "maxRateLimit": 2.0
+}
