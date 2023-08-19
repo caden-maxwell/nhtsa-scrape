@@ -139,7 +139,7 @@ class RequestHandler(QObject, metaclass=Singleton):
 
     def update_min_rate_limit(self, value):
         self.min_rate_limit = value
-    
+
     def update_max_rate_limit(self, value):
         self.max_rate_limit = value
 
