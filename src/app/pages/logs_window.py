@@ -40,6 +40,7 @@ class LogsWindow(QWidget):
         self.ui.logsEdit.clear()
         self.ui.clearBtn.setEnabled(False)
         self.ui.saveBtn.setEnabled(False)
+        self.logger.info("Cleared all logs.")
 
     def handle_save_clicked(self):
         dir_path = Path(__file__).parent.parent / "logs"

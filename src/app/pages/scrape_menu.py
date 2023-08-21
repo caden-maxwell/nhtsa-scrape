@@ -213,7 +213,7 @@ class ScrapeMenu(QWidget):
         self.engine_thread.start()
 
         self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
-        self.engine_timer.start(300)
+        self.engine_timer.start(500)  # Check if scrape is complete every 0.5s
 
     def handle_scrape_complete(self):
         self.engine_timer.stop()

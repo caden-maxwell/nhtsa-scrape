@@ -144,7 +144,7 @@ class EventsTab(QWidget):
         self.ui.makeLineEdit.setText(event_data["make"])
         self.ui.modelLineEdit.setText(event_data["model"])
         self.ui.yearLineEdit.setText(str(event_data["model_year"]))
-        self.ui.curbWeightLineEdit.setText(str(event_data["curb_weight"]))
+        self.ui.curbWeightLineEdit.setText(f"{event_data['curb_weight'] * 2.20462:.4f}")
         self.ui.dmgLocLineEdit.setText(event_data["dmg_loc"])
         self.ui.underrideLineEdit.setText(event_data["underride"])
 
@@ -337,7 +337,7 @@ class EventsTab(QWidget):
 
             image_set = self.ui.imgSetCombo.currentData()
 
-            img_elements = img_set_lookup.get(image_set)
+            img_elements = img_set_lookup.get(image_set, [])
             img_id_dict = self.case_veh_img_ids.get((case_id, vehicle_num), {})
             for img_element in img_elements:
                 img_id = int(img_element[0])

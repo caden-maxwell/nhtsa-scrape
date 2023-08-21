@@ -24,6 +24,8 @@ class SettingsMenu(QWidget):
         self.settings_path = (
             Path(__file__).parent.parent / "resources" / "settings.json"
         )
+        self.logger.debug(f"Settings path: {self.settings_path}")
+
         self.settings = {}
         try:
             self.settings = json.loads(self.settings_path.read_text())
@@ -34,13 +36,18 @@ class SettingsMenu(QWidget):
             "minRateLimit", RequestHandler.DEFAULT_MIN_RATE_LIMIT
         )
         self.request_handler.update_min_rate_limit(min_rate_limit)
-        self.logger.debug(f"Loaded min rate limit of {min_rate_limit}.")
+        self.logger.debug(f"Loaded minimum rate limit of {min_rate_limit}s.")
 
         max_rate_limit = self.settings.get(
             "maxRateLimit", RequestHandler.DEFAULT_MAX_RATE_LIMIT
         )
         self.request_handler.update_max_rate_limit(max_rate_limit)
-        self.logger.debug(f"Loaded max rate limit of {max_rate_limit}.")
+        self.logger.debug(f"Loaded maximum rate limit of {max_rate_limit}s.")
+
+        debug_mode = self.settings.get("debug", "true")
+        debug_mode = False if debug_mode == "false" else True
+        self.ui.debugCheckbox.setChecked(debug_mode)
+        self.logger.debug(f"Loaded debug mode: {debug_mode}")
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.debugCheckbox.clicked.connect(self.toggle_debug)
@@ -53,14 +60,18 @@ class SettingsMenu(QWidget):
         root_logger = logging.getLogger()
         if checked:
             root_logger.setLevel(logging.DEBUG)
+            self.logger.debug("Enabled debug logging.")
         else:
+            self.logger.debug("Disabled debug logging.")
             root_logger.setLevel(logging.INFO)
+        self.settings["debug"] = checked
+        self.settings_path.write_text(json.dumps(self.settings, indent=4))
 
     def update_min_rate(self):
         value = self.ui.minRateBox.value()
         if value < RequestHandler.ABS_MIN_RATE_LIMIT:
             self.logger.warning(
-                f"Min rate limit must be greater than {RequestHandler.ABS_MIN_RATE_LIMIT}. Setting to {RequestHandler.ABS_MIN_RATE_LIMIT}."
+                f"Minimum rate limit must be greater than {RequestHandler.ABS_MIN_RATE_LIMIT}s to avoid IP bans."
             )
             self.ui.minRateBox.setValue(RequestHandler.ABS_MIN_RATE_LIMIT)
             value = RequestHandler.ABS_MIN_RATE_LIMIT
@@ -73,13 +84,13 @@ class SettingsMenu(QWidget):
             self.settings["minRateLimit"] = value
             self.settings_path.write_text(json.dumps(self.settings, indent=4))
             self.request_handler.update_min_rate_limit(value)
-            self.logger.debug(f"Successfully updated min rate limit to {value}.")
+            self.logger.debug(f"Updated minimum rate limit to {value}s.")
 
     def update_max_rate(self):
         value = self.ui.maxRateBox.value()
         if value < self.ui.minRateBox.value():
             self.logger.warning(
-                "Max rate limit must be equal to or greater than min rate limit. Setting to min rate limit."
+                f"Maximum rate limit must be greater than or equal to the minimum rate limit ({self.ui.minRateBox.value()}s)."
             )
             min_rate = self.ui.minRateBox.value()
             self.ui.maxRateBox.setValue(min_rate)
@@ -90,4 +101,4 @@ class SettingsMenu(QWidget):
             self.settings["maxRateLimit"] = value
             self.settings_path.write_text(json.dumps(self.settings, indent=4))
             self.request_handler.update_max_rate_limit(value)
-            self.logger.debug(f"Successfully updated max rate limit to {value}.")
+            self.logger.debug(f"Updated maximum rate limit to {value}s.")
