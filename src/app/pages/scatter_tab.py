@@ -217,16 +217,9 @@ class ScatterTab(QWidget):
 
         self.canvas.draw()
 
-        crush_est = numpy.array([0, 1.0])
-        print(polynomial(crush_est))
-        print(polynomial_e(crush_est))
-        print(
-            f"{'Case ID':^12}{'c_bar':^10}{'NASS_vc':^10}{'NASS_dv':^10}{'TOT_dv':^10}"
-        )
-        for i, case_id in enumerate(case_ids):
-            print(
-                f"{case_id:^12}{xdata[i]:^10.2f}{nass_vc[i]:^10.2f}{y1data[i]:^10.2f}{y2data[i]:^10.2f}"
-            )
+        # crush_est = numpy.array([0, 1.0])
+        # print(polynomial(crush_est))
+        # print(polynomial_e(crush_est))
 
 
 class CustomToolbar(NavigationToolbar):

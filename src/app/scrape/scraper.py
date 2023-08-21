@@ -421,11 +421,11 @@ class ScrapeEngine(QObject):
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
                     "a_year": alt_ext_form.find("ModelYear").text,
-                    "a_curb_weight": float(curbweight)
-                    if (curbweight := alt_ext_form.find("CurbWeight").text).isnumeric()
+                    "a_curb_weight": float(curb_weight)
+                    if (curb_weight := alt_ext_form.find("CurbWeight").text).isnumeric()
                     else event_data["curb_weight"],
-                    "a_dmg_loc": damloc.text
-                    if (damloc := alt_ext_form.find("DeformationLocation"))
+                    "a_dmg_loc": dmg_loc.text
+                    if (dmg_loc := alt_ext_form.find("DeformationLocation"))
                     else "--",
                 }
             else:
@@ -437,8 +437,7 @@ class ScrapeEngine(QObject):
                     "a_dmg_loc": "--",
                 }
 
-            # Avg crush in inches
-            # -----------------------------------------------------------\|/ 4 or 5 here?
+            # Avg crush (inches)
             c_bar = 0.393701 * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
 
             # NASS DV in MPH
@@ -449,6 +448,8 @@ class ScrapeEngine(QObject):
             a_wt = alt_data["a_curb_weight"] * 2.20462
 
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
+
+            # Restitution Calculation
             e = 0.5992 * numpy.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
