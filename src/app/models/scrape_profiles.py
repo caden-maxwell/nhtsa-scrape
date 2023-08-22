@@ -33,7 +33,7 @@ class ScrapeProfiles(QAbstractListModel):
             if not index.isValid() or not (0 <= index.row() < self.rowCount()):
                 continue
             data = self._data[index.row()]
-            self.db_handler.delete_profile(data[0], data[1])
+            self.db_handler.delete_profile(data[0])
         self.refresh_profiles()
 
     def refresh_profiles(self):
