@@ -35,10 +35,17 @@ class DatabaseHandler:
                 """
                 CREATE TABLE IF NOT EXISTS profiles (
                     profile_id INTEGER PRIMARY KEY,
-                    name TEXT,
-                    description TEXT,
-                    date_created INTEGER,
-                    date_modified INTEGER
+                    make TEXT,
+                    model TEXT,
+                    start_year INTEGER,
+                    end_year INTEGER,
+                    primary_dmg TEXT,
+                    secondary_dmg TEXT,
+                    min_dv INTEGER,
+                    max_dv INTEGER,
+                    max_cases INTEGER,
+                    created INTEGER,
+                    modified INTEGER
                 );
                 """
             )
@@ -292,31 +299,45 @@ class DatabaseHandler:
         cursor = self.connection.cursor()
         new_profile_id = None
         try:
-            name = profile["name"]
-            description = profile["description"]
-            date_created = profile["created"]
-            date_modified = profile["modified"]
             cursor.execute(
                 """
                 INSERT INTO profiles (
-                    name,
-                    description,
-                    date_created,
-                    date_modified
+                    make,
+                    model,
+                    start_year,
+                    end_year,
+                    primary_dmg,
+                    secondary_dmg,
+                    min_dv,
+                    max_dv,
+                    max_cases,
+                    created,
+                    modified
                 )
-                VALUES (?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (name, description, date_created, date_modified),
+                (
+                    profile["make"],
+                    profile["model"],
+                    profile["start_year"],
+                    profile["end_year"],
+                    profile["primary_dmg"],
+                    profile["secondary_dmg"],
+                    profile["min_dv"],
+                    profile["max_dv"],
+                    profile["max_cases"],
+                    profile["created"],
+                    profile["modified"],
+                ),
             )
             self.connection.commit()
             new_profile_id = cursor.lastrowid
         except (KeyError, sqlite3.Error) as e:
             self.logger.error(f"Error adding profile: {e}")
-            return None
+            return -1
         finally:
             cursor.close()
-        self.logger.debug(f"Added profile: {name}")
-        return new_profile_id
+        return new_profile_id if new_profile_id else -1
 
     def delete_event(self, event: tuple, profile_id: int):
         cursor = self.connection.cursor()
@@ -353,7 +374,7 @@ class DatabaseHandler:
             f"Deleted event: Case {event[0]} Vehicle {event[1]} Event {event[2]}"
         )
 
-    def delete_profile(self, profile_id: int, profile_name: str):
+    def delete_profile(self, profile_id: int):
         cursor = self.connection.cursor()
         try:
             # Delete all events that belong to this profile
@@ -412,7 +433,6 @@ class DatabaseHandler:
             return
         finally:
             cursor.close()
-        self.logger.debug(f"Deleted profile: '{profile_name}'")
 
     def toggle_ignored(self, event: tuple, profile_id: int):
         cursor = self.connection.cursor()
