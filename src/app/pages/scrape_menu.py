@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from bs4 import BeautifulSoup
 
-from app.models.scrape_profiles import ScrapeProfiles
+from app.models.db_handler import DatabaseHandler
 from app.scrape import RequestHandler, ScrapeEngine, RequestQueueItem, Priority
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 
@@ -17,7 +17,7 @@ from . import DataView
 class ScrapeMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self, db_handler):
+    def __init__(self, db_handler: DatabaseHandler):
         super().__init__()
 
         self.ui = Ui_ScrapeMenu()
@@ -154,11 +154,10 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        # We're just going to assume that no scrape should ever have even close to 10000 cases
         case_limit = (
             self.ui.casesSpin.value()
             if not self.ui.noMaxCheckbox.isChecked()
-            else 10000
+            else 100000
         )
         self.scrape_engine = ScrapeEngine(
             {
@@ -175,33 +174,27 @@ class ScrapeMenu(QWidget):
         )
         self.scrape_engine.completed.connect(self.handle_scrape_complete)
 
-        make = (
-            make
-            if (make := self.ui.makeCombo.currentText().upper()) != "ALL"
-            else "ANY MAKE"
-        )
-        model = (
-            model
-            if (model := self.ui.modelCombo.currentText().upper()) != "ALL"
-            else "ANY MODEL"
-        )
-        start_year = self.ui.startYearCombo.currentText().upper()
-        end_year = self.ui.endYearCombo.currentText().upper()
-        p_dmg = dmg if (dmg := self.ui.pDmgCombo.currentText().upper()) != "ALL" else ""
-
         now = datetime.now()
-        name = f"{make} {model} ({start_year}-{end_year}) {p_dmg}"
-        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
-        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
-
         new_profile = {
-            "name": name,
-            "description": "",
+            "make": self.ui.makeCombo.currentText().upper(),
+            "model": self.ui.modelCombo.currentText().upper(),
+            "start_year": self.ui.startYearCombo.currentText().upper(),
+            "end_year": self.ui.endYearCombo.currentText().upper(),
+            "primary_dmg": self.ui.pDmgCombo.currentText().upper(),
+            "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
+            "min_dv": self.ui.dvMinSpin.value(),
+            "max_dv": self.ui.dvMaxSpin.value(),
+            "max_cases": case_limit,
             "created": int(now.timestamp()),
             "modified": int(now.timestamp()),
         }
 
-        profile_id = ScrapeProfiles(self.db_handler).add_profile(new_profile)
+        profile_id = self.db_handler.add_profile(new_profile)
+        if profile_id < 0:
+            self.logger.error("Scrape aborted: No profile to add data to.")
+            return
+
+        self.logger.info(f"Created new profile with ID {profile_id}.")
         self.data_viewer = DataView(self.db_handler, profile_id)
         self.data_viewer.show()
 

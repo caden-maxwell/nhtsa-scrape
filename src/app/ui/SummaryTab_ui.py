@@ -21,60 +21,92 @@ class Ui_SummaryTab(object):
         self.formLayout.setObjectName("formLayout")
         self.makeLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.makeLabel.setObjectName("makeLabel")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.makeLabel)
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.makeLabel
+        )
         self.makeEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.makeEdit.setReadOnly(True)
         self.makeEdit.setObjectName("makeEdit")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.makeEdit)
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.makeEdit
+        )
         self.modelLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.modelLabel.setObjectName("modelLabel")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.modelLabel)
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.modelLabel
+        )
         self.modelEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.modelEdit.setReadOnly(True)
         self.modelEdit.setObjectName("modelEdit")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.modelEdit)
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.modelEdit
+        )
         self.startYearLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.startYearLabel.setObjectName("startYearLabel")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.startYearLabel)
+        self.formLayout.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.startYearLabel
+        )
         self.startYearEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.startYearEdit.setReadOnly(True)
         self.startYearEdit.setObjectName("startYearEdit")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.startYearEdit)
+        self.formLayout.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.startYearEdit
+        )
         self.endYearLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.endYearLabel.setObjectName("endYearLabel")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.endYearLabel)
+        self.formLayout.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.LabelRole, self.endYearLabel
+        )
         self.endYearEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.endYearEdit.setReadOnly(True)
         self.endYearEdit.setObjectName("endYearEdit")
-        self.formLayout.setWidget(3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.endYearEdit)
+        self.formLayout.setWidget(
+            3, QtWidgets.QFormLayout.ItemRole.FieldRole, self.endYearEdit
+        )
         self.minDVLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.minDVLabel.setObjectName("minDVLabel")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.minDVLabel)
+        self.formLayout.setWidget(
+            4, QtWidgets.QFormLayout.ItemRole.LabelRole, self.minDVLabel
+        )
         self.minDVEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.minDVEdit.setReadOnly(True)
         self.minDVEdit.setObjectName("minDVEdit")
-        self.formLayout.setWidget(4, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minDVEdit)
+        self.formLayout.setWidget(
+            4, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minDVEdit
+        )
         self.maxDVLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.maxDVLabel.setObjectName("maxDVLabel")
-        self.formLayout.setWidget(5, QtWidgets.QFormLayout.ItemRole.LabelRole, self.maxDVLabel)
+        self.formLayout.setWidget(
+            5, QtWidgets.QFormLayout.ItemRole.LabelRole, self.maxDVLabel
+        )
         self.maxDVEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.maxDVEdit.setReadOnly(True)
         self.maxDVEdit.setObjectName("maxDVEdit")
-        self.formLayout.setWidget(5, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxDVEdit)
+        self.formLayout.setWidget(
+            5, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxDVEdit
+        )
         self.pDmgLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.pDmgLabel.setObjectName("pDmgLabel")
-        self.formLayout.setWidget(6, QtWidgets.QFormLayout.ItemRole.LabelRole, self.pDmgLabel)
+        self.formLayout.setWidget(
+            6, QtWidgets.QFormLayout.ItemRole.LabelRole, self.pDmgLabel
+        )
         self.pDmgEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.pDmgEdit.setReadOnly(True)
         self.pDmgEdit.setObjectName("pDmgEdit")
-        self.formLayout.setWidget(6, QtWidgets.QFormLayout.ItemRole.FieldRole, self.pDmgEdit)
+        self.formLayout.setWidget(
+            6, QtWidgets.QFormLayout.ItemRole.FieldRole, self.pDmgEdit
+        )
         self.sDmgLabel = QtWidgets.QLabel(parent=self.paramsBox)
         self.sDmgLabel.setObjectName("sDmgLabel")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.ItemRole.LabelRole, self.sDmgLabel)
+        self.formLayout.setWidget(
+            7, QtWidgets.QFormLayout.ItemRole.LabelRole, self.sDmgLabel
+        )
         self.sDmgEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
         self.sDmgEdit.setReadOnly(True)
         self.sDmgEdit.setObjectName("sDmgEdit")
-        self.formLayout.setWidget(7, QtWidgets.QFormLayout.ItemRole.FieldRole, self.sDmgEdit)
+        self.formLayout.setWidget(
+            7, QtWidgets.QFormLayout.ItemRole.FieldRole, self.sDmgEdit
+        )
         self.gridLayout.addWidget(self.paramsBox, 0, 0, 1, 1)
         self.statsBox = QtWidgets.QGroupBox(parent=SummaryTab)
         self.statsBox.setObjectName("statsBox")
@@ -83,24 +115,36 @@ class Ui_SummaryTab(object):
         self.totalCasesEdit = QtWidgets.QLineEdit(parent=self.statsBox)
         self.totalCasesEdit.setReadOnly(True)
         self.totalCasesEdit.setObjectName("totalCasesEdit")
-        self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totalCasesEdit)
+        self.formLayout_2.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totalCasesEdit
+        )
         self.totalCasesLabel = QtWidgets.QLabel(parent=self.statsBox)
         self.totalCasesLabel.setObjectName("totalCasesLabel")
-        self.formLayout_2.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totalCasesLabel)
+        self.formLayout_2.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totalCasesLabel
+        )
         self.failedParsesLabel = QtWidgets.QLabel(parent=self.statsBox)
         self.failedParsesLabel.setObjectName("failedParsesLabel")
-        self.formLayout_2.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.failedParsesLabel)
+        self.formLayout_2.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.failedParsesLabel
+        )
         self.failedParsesEdit = QtWidgets.QLineEdit(parent=self.statsBox)
         self.failedParsesEdit.setReadOnly(True)
         self.failedParsesEdit.setObjectName("failedParsesEdit")
-        self.formLayout_2.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.failedParsesEdit)
+        self.formLayout_2.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.failedParsesEdit
+        )
         self.totalTimeLabel = QtWidgets.QLabel(parent=self.statsBox)
         self.totalTimeLabel.setObjectName("totalTimeLabel")
-        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totalTimeLabel)
+        self.formLayout_2.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.totalTimeLabel
+        )
         self.totalTimeEdit = QtWidgets.QLineEdit(parent=self.statsBox)
         self.totalTimeEdit.setReadOnly(True)
         self.totalTimeEdit.setObjectName("totalTimeEdit")
-        self.formLayout_2.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totalTimeEdit)
+        self.formLayout_2.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.totalTimeEdit
+        )
         self.gridLayout.addWidget(self.statsBox, 0, 1, 1, 1)
         self.listView = QtWidgets.QListView(parent=SummaryTab)
         self.listView.setObjectName("listView")

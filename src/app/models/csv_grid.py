@@ -41,7 +41,7 @@ class CSVGrid(QAbstractTableModel):
 
     def get_headers(self):
         return self._headers
-    
+
     def headerData(self, section: int, orientation, role=Qt.ItemDataRole.DisplayRole):
         if role == Qt.ItemDataRole.DisplayRole:
             if orientation == Qt.Orientation.Horizontal:

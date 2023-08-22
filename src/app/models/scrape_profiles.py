@@ -22,16 +22,11 @@ class ScrapeProfiles(QAbstractListModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             data = self._data[index.row()]
-            return f"{data[1]}"
+            return f"{data[1]}"  # TODO: Add more info in new TreeView class
         elif role == Qt.ItemDataRole.UserRole:
             return self._data[index.row()]
 
         return QVariant()
-
-    def add_profile(self, profile: dict):
-        profile_id = self.db_handler.add_profile(profile)
-        self.refresh_profiles()
-        return profile_id
 
     def delete_profiles(self, indices: list[QModelIndex]):
         for index in indices:
