@@ -1,3 +1,4 @@
+import csv
 import logging
 import os
 from pathlib import Path
@@ -38,41 +39,21 @@ class CSVTab(QWidget):
         self.ui.saveBtn.setText("Saving...")
         self.ui.saveBtn.repaint()
         os.makedirs(self.data_dir, exist_ok=True)
-        try:
-            csv_path = self.data_dir / "scrape_data.csv"
-            i = 1
-            while csv_path.exists():
-                csv_path = self.data_dir / f"scrape_data({i}).csv"
-                i += 1
-            with open(csv_path, "w") as f:
-                for event in self.model.all_events():
-                    f.write(",".join([str(x) for x in event[:31]]) + "\n")
-        except Exception as e:
-            self.logger.error(f"Error saving CSV: {e}")
-            return
-        finally:
-            self.ui.saveBtn.setEnabled(True)
-            self.ui.saveBtn.setText("Save Data to CSV")
+        csv_path = self.data_dir / "scrape_data.csv"
+        i = 1
+        while csv_path.exists():
+            csv_path = self.data_dir / f"scrape_data({i}).csv"
+            i += 1
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(self.model.get_headers())
+            writer.writerows(self.model.all_events())
+        self.ui.saveBtn.setEnabled(True)
+        self.ui.saveBtn.setText("Save CSV")
         self.logger.info(f"Saved CSV to {csv_path}.")
 
-        # df.to_csv(self.data_dir / file, index=False)
-        # with open(self.data_dir / file, "a") as f:
-        #     writer = csv.writer(f)
-
-        #     case_ids = df["case_id"].unique()
-        #     event_str = ", ".join(str(id) for id in case_ids[:-1])
-        #     event_str = (
-        #         event_str + f", and {case_ids[-1]}."
-        #         if len(case_ids) > 1
-        #         else event_str + "."
-        #     )
-
-        #     minval = round(df["NASS_dv"].min(), 1)
-        #     mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
-        #     maxval = round(df["NASS_dv"].max(), 1)
-        #     maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
-
-        #     dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
-
-        #     par = event_str + " " + dv_msg
-        #     writer.writerows([[], [par]])
+        # minval = round(df["NASS_dv"].min(), 1)
+        # mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
+        # maxval = round(df["NASS_dv"].max(), 1)
+        # maxcase = df.loc[df["NASS_dv"].idxmax(), "case_id"]
+        # dv_msg = f"Among these cases, the changes in velocity ranged from as low as {minval} mph ({mincase}) to as high as {maxval} mph ({maxcase})."
