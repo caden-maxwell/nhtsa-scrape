@@ -2,10 +2,9 @@ import logging
 import os
 from pathlib import Path
 
-from matplotlib import style
+from matplotlib import pyplot, style
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
 import numpy
 
 from . import BaseTab
@@ -39,8 +38,10 @@ class ScatterTab(BaseTab):
             lambda: self.btn_update(self.update_tot_labels)
         )
 
-        self.figure = Figure(tight_layout=True, dpi=60)
-        self.ax = self.figure.add_subplot(111)
+        self.figure, self.ax = pyplot.subplots()
+        self.figure.set_tight_layout(True)
+        self.figure.set_dpi(60)
+
         self.canvas = FigureCanvas(self.figure)
         toolbar = CustomToolbar(self.canvas, self)
         toolbar.setStyleSheet("background-color: none;")
@@ -124,40 +125,34 @@ class ScatterTab(BaseTab):
         self.ax.get_legend().set_draggable(True)
 
     def refresh_tab(self):
+        self.model.refresh_data()
         self.ax.clear()
 
-        xdata = []
-        y1data = []
-        y2data = []
-        case_ids = []
-        nass_vc = []
-        for event in self.model.all_events():
-            if not event["ignored"]:
-                xdata.append(event["c_bar"])
-                y1data.append(event["NASS_dv"])
-                y2data.append(event["TOT_dv"])
-                case_ids.append(event["case_id"])
-                nass_vc.append(event["NASS_vc"])
+        data = self.model.get_scatter_data()
+        case_ids = data["case_ids"]
+        x_data = data["x_data"]
+        y1_data = data["y1_data"]
+        y2_data = data["y2_data"]
 
-        if len(xdata) < 2:
+        if len(x_data) < 2:
             self.canvas.draw()
             return
 
         # NASS_dv
-        coeffs = numpy.polyfit(xdata, y1data, 1)
+        coeffs = numpy.polyfit(x_data, y1_data, 1)
         polynomial = numpy.poly1d(coeffs)
 
-        x_fit = numpy.linspace(min(xdata), max(xdata))
+        x_fit = numpy.linspace(min(x_data), max(x_data))
         y_fit = polynomial(x_fit)
 
-        scatter_nass = self.ax.scatter(xdata, y1data, c="darkblue", s=10)
+        scatter_nass = self.ax.scatter(x_data, y1_data, c="darkblue", s=10)
         reg_nass = self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=2)[0]
         self.nass_plots = [scatter_nass, reg_nass]
 
         # NASS_dv R^2 calculation
-        y_pred = polynomial(xdata)
-        ssr = numpy.sum((y_pred - numpy.mean(y1data)) ** 2)
-        sst = numpy.sum((y1data - numpy.mean(y1data)) ** 2)
+        y_pred = polynomial(x_data)
+        ssr = numpy.sum((y_pred - numpy.mean(y1_data)) ** 2)
+        sst = numpy.sum((y1_data - numpy.mean(y1_data)) ** 2)
         r_squared = 0
         if sst != 0:
             r_squared = ssr / sst
@@ -168,19 +163,19 @@ class ScatterTab(BaseTab):
         ]
 
         # TOT_dv
-        coeffs_e = numpy.polyfit(xdata, y2data, 1)
+        coeffs_e = numpy.polyfit(x_data, y2_data, 1)
         polynomial_e = numpy.poly1d(coeffs_e)
 
-        x_fit_e = numpy.linspace(min(xdata), max(xdata))
+        x_fit_e = numpy.linspace(min(x_data), max(x_data))
         y_fit_e = polynomial_e(x_fit_e)
 
-        scatter_tot = self.ax.scatter(xdata, y2data, c="red", s=10)
+        scatter_tot = self.ax.scatter(x_data, y2_data, c="red", s=10)
         reg_tot = self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)[0]
         self.tot_plots = [scatter_tot, reg_tot]
 
-        y_pred_e = polynomial_e(xdata)
-        ssr_e = numpy.sum((y_pred_e - numpy.mean(y2data)) ** 2)
-        sst_e = numpy.sum((y2data - numpy.mean(y2data)) ** 2)
+        y_pred_e = polynomial_e(x_data)
+        ssr_e = numpy.sum((y_pred_e - numpy.mean(y2_data)) ** 2)
+        sst_e = numpy.sum((y2_data - numpy.mean(y2_data)) ** 2)
         r_squared_e = ssr_e / sst_e
 
         self.tot_legend = [
@@ -192,10 +187,10 @@ class ScatterTab(BaseTab):
         self.nass_labels = []
         self.tot_labels = []
         for i, case_id in enumerate(case_ids):
-            nass_label = self.ax.annotate(case_id, (xdata[i], y1data[i]), size=8)
+            nass_label = self.ax.annotate(case_id, (x_data[i], y1_data[i]), size=8)
             nass_label.draggable(True)
             self.nass_labels.append(nass_label)
-            tot_label = self.ax.annotate(case_id, (xdata[i], y2data[i]), size=8)
+            tot_label = self.ax.annotate(case_id, (x_data[i], y2_data[i]), size=8)
             tot_label.draggable(True)
             self.tot_labels.append(tot_label)
 

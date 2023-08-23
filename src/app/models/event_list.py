@@ -27,14 +27,14 @@ class EventList(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
             return QVariant()
 
-        data = self.event_dict(index)
         if role == Qt.ItemDataRole.DisplayRole:
-            name = f"{index.row() + 1}. Case: {data['case_id']}, Vehicle: {data['vehicle_num']}, Event: {data['event_num']}"
+            data = self._data[index.row()]
+            name = f"{index.row() + 1}. Case: {data[0]}, Vehicle: {data[1]}, Event: {data[2]}"
             return name
         elif role == Qt.ItemDataRole.UserRole:
-            return data
+            return self.event_dict(index)
         elif role == Qt.ItemDataRole.FontRole:
-            return data["ignored"]
+            return self._data[index.row()][31]
 
         return QVariant()
 
@@ -70,8 +70,23 @@ class EventList(QAbstractListModel):
             "ignored": event[31],
         }
 
-    def all_events(self):
-        return [self.event_dict(self.index(i)) for i in range(self.rowCount())]
+    def get_scatter_data(self):
+        case_ids = []
+        x_data = []
+        y1_data = []
+        y2_data = []
+        for i, event in enumerate(self._data):
+            if not event[31]:
+                case_ids.append(event[0])
+                x_data.append(event[26])
+                y1_data.append(event[27])
+                y2_data.append(event[30])
+        return {
+            "case_ids": case_ids,
+            "x_data": x_data,
+            "y1_data": y1_data,
+            "y2_data": y2_data,
+        }
 
     def index_from_vals(self, case_id, vehicle_num, event_num):
         for i, event in enumerate(self._data):
