@@ -2,23 +2,22 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtWidgets import QWidget
-
 from matplotlib import style
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import numpy
 
-from app.models import ProfileEvents
+from . import BaseTab
+from app.models import EventList
 from app.ui.ScatterTab_ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
 style.use("seaborn-deep")
 
 
-class ScatterTab(QWidget):
-    def __init__(self, model: ProfileEvents, data_dir: Path):
+class ScatterTab(BaseTab):
+    def __init__(self, model: EventList, data_dir: Path):
         super().__init__()
         self.ui = Ui_ScatterTab()
         self.ui.setupUi(self)
@@ -55,10 +54,6 @@ class ScatterTab(QWidget):
         self.tot_plots = []
         self.tot_labels = []
         self.tot_legend = []
-
-    def showEvent(self, event) -> None:
-        self.update_plot()
-        return super().showEvent(event)
 
     def save_figure(self):
         os.makedirs(self.data_dir, exist_ok=True)
@@ -127,10 +122,8 @@ class ScatterTab(QWidget):
         else:
             self.ax.legend(loc="upper left").set_visible(False)
         self.ax.get_legend().set_draggable(True)
-
-    def update_plot(self):
-        if not self.isVisible():
-            return
+    
+    def refresh_tab(self):
         self.ax.clear()
 
         xdata = []

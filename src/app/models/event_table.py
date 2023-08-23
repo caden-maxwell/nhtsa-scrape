@@ -5,7 +5,7 @@ from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QVariant
 from . import DatabaseHandler
 
 
-class CSVGrid(QAbstractTableModel):
+class EventTable(QAbstractTableModel):
     def __init__(self, db_handler: DatabaseHandler, profile_id: int):
         super().__init__()
         self.logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ class CSVGrid(QAbstractTableModel):
             return
 
         self._headers = self.db_handler.get_headers("events")
-        self.refresh_grid()
+        self.refresh_data()
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self._data)
@@ -50,7 +50,7 @@ class CSVGrid(QAbstractTableModel):
                 return str(section + 1)
         return super().headerData(section, orientation, role)
 
-    def refresh_grid(self):
+    def refresh_data(self):
         self._data = self.db_handler.get_events(self.profile[0], include_ignored=False)
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")

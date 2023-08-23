@@ -24,6 +24,8 @@ class ScrapeMenu(QWidget):
         self.ui.setupUi(self)
 
         self.logger = logging.getLogger(__name__)
+
+        self.profile_id = -1
         self.scrape_engine = None
         self.engine_thread = None
         self.db_handler = db_handler
@@ -36,7 +38,7 @@ class ScrapeMenu(QWidget):
         self.ui.noMaxCheckbox.clicked.connect(self.toggle_max_cases)
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
-        self.engine_timer = QTimer()
+        self.complete_timer = QTimer()
 
         self.data_viewer = None
 
@@ -159,20 +161,6 @@ class ScrapeMenu(QWidget):
             if not self.ui.noMaxCheckbox.isChecked()
             else 100000
         )
-        self.scrape_engine = ScrapeEngine(
-            {
-                "ddlMake": self.ui.makeCombo.currentData(),
-                "ddlModel": self.ui.modelCombo.currentData(),
-                "ddlStartModelYear": self.ui.startYearCombo.currentData(),
-                "ddlEndModelYear": self.ui.endYearCombo.currentData(),
-                "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
-                "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
-                "tDeltaVFrom": self.ui.dvMinSpin.value(),
-                "tDeltaVTo": self.ui.dvMaxSpin.value(),
-            },
-            case_limit,
-        )
-        self.scrape_engine.completed.connect(self.handle_scrape_complete)
 
         now = datetime.now()
         new_profile = {
@@ -189,28 +177,52 @@ class ScrapeMenu(QWidget):
             "modified": int(now.timestamp()),
         }
 
-        profile_id = self.db_handler.add_profile(new_profile)
-        if profile_id < 0:
+        self.profile_id = self.db_handler.add_profile(new_profile)
+        if self.profile_id < 0:
             self.logger.error("Scrape aborted: No profile to add data to.")
             return
 
-        self.logger.info(f"Created new profile with ID {profile_id}.")
-        self.data_viewer = DataView(self.db_handler, profile_id)
+        self.logger.info(f"Created new profile with ID {self.profile_id}.")
+        self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        self.scrape_engine.event_parsed.connect(self.data_viewer.add_event)
+        self.scrape_engine = ScrapeEngine(
+            {
+                "ddlMake": self.ui.makeCombo.currentData(),
+                "ddlModel": self.ui.modelCombo.currentData(),
+                "ddlStartModelYear": self.ui.startYearCombo.currentData(),
+                "ddlEndModelYear": self.ui.endYearCombo.currentData(),
+                "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
+                "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
+                "tDeltaVFrom": self.ui.dvMinSpin.value(),
+                "tDeltaVTo": self.ui.dvMaxSpin.value(),
+            },
+            case_limit,
+        )
+
+        self.scrape_engine.completed.connect(self.handle_scrape_complete)
+        self.scrape_engine.event_parsed.connect(self.add_event)
 
         self.engine_thread = QThread()
         self.scrape_engine.moveToThread(self.engine_thread)
         self.engine_thread.started.connect(self.scrape_engine.start)
         self.engine_thread.start()
 
-        self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
-        self.engine_timer.start(500)  # Check if scrape is complete every 0.5s
+        self.complete_timer.timeout.connect(self.scrape_engine.check_complete)
+        self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
+    
+    @pyqtSlot(dict, bytes, str)
+    def add_event(self, event, response_content, cookie):
+        self.db_handler.add_event(event, self.profile_id)
+        if self.data_viewer:
+            self.data_viewer.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
+            self.data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):
-        self.engine_timer.stop()
+        self.profile_id = -1
+        self.complete_timer.stop()
 
+        self.scrape_engine = None
         self.engine_thread.quit()
         self.engine_thread.wait()
 
@@ -229,9 +241,6 @@ class ScrapeMenu(QWidget):
         self.ui.casesSpin.setEnabled(not checked)
 
     def cleanup(self):
-        self.engine_timer.stop()
+        self.complete_timer.stop()
         if self.scrape_engine and self.scrape_engine.running:
-            self.scrape_engine.stop()
-        if self.engine_thread and self.engine_thread.isRunning():
-            self.engine_thread.quit()
-            self.engine_thread.wait()
+            self.scrape_engine.complete()

@@ -5,13 +5,15 @@ from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
 from . import DatabaseHandler
 
 
-class ScrapeProfiles(QAbstractListModel):
+class ProfileList(QAbstractListModel):
     def __init__(self, db_handler: DatabaseHandler):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
         self.db_handler = db_handler
         self._data = []
+
+        self.refresh_data()
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self._data)
@@ -34,9 +36,9 @@ class ScrapeProfiles(QAbstractListModel):
                 continue
             data = self._data[index.row()]
             self.db_handler.delete_profile(data[0])
-        self.refresh_profiles()
+        self.refresh_data()
 
-    def refresh_profiles(self):
+    def refresh_data(self):
         self._data = self.db_handler.get_profiles()
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")

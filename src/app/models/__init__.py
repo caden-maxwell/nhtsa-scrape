@@ -1,4 +1,4 @@
 from .db_handler import DatabaseHandler
-from .profile_events import ProfileEvents
-from .scrape_profiles import ScrapeProfiles
-from .csv_grid import CSVGrid
+from .event_list import EventList
+from .profile_list import ProfileList
+from .event_table import EventTable

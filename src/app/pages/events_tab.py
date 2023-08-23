@@ -9,7 +9,6 @@ from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
-    QLabel,
     QGridLayout,
     QHBoxLayout,
     QPushButton,
@@ -20,15 +19,16 @@ from PyQt6.QtWidgets import (
 from bs4 import BeautifulSoup
 from PIL import Image
 
-from app.models import ProfileEvents
+from . import BaseTab
+from app.models import EventList
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
 from app.ui.EventsTab_ui import Ui_EventsTab
 
 
-class EventsTab(QWidget):
+class EventsTab(BaseTab):
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
-    def __init__(self, model: ProfileEvents, data_dir: Path):
+    def __init__(self, model: EventList, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
@@ -36,7 +36,6 @@ class EventsTab(QWidget):
 
         self.model = model
         self.current_index_vals = None
-        self.model.layoutChanged.connect(self.list_changed)
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
@@ -75,9 +74,9 @@ class EventsTab(QWidget):
             self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
             self.open_event_details(self.model.index(0, 0))
 
-    def showEvent(self, event) -> None:
+    def refresh_tab(self):
         self.list_changed()
-        return super().showEvent(event)
+        self.model.refresh_data()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return:

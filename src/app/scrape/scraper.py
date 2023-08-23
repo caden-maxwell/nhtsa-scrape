@@ -10,7 +10,8 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from bs4 import BeautifulSoup
 import numpy
 
-from .request_handler import RequestHandler, RequestQueueItem
+from . import RequestHandler, RequestQueueItem
+from app.models.db_handler import DatabaseHandler
 
 
 class Priority(enum.Enum):
@@ -60,9 +61,6 @@ class ScrapeEngine(QObject):
         self.started.emit()
         self.scrape()
 
-    def stop(self):
-        self.running = False
-
     def complete(self):
         # Order matters here, otherwise the request handler will start making
         # unnecessary case list requests once the individual cases are cleared
@@ -86,7 +84,7 @@ class ScrapeEngine(QObject):
                 )
             )
         self.completed.emit()
-        self.stop()
+        self.running = False
 
     def limit_reached(self):
         return self.success_cases >= self.case_limit

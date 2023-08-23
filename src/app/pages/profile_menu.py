@@ -4,7 +4,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.ui.ProfileMenu_ui import Ui_ProfileMenu
-from app.models.scrape_profiles import ScrapeProfiles
+from app.models.profile_list import ProfileList
 
 from .data_view import DataView
 
@@ -17,7 +17,7 @@ class ProfileMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
         self.db_handler = db_handler
-        self.model = ScrapeProfiles(self.db_handler)
+        self.model = ProfileList(self.db_handler)
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
@@ -36,8 +36,7 @@ class ProfileMenu(QWidget):
         self.data_viewers = []
 
     def showEvent(self, event):
-        self.model.refresh_profiles()
-        self.ui.listView.clearSelection()
+        self.model.refresh_data()
         return super().showEvent(event)
 
     def handle_open(self):
