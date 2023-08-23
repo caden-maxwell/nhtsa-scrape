@@ -231,6 +231,13 @@ class ScrapeMenu(QWidget):
 
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
+        if not self.db_handler.get_profile(self.profile_id):
+            if self.data_viewer:
+                self.data_viewer.close()
+            if self.scrape_engine:
+                self.scrape_engine.complete()
+                self.logger.error("Scrape aborted: No profile to add data to.")
+            return
         self.db_handler.add_event(event, self.profile_id)
         if self.data_viewer:
             self.data_viewer.events_tab.cache_response(
