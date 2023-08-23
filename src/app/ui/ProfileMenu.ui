@@ -52,15 +52,22 @@
       </widget>
      </item>
      <item>
+      <widget class="QPushButton" name="renameBtn">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Rename</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="openBtn">
        <property name="enabled">
         <bool>false</bool>
        </property>
        <property name="text">
         <string>Open</string>
-       </property>
-       <property name="autoDefault">
-        <bool>false</bool>
        </property>
        <property name="default">
         <bool>true</bool>

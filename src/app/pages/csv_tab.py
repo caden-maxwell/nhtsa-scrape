@@ -25,7 +25,7 @@ class CSVTab(BaseTab):
         self.model.refresh_data()
         IGNORED_COL = 31
         self.ui.tableView.setColumnHidden(IGNORED_COL, True)
-    
+
     def save_csv(self):
         self.ui.saveBtn.setEnabled(False)
         self.ui.saveBtn.setText("Saving...")

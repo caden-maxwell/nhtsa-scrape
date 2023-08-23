@@ -11,7 +11,6 @@ from bs4 import BeautifulSoup
 import numpy
 
 from . import RequestHandler, RequestQueueItem
-from app.models.db_handler import DatabaseHandler
 
 
 class Priority(enum.Enum):

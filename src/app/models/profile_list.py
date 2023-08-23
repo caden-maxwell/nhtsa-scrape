@@ -24,7 +24,7 @@ class ProfileList(QAbstractListModel):
 
         if role == Qt.ItemDataRole.DisplayRole:
             data = self._data[index.row()]
-            return f"{data[1]}"  # TODO: Add more info in new TreeView class
+            return f"{data[1]}"
         elif role == Qt.ItemDataRole.UserRole:
             return self._data[index.row()]
 

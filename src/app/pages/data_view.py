@@ -23,23 +23,13 @@ class DataView(QWidget):
         self.ui.setupUi(self)
 
         self.profile = db_handler.get_profile(profile_id)
+
         # Get a filename-safe string for the new directory
-        profile_name = str(self.profile[0])
-        # "make": self.ui.makeCombo.currentText().upper(),
-        # "model": self.ui.modelCombo.currentText().upper(),
-        # "start_year": self.ui.startYearCombo.currentText().upper(),
-        # "end_year": self.ui.endYearCombo.currentText().upper(),
-        # "primary_dmg": self.ui.pDmgCombo.currentText().upper(),
-        # "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
-        # "min_dv": self.ui.dvMinSpin.value(),
-        # "max_dv": self.ui.dvMaxSpin.value(),
-        # "max_cases": case_limit,
-        # "created": int(now.timestamp()),
-        # "modified": int(now.timestamp()),
-        created = datetime.fromtimestamp(float(self.profile[10])).strftime(
+        created = datetime.fromtimestamp(float(self.profile[12])).strftime(
             "%Y-%m-%d %H-%M-%S"
         )
-        dir_name = f"{profile_name}_{created}".replace(" ", "_")
+
+        dir_name = f"{self.profile[1]}_{created}".replace(" ", "_")
         filename_safe = ["_", "-", "(", ")"]
         dir_name = "".join(
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
