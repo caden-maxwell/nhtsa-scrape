@@ -75,8 +75,8 @@ class EventsTab(BaseTab):
             self.open_event_details(self.model.index(0, 0))
 
     def refresh_tab(self):
-        self.list_changed()
         self.model.refresh_data()
+        self.list_changed()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return:
