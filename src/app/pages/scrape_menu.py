@@ -162,13 +162,31 @@ class ScrapeMenu(QWidget):
             else 100000
         )
 
+        make = self.ui.makeCombo.currentText().upper()
+        make_txt = make if make != "ALL" else "ANY MAKE"
+
+        model = self.ui.modelCombo.currentText().upper()
+        model_txt = model if model != "ALL" else "ANY MODEL"
+
+        start_year = self.ui.startYearCombo.currentText().upper()
+        end_year = self.ui.endYearCombo.currentText().upper()
+
+        p_dmg = self.ui.pDmgCombo.currentText().upper()
+        p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
+
+        name = f"{make_txt} {model_txt} ({start_year}-{end_year}) {p_dmg_txt}"
+        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
+        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
+
         now = datetime.now()
         new_profile = {
-            "make": self.ui.makeCombo.currentText().upper(),
-            "model": self.ui.modelCombo.currentText().upper(),
-            "start_year": self.ui.startYearCombo.currentText().upper(),
-            "end_year": self.ui.endYearCombo.currentText().upper(),
-            "primary_dmg": self.ui.pDmgCombo.currentText().upper(),
+            "name": name,
+            "description": "None",
+            "make": make,
+            "model": model,
+            "start_year": start_year,
+            "end_year": end_year,
+            "primary_dmg": p_dmg,
             "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
             "min_dv": self.ui.dvMinSpin.value(),
             "max_dv": self.ui.dvMaxSpin.value(),
@@ -210,12 +228,14 @@ class ScrapeMenu(QWidget):
 
         self.complete_timer.timeout.connect(self.scrape_engine.check_complete)
         self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
-    
+
     @pyqtSlot(dict, bytes, str)
     def add_event(self, event, response_content, cookie):
         self.db_handler.add_event(event, self.profile_id)
         if self.data_viewer:
-            self.data_viewer.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
+            self.data_viewer.events_tab.cache_response(
+                int(event["case_id"]), response_content, cookie
+            )
             self.data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):

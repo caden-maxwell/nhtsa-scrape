@@ -107,6 +107,17 @@ class Ui_SummaryTab(object):
         self.formLayout.setWidget(
             7, QtWidgets.QFormLayout.ItemRole.FieldRole, self.sDmgEdit
         )
+        self.maxCasesLabel = QtWidgets.QLabel(parent=self.paramsBox)
+        self.maxCasesLabel.setObjectName("maxCasesLabel")
+        self.formLayout.setWidget(
+            8, QtWidgets.QFormLayout.ItemRole.LabelRole, self.maxCasesLabel
+        )
+        self.maxCasesEdit = QtWidgets.QLineEdit(parent=self.paramsBox)
+        self.maxCasesEdit.setReadOnly(True)
+        self.maxCasesEdit.setObjectName("maxCasesEdit")
+        self.formLayout.setWidget(
+            8, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxCasesEdit
+        )
         self.gridLayout.addWidget(self.paramsBox, 0, 0, 1, 1)
         self.statsBox = QtWidgets.QGroupBox(parent=SummaryTab)
         self.statsBox.setObjectName("statsBox")
@@ -165,6 +176,7 @@ class Ui_SummaryTab(object):
         self.maxDVLabel.setText(_translate("SummaryTab", "Max Delta-V"))
         self.pDmgLabel.setText(_translate("SummaryTab", "Primary Damage"))
         self.sDmgLabel.setText(_translate("SummaryTab", "Secondary Damage"))
+        self.maxCasesLabel.setText(_translate("SummaryTab", "Max Cases"))
         self.statsBox.setTitle(_translate("SummaryTab", "Scrape Statistics:"))
         self.totalCasesLabel.setText(_translate("SummaryTab", "Total Cases Scraped:"))
         self.failedParsesLabel.setText(_translate("SummaryTab", "Failed to Parse:"))

@@ -37,7 +37,7 @@ class EventList(QAbstractListModel):
             return data["ignored"]
 
         return QVariant()
-    
+
     def event_dict(self, index: QModelIndex):
         event = self._data[index.row()]
         return {

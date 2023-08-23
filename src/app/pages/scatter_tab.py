@@ -122,7 +122,7 @@ class ScatterTab(BaseTab):
         else:
             self.ax.legend(loc="upper left").set_visible(False)
         self.ax.get_legend().set_draggable(True)
-    
+
     def refresh_tab(self):
         self.ax.clear()
 

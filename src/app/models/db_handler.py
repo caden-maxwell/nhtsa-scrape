@@ -35,6 +35,8 @@ class DatabaseHandler:
                 """
                 CREATE TABLE IF NOT EXISTS profiles (
                     profile_id INTEGER PRIMARY KEY,
+                    name TEXT,
+                    description TEXT,
                     make TEXT,
                     model TEXT,
                     start_year INTEGER,
@@ -302,6 +304,8 @@ class DatabaseHandler:
             cursor.execute(
                 """
                 INSERT INTO profiles (
+                    name,
+                    description,
                     make,
                     model,
                     start_year,
@@ -314,9 +318,11 @@ class DatabaseHandler:
                     created,
                     modified
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
+                    profile["name"],
+                    profile["description"],
                     profile["make"],
                     profile["model"],
                     profile["start_year"],
@@ -430,6 +436,24 @@ class DatabaseHandler:
             self.connection.commit()
         except sqlite3.Error as e:
             self.logger.error(f"Error deleting profile: {e}")
+            return
+        finally:
+            cursor.close()
+
+    def rename_profile(self, profile_id: int, new_name: str):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(
+                """
+                UPDATE profiles
+                SET name = ?
+                WHERE profile_id = ?
+                """,
+                (new_name, profile_id),
+            )
+            self.connection.commit()
+        except sqlite3.Error as e:
+            self.logger.error(f"Error renaming profile: {e}")
             return
         finally:
             cursor.close()
