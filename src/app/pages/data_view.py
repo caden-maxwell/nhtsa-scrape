@@ -7,14 +7,14 @@ from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
 from . import SummaryTab, EventsTab, ScatterTab, CSVTab
-from app.models import ProfileEvents
+from app.models import DatabaseHandler, ProfileEvents
 from app.ui.DataView_ui import Ui_DataView
 
 
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, db_handler, profile_id):
+    def __init__(self, db_handler: DatabaseHandler, profile_id):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
@@ -23,9 +23,21 @@ class DataView(QWidget):
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
+        self.profile = db_handler.get_profile(profile_id)
         # Get a filename-safe string for the new directory
-        profile_name = str(self.model.profile[1])
-        created = datetime.fromtimestamp(float(self.model.profile[3])).strftime(
+        profile_name = str(self.profile[1])
+        # "make": self.ui.makeCombo.currentText().upper(),
+        # "model": self.ui.modelCombo.currentText().upper(),
+        # "start_year": self.ui.startYearCombo.currentText().upper(),
+        # "end_year": self.ui.endYearCombo.currentText().upper(),
+        # "primary_dmg": self.ui.pDmgCombo.currentText().upper(),
+        # "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
+        # "min_dv": self.ui.dvMinSpin.value(),
+        # "max_dv": self.ui.dvMaxSpin.value(),
+        # "max_cases": case_limit,
+        # "created": int(now.timestamp()),
+        # "modified": int(now.timestamp()),
+        created = datetime.fromtimestamp(float(self.profile[10])).strftime(
             "%Y-%m-%d %H-%M-%S"
         )
         dir_name = f"{profile_name}_{created}".replace(" ", "_")
@@ -52,3 +64,7 @@ class DataView(QWidget):
         self.events_tab.cache_response(int(event["case_id"]), response_content, cookie)
         self.scatter_tab.update_plot()
         self.csv_tab.refresh()
+
+    def closeEvent(self, event):
+        self.exited.emit()
+        return super().closeEvent(event)
