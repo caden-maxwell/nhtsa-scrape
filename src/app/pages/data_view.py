@@ -6,8 +6,8 @@ import re
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
-from . import SummaryTab, EventsTab, ScatterTab, CSVTab
-from app.models import DatabaseHandler, EventList
+from . import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
+from app.models import DatabaseHandler
 from app.ui.DataView_ui import Ui_DataView
 
 
@@ -38,9 +38,8 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "data" / dir_name).resolve()
 
         self.summary_tab = SummaryTab(self.profile)
-        model = EventList(db_handler, profile_id)
-        self.events_tab = EventsTab(model, self.data_dir)
-        self.scatter_tab = ScatterTab(model, self.data_dir)
+        self.events_tab = EventsTab(db_handler, profile_id, self.data_dir)
+        self.scatter_tab = ScatterTab(db_handler, profile_id, self.data_dir)
         self.csv_tab = CSVTab(db_handler, profile_id, self.data_dir)
 
         self.ui.tabWidget.addTab(self.summary_tab, "Summary")
@@ -55,7 +54,8 @@ class DataView(QWidget):
         self.ui.tabWidget.currentChanged.connect(self.update_current_tab)
 
     def update_current_tab(self):
-        self.ui.tabWidget.currentWidget().refresh_tab()
+        widget: BaseTab = self.ui.tabWidget.currentWidget()
+        widget.refresh_tab()
 
     def closeEvent(self, event):
         self.exited.emit()

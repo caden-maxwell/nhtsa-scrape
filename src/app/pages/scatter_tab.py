@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 import numpy
 
 from . import BaseTab
-from app.models import EventList
+from app.models import DatabaseHandler, ScatterPlotModel
 from app.ui.ScatterTab_ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -16,13 +16,13 @@ style.use("seaborn-deep")
 
 
 class ScatterTab(BaseTab):
-    def __init__(self, model: EventList, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
         super().__init__()
         self.ui = Ui_ScatterTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = model
+        self.model = ScatterPlotModel(db_handler, profile_id)
         self.data_dir = data_dir
 
         self.ui.nassDataBtn.clicked.connect(
@@ -55,23 +55,6 @@ class ScatterTab(BaseTab):
         self.tot_plots = []
         self.tot_labels = []
         self.tot_legend = []
-
-    def save_figure(self):
-        os.makedirs(self.data_dir, exist_ok=True)
-        path = self.data_dir / "scatterplot.png"
-        i = 1
-        while path.exists():
-            path = self.data_dir / f"scatterplot({i}).png"
-            i += 1
-
-        self.figure.savefig(
-            path,
-            format="png",
-            dpi=300,
-            bbox_inches="tight",
-            pad_inches=0.75,
-        )
-        self.logger.info(f"Saved figure to {path}")
 
     def btn_update(self, btn_func):
         btn_func()
@@ -128,12 +111,7 @@ class ScatterTab(BaseTab):
         self.model.refresh_data()
         self.ax.clear()
 
-        data = self.model.get_scatter_data()
-        case_ids = data["case_ids"]
-        x_data = data["x_data"]
-        y1_data = data["y1_data"]
-        y2_data = data["y2_data"]
-
+        case_ids, x_data, y1_data, y2_data = self.model.get_data()
         if len(x_data) < 2:
             self.canvas.draw()
             return
@@ -173,6 +151,7 @@ class ScatterTab(BaseTab):
         reg_tot = self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)[0]
         self.tot_plots = [scatter_tot, reg_tot]
 
+        # TOT_dv R^2 calculation
         y_pred_e = polynomial_e(x_data)
         ssr_e = numpy.sum((y_pred_e - numpy.mean(y2_data)) ** 2)
         sst_e = numpy.sum((y2_data - numpy.mean(y2_data)) ** 2)
@@ -209,9 +188,26 @@ class ScatterTab(BaseTab):
         # print(polynomial(crush_est))
         # print(polynomial_e(crush_est))
 
+    def save_figure(self):
+        os.makedirs(self.data_dir, exist_ok=True)
+        path = self.data_dir / "scatterplot.png"
+        i = 1
+        while path.exists():
+            path = self.data_dir / f"scatterplot({i}).png"
+            i += 1
+
+        self.figure.savefig(
+            path,
+            format="png",
+            dpi=300,
+            bbox_inches="tight",
+            pad_inches=0.75,
+        )
+        self.logger.info(f"Saved figure to {path}")
+
 
 class CustomToolbar(NavigationToolbar):
-    def __init__(self, canvas, parent):
+    def __init__(self, canvas, parent: ScatterTab):
         super().__init__(canvas, parent)
         self.parent = parent
 
