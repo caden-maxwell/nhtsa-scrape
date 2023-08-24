@@ -17,7 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from bs4 import BeautifulSoup
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from . import BaseTab
 from app.models import DatabaseHandler, EventList
@@ -161,7 +161,7 @@ class EventsTab(BaseTab):
         self.__clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.images_dir)
+            thumbnail = ImageThumbnail(img_id, img, self.images_dir, event_data)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
@@ -367,21 +367,28 @@ class EventsTab(BaseTab):
             case_match = int(event_data["case_id"]) == extra_data["case_id"]
             veh_match = int(event_data["vehicle_num"]) == extra_data["vehicle_num"]
             if case_match and veh_match:
-                self.__add_thumbnail(img_id, img)
+                self.__add_thumbnail(img_id, img, event_data)
             break
 
-    def __add_thumbnail(self, img_id: int, image: Image.Image):
+    def __add_thumbnail(self, img_id: int, image: Image.Image, data: dict):
         self.no_images_label.setVisible(False)
-        thumbnail = ImageThumbnail(img_id, image, self.images_dir)
+        thumbnail = ImageThumbnail(img_id, image, self.images_dir, data)
         self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
 class ImageThumbnail(QWidget):
-    def __init__(self, img_id: int, image: Image.Image, images_dir: Path):
+    def __init__(self, img_id: int, image: Image.Image, images_dir: Path, data: dict):
         super().__init__()
+
+        self.logger = logging.getLogger(__name__)
+
         self.img_id = img_id
         self.image = image
         self.images_dir = images_dir
+
+        self.case_id = data["case_id"]
+        self.nass_dv = data["NASS_dv"]
+        self.tot_dv = data["TOT_dv"]
 
         layout = QGridLayout()
         self.thumbnail_label = QLabel()
@@ -420,7 +427,37 @@ class ImageThumbnail(QWidget):
     def save_image(self):
         self.save_button.setEnabled(False)
         self.save_button.setText("Saving...")
-        self.save_button.repaint()
+
+        text = f"Case No: {self.case_id} - NASS DV: {self.nass_dv:.4f} - TOT DV: {self.tot_dv:.4f}"
+
+        draw = ImageDraw.Draw(self.image)
+
+        width, height = self.image.size
+
+        font_size = 100
+        text_size = draw.textbbox(
+            (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
+        )
+        while text_size[2] - text_size[0] > width:
+            font_size -= 1
+            text_size = draw.textbbox(
+                (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
+            )
+
+        rect_height = text_size[3] - text_size[1] + int(height * 0.05)
+
+        new_img = Image.new("RGB", (width, height + rect_height), (255, 255, 255))
+
+        new_img.paste(self.image, (0, rect_height))
+
+        draw = ImageDraw.Draw(new_img)
+        draw.text(
+            (0, 0),
+            text,
+            (0, 0, 0),
+            ImageFont.truetype("segoeui.ttf", font_size),
+        )
+
         os.makedirs(self.images_dir, exist_ok=True)
 
         path = self.images_dir / f"{self.img_id}.png"
@@ -429,9 +466,9 @@ class ImageThumbnail(QWidget):
             path = self.images_dir / f"{self.img_id}({i}).png"
             i += 1
 
-        self.image.save(path, "PNG")
+        new_img.save(path, "PNG")
+        self.logger.debug(f"Saved image to {path}")
         self.save_button.setText("Saved!")
-        self.save_button.repaint()
 
     def open_image(self):
         self.image.show()
