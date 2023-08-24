@@ -1,0 +1,5 @@
+{
+    "minRateLimit": 0.45,
+    "maxRateLimit": 1.8,
+    "debug": true
+}

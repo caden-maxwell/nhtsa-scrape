@@ -13,8 +13,54 @@ class Ui_SettingsMenu(object):
     def setupUi(self, SettingsMenu):
         SettingsMenu.setObjectName("SettingsMenu")
         SettingsMenu.resize(711, 495)
-        self.verticalLayout = QtWidgets.QVBoxLayout(SettingsMenu)
-        self.verticalLayout.setObjectName("verticalLayout")
+        self.gridLayout = QtWidgets.QGridLayout(SettingsMenu)
+        self.gridLayout.setObjectName("gridLayout")
+        self.groupBox = QtWidgets.QGroupBox(parent=SettingsMenu)
+        self.groupBox.setObjectName("groupBox")
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.debugCheckbox = QtWidgets.QCheckBox(parent=self.groupBox)
+        self.debugCheckbox.setChecked(True)
+        self.debugCheckbox.setObjectName("debugCheckbox")
+        self.verticalLayout_2.addWidget(self.debugCheckbox)
+        self.gridLayout.addWidget(self.groupBox, 2, 2, 1, 1)
+        spacerItem = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
+        self.gridLayout.addItem(spacerItem, 3, 1, 1, 2)
+        self.groupBox_2 = QtWidgets.QGroupBox(parent=SettingsMenu)
+        self.groupBox_2.setObjectName("groupBox_2")
+        self.formLayout = QtWidgets.QFormLayout(self.groupBox_2)
+        self.formLayout.setObjectName("formLayout")
+        self.label = QtWidgets.QLabel(parent=self.groupBox_2)
+        self.label.setObjectName("label")
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label
+        )
+        self.minRateBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
+        self.minRateBox.setObjectName("minRateBox")
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minRateBox
+        )
+        self.label_2 = QtWidgets.QLabel(parent=self.groupBox_2)
+        self.label_2.setObjectName("label_2")
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label_2
+        )
+        self.maxRateBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
+        self.maxRateBox.setObjectName("maxRateBox")
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxRateBox
+        )
+        self.gridLayout.addWidget(self.groupBox_2, 2, 1, 1, 1)
+        self.line = QtWidgets.QFrame(parent=SettingsMenu)
+        self.line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        self.line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
+        self.line.setObjectName("line")
+        self.gridLayout.addWidget(self.line, 1, 1, 1, 2)
         self.topHLayout = QtWidgets.QHBoxLayout()
         self.topHLayout.setObjectName("topHLayout")
         self.backBtn = QtWidgets.QPushButton(parent=SettingsMenu)
@@ -24,25 +70,7 @@ class Ui_SettingsMenu(object):
         self.mainTitle.setObjectName("mainTitle")
         self.topHLayout.addWidget(self.mainTitle)
         self.topHLayout.setStretch(1, 1)
-        self.verticalLayout.addLayout(self.topHLayout)
-        self.line = QtWidgets.QFrame(parent=SettingsMenu)
-        self.line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
-        self.line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.line.setObjectName("line")
-        self.verticalLayout.addWidget(self.line)
-        self.bodyVLayout = QtWidgets.QVBoxLayout()
-        self.bodyVLayout.setObjectName("bodyVLayout")
-        self.debugBtn = QtWidgets.QPushButton(parent=SettingsMenu)
-        self.debugBtn.setObjectName("debugBtn")
-        self.bodyVLayout.addWidget(self.debugBtn)
-        self.verticalLayout.addLayout(self.bodyVLayout)
-        spacerItem = QtWidgets.QSpacerItem(
-            20,
-            40,
-            QtWidgets.QSizePolicy.Policy.Minimum,
-            QtWidgets.QSizePolicy.Policy.Expanding,
-        )
-        self.verticalLayout.addItem(spacerItem)
+        self.gridLayout.addLayout(self.topHLayout, 0, 1, 1, 2)
 
         self.retranslateUi(SettingsMenu)
         QtCore.QMetaObject.connectSlotsByName(SettingsMenu)
@@ -50,8 +78,10 @@ class Ui_SettingsMenu(object):
     def retranslateUi(self, SettingsMenu):
         _translate = QtCore.QCoreApplication.translate
         SettingsMenu.setWindowTitle(_translate("SettingsMenu", "Form"))
+        self.groupBox.setTitle(_translate("SettingsMenu", "Logger Settings"))
+        self.debugCheckbox.setText(_translate("SettingsMenu", "Debug Mode"))
+        self.groupBox_2.setTitle(_translate("SettingsMenu", "Scrape Settings"))
+        self.label.setText(_translate("SettingsMenu", "Min Rate Limit"))
+        self.label_2.setText(_translate("SettingsMenu", "Max Rate Limit"))
         self.backBtn.setText(_translate("SettingsMenu", "Back"))
         self.mainTitle.setText(_translate("SettingsMenu", "Scrape Settings"))
-        self.debugBtn.setText(
-            _translate("SettingsMenu", "Turn on DEBUG mode for logger")
-        )
