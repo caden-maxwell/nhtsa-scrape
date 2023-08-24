@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 from PIL import Image
 
 from . import BaseTab
-from app.models import EventList
+from app.models import DatabaseHandler, EventList
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
 from app.ui.EventsTab_ui import Ui_EventsTab
 
@@ -28,13 +28,13 @@ from app.ui.EventsTab_ui import Ui_EventsTab
 class EventsTab(BaseTab):
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
-    def __init__(self, model: EventList, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = model
+        self.model = EventList(db_handler, profile_id)
         self.current_index_vals = None
         self.images_dir = data_dir / "images"
 
