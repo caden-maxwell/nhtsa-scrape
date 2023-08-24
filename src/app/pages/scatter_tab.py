@@ -1,219 +1,148 @@
 import logging
-import os
 from pathlib import Path
 
-from matplotlib import pyplot, style
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-import numpy
+from PyQt6.QtCharts import (
+    QScatterSeries,
+    QChart,
+    QChartView,
+    QValueAxis,
+    QLineSeries,
+    QLegend,
+)
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QFont, QColor
 
 from . import BaseTab
-from app.models import EventList
+from app.models import ScatterPlotModel, DatabaseHandler
 from app.ui.ScatterTab_ui import Ui_ScatterTab
-
-logging.getLogger("matplotlib").setLevel(logging.WARNING)
-style.use("seaborn-deep")
 
 
 class ScatterTab(BaseTab):
-    def __init__(self, model: EventList, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
         super().__init__()
         self.ui = Ui_ScatterTab()
         self.ui.setupUi(self)
+
         self.logger = logging.getLogger(__name__)
 
-        self.model = model
+        self.model = ScatterPlotModel(db_handler, profile_id)
         self.data_dir = data_dir
+        self.profile_id = profile_id
 
-        self.ui.nassDataBtn.clicked.connect(
-            lambda: self.btn_update(self.update_nass_data)
+        self.chart = QChart()
+
+        # Set up axes
+        self.x_axis = QValueAxis()
+        self.x_axis.setTitleText("Crush (inches)")
+        self.x_axis.setTitleFont(QFont("Segoe UI", 20))
+        self.x_axis.setLabelsFont(QFont("Segoe UI", 10))
+        self.x_axis.setTickType(QValueAxis.TickType.TicksDynamic)
+        self.x_axis.setTickAnchor(0)
+        self.x_axis.setTickInterval(1.0)
+        self.x_axis.setGridLineVisible(False)
+        self.chart.addAxis(self.x_axis, Qt.AlignmentFlag.AlignBottom)
+
+        self.y_axis = QValueAxis()
+        self.y_axis.setTitleText("Change in Velocity (mph)")
+        self.y_axis.setTitleFont(QFont("Segoe UI", 20))
+        self.y_axis.setLabelsFont(QFont("Segoe UI", 10))
+        self.y_axis.setTickType(QValueAxis.TickType.TicksDynamic)
+        self.y_axis.setTickAnchor(0)
+        self.y_axis.setTickInterval(1.0)
+        self.y_axis.setGridLineVisible(False)
+        self.chart.addAxis(self.y_axis, Qt.AlignmentFlag.AlignLeft)
+
+        # Set up scatterplot series
+        self.scatter_nass_dv = QScatterSeries()
+        self.scatter_nass_dv.setName("Series 1")
+        self.scatter_nass_dv.setMarkerShape(
+            QScatterSeries.MarkerShape.MarkerShapeRotatedRectangle
         )
-        self.ui.nassLabelBtn.clicked.connect(
-            lambda: self.btn_update(self.update_nass_labels)
+        self.scatter_nass_dv.setMarkerSize(8.0)
+        self.scatter_nass_dv.setColor(Qt.GlobalColor.blue)
+        self.chart.addSeries(self.scatter_nass_dv)
+        self.scatter_nass_dv.attachAxis(self.x_axis)
+        self.scatter_nass_dv.attachAxis(self.y_axis)
+
+        self.scatter_series2 = QScatterSeries()
+        self.scatter_series2.setName("Series 2")
+        self.scatter_series2.setMarkerShape(
+            QScatterSeries.MarkerShape.MarkerShapeRotatedRectangle
         )
-        self.ui.totalDataBtn.clicked.connect(
-            lambda: self.btn_update(self.update_tot_data)
-        )
-        self.ui.totalLabelBtn.clicked.connect(
-            lambda: self.btn_update(self.update_tot_labels)
-        )
+        self.scatter_series2.setMarkerSize(8.0)
+        self.scatter_series2.setColor(Qt.GlobalColor.red)
+        self.chart.addSeries(self.scatter_series2)
+        self.scatter_series2.attachAxis(self.x_axis)
+        self.scatter_series2.attachAxis(self.y_axis)
 
-        self.figure, self.ax = pyplot.subplots()
-        self.figure.set_tight_layout(True)
-        self.figure.set_dpi(60)
+        # Set up regression lines
+        self.line_series1 = QLineSeries()
+        self.line_series1.setName("Regression 1")
+        self.line_series1.setColor(Qt.GlobalColor.blue)
+        self.chart.addSeries(self.line_series1)
+        self.line_series1.attachAxis(self.x_axis)
+        self.line_series1.attachAxis(self.y_axis)
 
-        self.canvas = FigureCanvas(self.figure)
-        toolbar = CustomToolbar(self.canvas, self)
-        toolbar.setStyleSheet("background-color: none;")
+        self.line_series2 = QLineSeries()
+        self.line_series2.setName("Regression 2")
+        self.line_series2.setColor(Qt.GlobalColor.red)
+        self.chart.addSeries(self.line_series2)
+        self.line_series2.attachAxis(self.x_axis)
+        self.line_series2.attachAxis(self.y_axis)
 
-        self.ui.scatterLayout.addWidget(toolbar)
-        self.ui.scatterLayout.addWidget(self.canvas)
+        # Set up legend
+        self.legend = self.chart.legend()
+        self.legend.setMarkerShape(QLegend.MarkerShape.MarkerShapeFromSeries)
+        self.legend.setBackgroundVisible(True)
+        self.legend.setOpacity(0.8)
+        self.legend.setLabelColor(QColor("black"))
 
-        self.nass_plots = []
-        self.nass_labels = []
-        self.nass_legend = []
-        self.tot_plots = []
-        self.tot_labels = []
-        self.tot_legend = []
+        self.legend.detachFromChart()
+        self.legend.setInteractive(True)
 
-    def save_figure(self):
-        os.makedirs(self.data_dir, exist_ok=True)
-        path = self.data_dir / "scatterplot.png"
-        i = 1
-        while path.exists():
-            path = self.data_dir / f"scatterplot({i}).png"
-            i += 1
+        self.chart_view = QChartView(self.chart)
+        self.ui.chartLayout.addWidget(self.chart_view)
 
-        self.figure.savefig(
-            path,
-            format="png",
-            dpi=300,
-            bbox_inches="tight",
-            pad_inches=0.75,
-        )
-        self.logger.info(f"Saved figure to {path}")
-
-    def btn_update(self, btn_func):
-        btn_func()
-        self.canvas.draw()
-
-    def update_nass_data(self):
-        checked = self.ui.nassDataBtn.isChecked()
-        for plot in self.nass_plots:
-            plot.set_visible(checked)
-        self.ui.nassLabelBtn.setEnabled(checked)
-
-        self.update_nass_labels()
-        self.update_legend()
-
-    def update_nass_labels(self):
-        visible = self.ui.nassLabelBtn.isChecked() and self.ui.nassLabelBtn.isEnabled()
-        for label in self.nass_labels:
-            label.set_visible(visible)
-
-    def update_tot_data(self):
-        checked = self.ui.totalDataBtn.isChecked()
-        for plot in self.tot_plots:
-            plot.set_visible(checked)
-        self.ui.totalLabelBtn.setEnabled(checked)
-
-        self.update_tot_labels()
-        self.update_legend()
-
-    def update_tot_labels(self):
-        visible = (
-            self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
-        )
-        for label in self.tot_labels:
-            label.set_visible(visible)
-
-    def update_legend(self):
-        if legend := self.ax.get_legend():
-            legend.remove()
-        if self.ui.nassDataBtn.isChecked() and self.ui.totalDataBtn.isChecked():
-            self.ax.legend(
-                self.nass_plots + self.tot_plots,
-                self.nass_legend + self.tot_legend,
-                loc="upper left",
-            )
-        elif self.ui.nassDataBtn.isChecked():
-            self.ax.legend(self.nass_plots, self.nass_legend, loc="upper left")
-        elif self.ui.totalDataBtn.isChecked():
-            self.ax.legend(self.tot_plots, self.tot_legend, loc="upper left")
-        else:
-            self.ax.legend(loc="upper left").set_visible(False)
-        self.ax.get_legend().set_draggable(True)
+        self.update_plot()
 
     def refresh_tab(self):
         self.model.refresh_data()
-        self.ax.clear()
+        self.update_plot()
 
-        data = self.model.get_scatter_data()
-        case_ids = data["case_ids"]
-        x_data = data["x_data"]
-        y1_data = data["y1_data"]
-        y2_data = data["y2_data"]
+    def update_plot(self):
+        self.scatter_nass_dv.clear()
+        self.scatter_series2.clear()
+        self.line_series1.clear()
+        self.line_series2.clear()
 
-        if len(x_data) < 2:
-            self.canvas.draw()
+        case_ids, x_data, y1_data, y2_data = self.model.get_data()
+
+        for i, case_id in enumerate(case_ids):
+            self.scatter_nass_dv.append(x_data[i], y1_data[i])
+
+        if not len(x_data):
             return
 
-        # NASS_dv
-        coeffs = numpy.polyfit(x_data, y1_data, 1)
-        polynomial = numpy.poly1d(coeffs)
+        x_min = min(x_data)
+        self.x_axis.setTickAnchor(int(x_min))
 
-        x_fit = numpy.linspace(min(x_data), max(x_data))
-        y_fit = polynomial(x_fit)
+        x_max = max(x_data)
+        x_range = x_max - x_min
+        x_min -= x_range * 0.05
+        x_max += x_range * 0.05
+        self.x_axis.setRange(x_min, x_max)
+        self.x_axis.setTickInterval(round_to_nearest_half(x_range / 9))
 
-        scatter_nass = self.ax.scatter(x_data, y1_data, c="darkblue", s=10)
-        reg_nass = self.ax.plot(x_fit, y_fit, color="darkblue", linewidth=2)[0]
-        self.nass_plots = [scatter_nass, reg_nass]
+        y1_min = min(y1_data)
+        self.y_axis.setTickAnchor(int(y1_min))
 
-        # NASS_dv R^2 calculation
-        y_pred = polynomial(x_data)
-        ssr = numpy.sum((y_pred - numpy.mean(y1_data)) ** 2)
-        sst = numpy.sum((y1_data - numpy.mean(y1_data)) ** 2)
-        r_squared = 0
-        if sst != 0:
-            r_squared = ssr / sst
-
-        self.nass_legend = [
-            f"NASS, $R^2= {r_squared:.2f}$",
-            f"$y = {str(polynomial).strip()}$",
-        ]
-
-        # TOT_dv
-        coeffs_e = numpy.polyfit(x_data, y2_data, 1)
-        polynomial_e = numpy.poly1d(coeffs_e)
-
-        x_fit_e = numpy.linspace(min(x_data), max(x_data))
-        y_fit_e = polynomial_e(x_fit_e)
-
-        scatter_tot = self.ax.scatter(x_data, y2_data, c="red", s=10)
-        reg_tot = self.ax.plot(x_fit_e, y_fit_e, color="red", linewidth=2)[0]
-        self.tot_plots = [scatter_tot, reg_tot]
-
-        y_pred_e = polynomial_e(x_data)
-        ssr_e = numpy.sum((y_pred_e - numpy.mean(y2_data)) ** 2)
-        sst_e = numpy.sum((y2_data - numpy.mean(y2_data)) ** 2)
-        r_squared_e = ssr_e / sst_e
-
-        self.tot_legend = [
-            f"TOT, $R^2= {r_squared_e:.2f}$",
-            f"$y = {str(polynomial_e).strip()}$",
-        ]
-
-        # Case ID labels
-        self.nass_labels = []
-        self.tot_labels = []
-        for i, case_id in enumerate(case_ids):
-            nass_label = self.ax.annotate(case_id, (x_data[i], y1_data[i]), size=8)
-            nass_label.draggable(True)
-            self.nass_labels.append(nass_label)
-            tot_label = self.ax.annotate(case_id, (x_data[i], y2_data[i]), size=8)
-            tot_label.draggable(True)
-            self.tot_labels.append(tot_label)
-
-        self.ax.set_xlabel("Crush (inches)", fontsize=20)
-        self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
-        self.ax.legend(
-            self.nass_legend + self.tot_legend, loc="upper left"
-        ).set_draggable(True)
-
-        self.update_nass_data()
-        self.update_tot_data()
-
-        self.canvas.draw()
-
-        # crush_est = numpy.array([0, 1.0])
-        # print(polynomial(crush_est))
-        # print(polynomial_e(crush_est))
+        y1_max = max(y1_data)
+        y1_range = y1_max - y1_min
+        y1_min -= y1_range * 0.05
+        y1_max += y1_range * 0.05
+        self.y_axis.setRange(y1_min, y1_max)
+        self.y_axis.setTickInterval(round_to_nearest_half(y1_range / 8))
 
 
-class CustomToolbar(NavigationToolbar):
-    def __init__(self, canvas, parent):
-        super().__init__(canvas, parent)
-        self.parent = parent
-
-    def save_figure(self, *args):
-        self.parent.save_figure()
+def round_to_nearest_half(number):
+    return round(number * 2) / 2

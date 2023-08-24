@@ -40,7 +40,7 @@ class DataView(QWidget):
         self.summary_tab = SummaryTab(self.profile)
         model = EventList(db_handler, profile_id)
         self.events_tab = EventsTab(model, self.data_dir)
-        self.scatter_tab = ScatterTab(model, self.data_dir)
+        self.scatter_tab = ScatterTab(db_handler, profile_id, self.data_dir)
         self.csv_tab = CSVTab(db_handler, profile_id, self.data_dir)
 
         self.ui.tabWidget.addTab(self.summary_tab, "Summary")
