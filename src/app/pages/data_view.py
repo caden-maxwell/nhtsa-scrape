@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 import re
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
 from . import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
