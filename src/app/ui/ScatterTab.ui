@@ -14,19 +14,6 @@
    <string>Scatterplot</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="1">
-    <widget class="QPushButton" name="nassDataBtn">
-     <property name="text">
-      <string>NASS_dv</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="2">
     <widget class="QPushButton" name="nassLabelBtn">
      <property name="text">
@@ -40,12 +27,15 @@
      </property>
     </widget>
    </item>
-   <item row="1" column="3">
-    <widget class="QPushButton" name="totalDataBtn">
+   <item row="1" column="1">
+    <widget class="QPushButton" name="nassDataBtn">
      <property name="text">
-      <string>TOT_dv</string>
+      <string>NASS_dv</string>
      </property>
      <property name="checkable">
+      <bool>true</bool>
+     </property>
+     <property name="checked">
       <bool>true</bool>
      </property>
     </widget>
@@ -66,8 +56,18 @@
      </property>
     </widget>
    </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="totalDataBtn">
+     <property name="text">
+      <string>TOT_dv</string>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="1" colspan="4">
-    <layout class="QVBoxLayout" name="scatterLayout"/>
+    <layout class="QVBoxLayout" name="chartLayout"/>
    </item>
   </layout>
  </widget>

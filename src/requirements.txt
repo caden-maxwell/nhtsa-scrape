@@ -4,4 +4,3 @@ beautifulsoup4
 Pillow
 lxml
 numpy
-matplotlib
