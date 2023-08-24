@@ -10,7 +10,8 @@ from PyQt6.QtCharts import (
     QLegend,
 )
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QFont, QColor
+from PyQt6.QtGui import QFont, QColor, QPainter
+import numpy
 
 from . import BaseTab
 from app.models import ScatterPlotModel, DatabaseHandler
@@ -30,7 +31,7 @@ class ScatterTab(BaseTab):
         self.profile_id = profile_id
 
         self.chart = QChart()
-
+        
         # Set up axes
         self.x_axis = QValueAxis()
         self.x_axis.setTitleText("Crush (inches)")
@@ -59,7 +60,7 @@ class ScatterTab(BaseTab):
             QScatterSeries.MarkerShape.MarkerShapeRotatedRectangle
         )
         self.scatter_nass_dv.setMarkerSize(8.0)
-        self.scatter_nass_dv.setColor(Qt.GlobalColor.blue)
+        self.scatter_nass_dv.setColor(Qt.GlobalColor.darkBlue)
         self.chart.addSeries(self.scatter_nass_dv)
         self.scatter_nass_dv.attachAxis(self.x_axis)
         self.scatter_nass_dv.attachAxis(self.y_axis)
@@ -75,10 +76,14 @@ class ScatterTab(BaseTab):
         self.scatter_series2.attachAxis(self.x_axis)
         self.scatter_series2.attachAxis(self.y_axis)
 
+
         # Set up regression lines
         self.line_series1 = QLineSeries()
         self.line_series1.setName("Regression 1")
-        self.line_series1.setColor(Qt.GlobalColor.blue)
+        self.line_series1.setColor(Qt.GlobalColor.darkBlue)
+        pen = self.line_series1.pen()
+        pen.setWidth(2)
+        self.line_series1.setPen(pen)
         self.chart.addSeries(self.line_series1)
         self.line_series1.attachAxis(self.x_axis)
         self.line_series1.attachAxis(self.y_axis)
@@ -86,6 +91,9 @@ class ScatterTab(BaseTab):
         self.line_series2 = QLineSeries()
         self.line_series2.setName("Regression 2")
         self.line_series2.setColor(Qt.GlobalColor.red)
+        pen = self.line_series2.pen()
+        pen.setWidth(2)
+        self.line_series2.setPen(pen)
         self.chart.addSeries(self.line_series2)
         self.line_series2.attachAxis(self.x_axis)
         self.line_series2.attachAxis(self.y_axis)
@@ -100,11 +108,21 @@ class ScatterTab(BaseTab):
         self.legend.detachFromChart()
         self.legend.setInteractive(True)
 
+        # Set up chart view
         self.chart_view = QChartView(self.chart)
+        self.chart_view.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.chart_view.setRubberBand(QChartView.RubberBand.RectangleRubberBand)
+        self.chart_view.setMouseTracking(True)
+        self.chart_view.setInteractive(True)
+        self.chart_view.setCursor(Qt.CursorShape.CrossCursor)
+        self.chart_view.setDragMode(QChartView.DragMode.NoDrag)
+        self.chart_view.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
+        self.chart_view.setRubberBand(QChartView.RubberBand.RectangleRubberBand)
+        
         self.ui.chartLayout.addWidget(self.chart_view)
 
         self.update_plot()
-
+    
     def refresh_tab(self):
         self.model.refresh_data()
         self.update_plot()
@@ -120,13 +138,20 @@ class ScatterTab(BaseTab):
         for i, case_id in enumerate(case_ids):
             self.scatter_nass_dv.append(x_data[i], y1_data[i])
 
-        if not len(x_data):
+        if len(x_data) < 1:
             return
 
         x_min = min(x_data)
+        x_max = max(x_data)
+
+        if len(x_data) > 1:
+            slope1, intercept1 = numpy.polyfit(x_data, y1_data, 1)
+
+            self.line_series1.append(x_min, slope1 * x_min + intercept1)
+            self.line_series1.append(x_max, slope1 * x_max + intercept1)
+
         self.x_axis.setTickAnchor(int(x_min))
 
-        x_max = max(x_data)
         x_range = x_max - x_min
         x_min -= x_range * 0.05
         x_max += x_range * 0.05
@@ -142,7 +167,6 @@ class ScatterTab(BaseTab):
         y1_max += y1_range * 0.05
         self.y_axis.setRange(y1_min, y1_max)
         self.y_axis.setTickInterval(round_to_nearest_half(y1_range / 8))
-
 
 def round_to_nearest_half(number):
     return round(number * 2) / 2
