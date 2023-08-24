@@ -9,7 +9,6 @@ from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
-    QLabel,
     QGridLayout,
     QHBoxLayout,
     QPushButton,
@@ -18,24 +17,25 @@ from PyQt6.QtWidgets import (
 )
 
 from bs4 import BeautifulSoup
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
-from app.models import ProfileEvents
+from . import BaseTab
+from app.models import DatabaseHandler, EventList
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
 from app.ui.EventsTab_ui import Ui_EventsTab
 
 
-class EventsTab(QWidget):
+class EventsTab(BaseTab):
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
-    def __init__(self, model: ProfileEvents, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = model
-        self.model.layoutChanged.connect(self.update_list_size)
+        self.model = EventList(db_handler, profile_id)
+        self.current_index_vals = None
         self.images_dir = data_dir / "images"
 
         self.ui.eventsList.setModel(self.model)
@@ -74,22 +74,29 @@ class EventsTab(QWidget):
             self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
             self.open_event_details(self.model.index(0, 0))
 
-    def showEvent(self, event) -> None:
-        self.update_list_size()
-        return super().showEvent(event)
+    def refresh_tab(self):
+        self.model.refresh_data()
+        self.list_changed()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return:
             self.open_event_details(self.ui.eventsList.currentIndex())
         return super().keyPressEvent(event)
 
-    def update_list_size(self):
+    def list_changed(self):
         scrollbar = self.ui.eventsList.verticalScrollBar()
         list_size = max(self.ui.eventsList.sizeHintForColumn(0), 200)
         scrollbar_width = 0
         if scrollbar.isVisible():
             scrollbar_width = scrollbar.sizeHint().width()
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
+
+        if self.current_index_vals:
+            # In the case that another event is inserted before the currently
+            # selected event, we need to find the new index of the current one
+            # and select it again.
+            index = self.model.index_from_vals(*self.current_index_vals)
+            self.ui.eventsList.setCurrentIndex(index)
 
     def cache_response(self, case_id, response_content, cookie):
         self.response_cache[case_id] = {
@@ -125,12 +132,18 @@ class EventsTab(QWidget):
 
         event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
         self.update_buttons(event_data)
+        case_id = int(event_data["case_id"])
+        vehicle_num = int(event_data["vehicle_num"])
+
+        # We need to get the unique values for this index so we can find it later
+        # if another event is inserted before it in the list
+        self.current_index_vals = (case_id, vehicle_num, event_data["event_num"])
 
         # Left side of event view data
         self.ui.makeLineEdit.setText(event_data["make"])
         self.ui.modelLineEdit.setText(event_data["model"])
         self.ui.yearLineEdit.setText(str(event_data["model_year"]))
-        self.ui.curbWeightLineEdit.setText(str(event_data["curb_weight"]))
+        self.ui.curbWeightLineEdit.setText(f"{event_data['curb_weight'] * 2.20462:.4f}")
         self.ui.dmgLocLineEdit.setText(event_data["dmg_loc"])
         self.ui.underrideLineEdit.setText(event_data["underride"])
 
@@ -141,16 +154,14 @@ class EventsTab(QWidget):
         self.ui.totDVLineEdit.setText(f"{event_data['TOT_dv']:.4f}")
 
         # Clear and repopulate image thumbnails
-        img_ids = self.case_veh_img_ids.get(
-            (int(event_data["case_id"]), int(event_data["vehicle_num"])), {}
-        )
+        img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), {})
         images = [(img_id, img) for img_id, img in img_ids.items() if img]
 
         self.no_images_label.setVisible(not len(images))
         self.__clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.images_dir)
+            thumbnail = ImageThumbnail(img_id, img, self.images_dir, event_data)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
@@ -262,7 +273,11 @@ class EventsTab(QWidget):
     def ignore_event(self):
         index = self.ui.eventsList.currentIndex()
         self.model.toggle_ignored(index)
-        self.open_event_details(index)
+
+        if self.model.data(index, Qt.ItemDataRole.FontRole):
+            self.ui.ignoreBtn.setText("Unignore Event")
+        else:
+            self.ui.ignoreBtn.setText("Ignore Event")
 
     @pyqtSlot(int, str, bytes, str, dict)
     def handle_response(self, priority, url, response_content, cookie, extra_data):
@@ -321,7 +336,7 @@ class EventsTab(QWidget):
 
             image_set = self.ui.imgSetCombo.currentData()
 
-            img_elements = img_set_lookup.get(image_set)
+            img_elements = img_set_lookup.get(image_set, [])
             img_id_dict = self.case_veh_img_ids.get((case_id, vehicle_num), {})
             for img_element in img_elements:
                 img_id = int(img_element[0])
@@ -352,21 +367,28 @@ class EventsTab(QWidget):
             case_match = int(event_data["case_id"]) == extra_data["case_id"]
             veh_match = int(event_data["vehicle_num"]) == extra_data["vehicle_num"]
             if case_match and veh_match:
-                self.__add_thumbnail(img_id, img)
+                self.__add_thumbnail(img_id, img, event_data)
             break
 
-    def __add_thumbnail(self, img_id: int, image: Image.Image):
+    def __add_thumbnail(self, img_id: int, image: Image.Image, data: dict):
         self.no_images_label.setVisible(False)
-        thumbnail = ImageThumbnail(img_id, image, self.images_dir)
+        thumbnail = ImageThumbnail(img_id, image, self.images_dir, data)
         self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
 class ImageThumbnail(QWidget):
-    def __init__(self, img_id: int, image: Image.Image, images_dir: Path):
+    def __init__(self, img_id: int, image: Image.Image, images_dir: Path, data: dict):
         super().__init__()
+
+        self.logger = logging.getLogger(__name__)
+
         self.img_id = img_id
         self.image = image
         self.images_dir = images_dir
+
+        self.case_id = data["case_id"]
+        self.nass_dv = data["NASS_dv"]
+        self.tot_dv = data["TOT_dv"]
 
         layout = QGridLayout()
         self.thumbnail_label = QLabel()
@@ -405,7 +427,37 @@ class ImageThumbnail(QWidget):
     def save_image(self):
         self.save_button.setEnabled(False)
         self.save_button.setText("Saving...")
-        self.save_button.repaint()
+
+        text = f"Case No: {self.case_id} - NASS DV: {self.nass_dv:.4f} - TOT DV: {self.tot_dv:.4f}"
+
+        draw = ImageDraw.Draw(self.image)
+
+        width, height = self.image.size
+
+        font_size = 100
+        text_size = draw.textbbox(
+            (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
+        )
+        while text_size[2] - text_size[0] > width:
+            font_size -= 1
+            text_size = draw.textbbox(
+                (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
+            )
+
+        rect_height = text_size[3] - text_size[1] + int(height * 0.05)
+
+        new_img = Image.new("RGB", (width, height + rect_height), (255, 255, 255))
+
+        new_img.paste(self.image, (0, rect_height))
+
+        draw = ImageDraw.Draw(new_img)
+        draw.text(
+            (0, 0),
+            text,
+            (0, 0, 0),
+            ImageFont.truetype("segoeui.ttf", font_size),
+        )
+
         os.makedirs(self.images_dir, exist_ok=True)
 
         path = self.images_dir / f"{self.img_id}.png"
@@ -414,9 +466,9 @@ class ImageThumbnail(QWidget):
             path = self.images_dir / f"{self.img_id}({i}).png"
             i += 1
 
-        self.image.save(path, "PNG")
+        new_img.save(path, "PNG")
+        self.logger.debug(f"Saved image to {path}")
         self.save_button.setText("Saved!")
-        self.save_button.repaint()
 
     def open_image(self):
         self.image.show()

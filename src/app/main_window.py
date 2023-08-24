@@ -1,11 +1,13 @@
 from .log_utils import QtLogHandler, ColorFormatter
 import logging
+from pathlib import Path
 
-from PyQt6.QtWidgets import QWidget, QApplication
+from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
 from PyQt6.QtCore import QCoreApplication, QThread
 
 from .pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
 from .scrape import RequestHandler
+from .models import DatabaseHandler
 
 from .ui.MainWindow_ui import Ui_MainWindow
 
@@ -18,6 +20,8 @@ class MainWindow(QWidget):
         self.ui.setupUi(self)
 
         self.req_handler = RequestHandler()
+        path = Path(__file__).parent.parent / "db.sqlite3"
+        self.db_handler = DatabaseHandler(path)
 
         self.req_thread = QThread()
         self.req_handler.moveToThread(self.req_thread)
@@ -44,9 +48,9 @@ class MainWindow(QWidget):
     def setup_ui(self):
         # Instantiate and add menus to the stacked widget
         self.main_menu = MainMenu()
-        self.scrape_menu = ScrapeMenu()
+        self.scrape_menu = ScrapeMenu(self.db_handler)
         self.req_handler.started.connect(self.scrape_menu.fetch_search)
-        self.profile_menu = ProfileMenu()
+        self.profile_menu = ProfileMenu(self.db_handler)
         self.settings_menu = SettingsMenu()
         self.ui.stackedWidget.addWidget(self.main_menu)
         self.ui.stackedWidget.addWidget(self.scrape_menu)
@@ -73,15 +77,29 @@ class MainWindow(QWidget):
     def closeEvent(self, event):
         """Safely close all threads/processes"""
 
-        # Logger
-        self.logger.removeHandler(self.log_handler)
-        self.log_handler.threadpool.waitForDone()
+        reply = QMessageBox.question(
+            self,
+            "Close Application",
+            "Are you sure you want to close the application?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
 
-        # Request handler
-        self.req_handler.stop()
-        self.req_thread.quit()
-        self.req_thread.wait()
-        self.scrape_menu.cleanup()
+        if reply == QMessageBox.StandardButton.Yes:
+            # Logger
+            self.logger.removeHandler(self.log_handler)
+            self.log_handler.threadpool.waitForDone()
 
-        QApplication.closeAllWindows()
-        return super().closeEvent(event)
+            # Request handler
+            self.req_handler.stop()
+            self.req_thread.quit()
+            self.req_thread.wait()
+            self.scrape_menu.cleanup()
+
+            # Database connection
+            self.db_handler.close_connection()
+            QApplication.closeAllWindows()
+            event.accept()
+            return super().closeEvent(event)
+        else:
+            event.ignore()

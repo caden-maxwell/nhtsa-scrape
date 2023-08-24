@@ -3,11 +3,11 @@ import logging
 from datetime import datetime
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from bs4 import BeautifulSoup
 
-from app.models.scrape_profiles import ScrapeProfiles
+from app.models.db_handler import DatabaseHandler
 from app.scrape import RequestHandler, ScrapeEngine, RequestQueueItem, Priority
 from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
 
@@ -17,25 +17,28 @@ from . import DataView
 class ScrapeMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, db_handler: DatabaseHandler):
         super().__init__()
 
         self.ui = Ui_ScrapeMenu()
         self.ui.setupUi(self)
 
         self.logger = logging.getLogger(__name__)
+
+        self.profile_id = -1
         self.scrape_engine = None
         self.engine_thread = None
+        self.db_handler = db_handler
 
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
+        self.ui.noMaxCheckbox.clicked.connect(self.toggle_max_cases)
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
-        self.ui.casesSpin.setValue(40)
-        self.engine_timer = QTimer()
+        self.complete_timer = QTimer()
 
         self.data_viewer = None
 
@@ -153,7 +156,54 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        case_limit = self.ui.casesSpin.value()
+        case_limit = (
+            self.ui.casesSpin.value()
+            if not self.ui.noMaxCheckbox.isChecked()
+            else 100000
+        )
+
+        make = self.ui.makeCombo.currentText().upper()
+        make_txt = make if make != "ALL" else "ANY MAKE"
+
+        model = self.ui.modelCombo.currentText().upper()
+        model_txt = model if model != "ALL" else "ANY MODEL"
+
+        start_year = self.ui.startYearCombo.currentText().upper()
+        end_year = self.ui.endYearCombo.currentText().upper()
+
+        p_dmg = self.ui.pDmgCombo.currentText().upper()
+        p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
+
+        name = f"{make_txt} {model_txt} ({start_year}-{end_year}) {p_dmg_txt}"
+        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
+        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
+
+        now = datetime.now()
+        new_profile = {
+            "name": name,
+            "description": "None",
+            "make": make,
+            "model": model,
+            "start_year": start_year,
+            "end_year": end_year,
+            "primary_dmg": p_dmg,
+            "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
+            "min_dv": self.ui.dvMinSpin.value(),
+            "max_dv": self.ui.dvMaxSpin.value(),
+            "max_cases": case_limit,
+            "created": int(now.timestamp()),
+            "modified": int(now.timestamp()),
+        }
+
+        self.profile_id = self.db_handler.add_profile(new_profile)
+        if self.profile_id < 0:
+            self.logger.error("Scrape aborted: No profile to add data to.")
+            return
+
+        self.logger.info(f"Created new profile with ID {self.profile_id}.")
+        self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
+        self.data_viewer.show()
+
         self.scrape_engine = ScrapeEngine(
             {
                 "ddlMake": self.ui.makeCombo.currentData(),
@@ -167,63 +217,57 @@ class ScrapeMenu(QWidget):
             },
             case_limit,
         )
+
         self.scrape_engine.completed.connect(self.handle_scrape_complete)
-
-        make = (
-            make
-            if (make := self.ui.makeCombo.currentText().upper()) != "ALL"
-            else "ANY MAKE"
-        )
-        model = (
-            model
-            if (model := self.ui.modelCombo.currentText().upper()) != "ALL"
-            else "ANY MODEL"
-        )
-        start_year = self.ui.startYearCombo.currentText().upper()
-        end_year = self.ui.endYearCombo.currentText().upper()
-        p_dmg = dmg if (dmg := self.ui.pDmgCombo.currentText().upper()) != "ALL" else ""
-
-        now = datetime.now()
-        name = f"{make} {model} ({start_year}-{end_year}) {p_dmg}"
-        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
-        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
-
-        new_profile = {
-            "name": name,
-            "description": "",
-            "created": int(now.timestamp()),
-            "modified": int(now.timestamp()),
-        }
-
-        profile_id = ScrapeProfiles().add_profile(new_profile)
-        self.data_viewer = DataView(profile_id)
-        self.data_viewer.show()
-
-        self.scrape_engine.event_parsed.connect(self.data_viewer.add_event)
+        self.scrape_engine.event_parsed.connect(self.add_event)
 
         self.engine_thread = QThread()
         self.scrape_engine.moveToThread(self.engine_thread)
         self.engine_thread.started.connect(self.scrape_engine.start)
         self.engine_thread.start()
 
-        self.engine_timer.timeout.connect(self.scrape_engine.check_complete)
-        self.engine_timer.start(300)
+        self.complete_timer.timeout.connect(self.scrape_engine.check_complete)
+        self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
+
+    @pyqtSlot(dict, bytes, str)
+    def add_event(self, event, response_content, cookie):
+        if not self.db_handler.get_profile(self.profile_id):
+            if self.data_viewer:
+                self.data_viewer.close()
+            if self.scrape_engine:
+                self.scrape_engine.complete()
+                self.logger.error("Scrape aborted: No profile to add data to.")
+            return
+        self.db_handler.add_event(event, self.profile_id)
+        if self.data_viewer:
+            self.data_viewer.events_tab.cache_response(
+                int(event["case_id"]), response_content, cookie
+            )
+            self.data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):
-        self.engine_timer.stop()
+        self.profile_id = -1
+        self.complete_timer.stop()
 
+        self.scrape_engine = None
         self.engine_thread.quit()
         self.engine_thread.wait()
 
-        self.data_viewer.scrape_complete()
+        dialog = QMessageBox()
+        dialog.setText("Scrape complete.")
+        dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+        dialog.setDefaultButton(QMessageBox.StandardButton.Ok)
+        dialog.setIcon(QMessageBox.Icon.Information)
+        dialog.setWindowTitle("Scrape Complete")
+        dialog.exec()
 
         self.ui.submitBtn.setEnabled(True)
         self.ui.submitBtn.setText("Scrape")
 
+    def toggle_max_cases(self, checked):
+        self.ui.casesSpin.setEnabled(not checked)
+
     def cleanup(self):
-        self.engine_timer.stop()
+        self.complete_timer.stop()
         if self.scrape_engine and self.scrape_engine.running:
-            self.scrape_engine.stop()
-        if self.engine_thread and self.engine_thread.isRunning():
-            self.engine_thread.quit()
-            self.engine_thread.wait()
+            self.scrape_engine.complete()
