@@ -102,7 +102,7 @@ class ScrapeEngine(QObject):
             self.logger.debug(f"Enqueuing extra case: {caseid}")
             self.req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.CASE_URL}{caseid}", priority=Priority.CASE.value
+                    f"{self.CASE_URL}{caseid}&docinfo=0", priority=Priority.CASE.value
                 )
             )
 
@@ -190,7 +190,7 @@ class ScrapeEngine(QObject):
         for case_id in case_ids:
             self.req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.CASE_URL}{case_id}", priority=Priority.CASE.value
+                    f"{self.CASE_URL}{case_id}&docinfo=0", priority=Priority.CASE.value
                 )
             )
 
