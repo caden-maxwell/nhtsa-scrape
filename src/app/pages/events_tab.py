@@ -213,7 +213,7 @@ class EventsTab(BaseTab):
             self.parse_case(cached_case["xml"], cached_case["cookie"])
         else:
             request = RequestQueueItem(
-                ScrapeEngine.CASE_URL + str(case_id),
+                f"{ScrapeEngine.CASE_URL}{case_id}&docinfo=0",
                 priority=Priority.CASE_FOR_IMAGE.value,
                 extra_data={"case_id": case_id},
             )
