@@ -13,7 +13,7 @@ from app.models import DatabaseHandler, ScatterPlotModel
 from app.ui.ScatterTab_ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-sns.set_style("whitegrid")
+sns.set_style("darkgrid")
 
 
 class ScatterTab(BaseTab):
