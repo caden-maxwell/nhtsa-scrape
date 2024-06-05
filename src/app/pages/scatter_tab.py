@@ -2,17 +2,18 @@ import logging
 import os
 from pathlib import Path
 
-from matplotlib import pyplot, style
+import matplotlib.pyplot as plt
+import seaborn as sns
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
-import numpy
+import numpy as np
 
 from . import BaseTab
 from app.models import DatabaseHandler, ScatterPlotModel
 from app.ui.ScatterTab_ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-style.use("seaborn-deep")
+sns.set_style("whitegrid")
 
 
 class ScatterTab(BaseTab):
@@ -38,7 +39,7 @@ class ScatterTab(BaseTab):
             lambda: self.btn_update(self.update_tot_labels)
         )
 
-        self.figure, self.ax = pyplot.subplots()
+        self.figure, self.ax = plt.subplots()
         self.figure.set_tight_layout(True)
         self.figure.set_dpi(60)
 
@@ -117,10 +118,10 @@ class ScatterTab(BaseTab):
             return
 
         # NASS_dv
-        coeffs = numpy.polyfit(x_data, y1_data, 1)
-        polynomial = numpy.poly1d(coeffs)
+        coeffs = np.polyfit(x_data, y1_data, 1)
+        polynomial = np.poly1d(coeffs)
 
-        x_fit = numpy.linspace(min(x_data), max(x_data))
+        x_fit = np.linspace(min(x_data), max(x_data))
         y_fit = polynomial(x_fit)
 
         scatter_nass = self.ax.scatter(x_data, y1_data, c="darkblue", s=10)
@@ -129,8 +130,8 @@ class ScatterTab(BaseTab):
 
         # NASS_dv R^2 calculation
         y_pred = polynomial(x_data)
-        ssr = numpy.sum((y_pred - numpy.mean(y1_data)) ** 2)
-        sst = numpy.sum((y1_data - numpy.mean(y1_data)) ** 2)
+        ssr = np.sum((y_pred - np.mean(y1_data)) ** 2)
+        sst = np.sum((y1_data - np.mean(y1_data)) ** 2)
         r_squared = 0
         if sst != 0:
             r_squared = ssr / sst
@@ -141,10 +142,10 @@ class ScatterTab(BaseTab):
         ]
 
         # TOT_dv
-        coeffs_e = numpy.polyfit(x_data, y2_data, 1)
-        polynomial_e = numpy.poly1d(coeffs_e)
+        coeffs_e = np.polyfit(x_data, y2_data, 1)
+        polynomial_e = np.poly1d(coeffs_e)
 
-        x_fit_e = numpy.linspace(min(x_data), max(x_data))
+        x_fit_e = np.linspace(min(x_data), max(x_data))
         y_fit_e = polynomial_e(x_fit_e)
 
         scatter_tot = self.ax.scatter(x_data, y2_data, c="red", s=10)
@@ -153,8 +154,8 @@ class ScatterTab(BaseTab):
 
         # TOT_dv R^2 calculation
         y_pred_e = polynomial_e(x_data)
-        ssr_e = numpy.sum((y_pred_e - numpy.mean(y2_data)) ** 2)
-        sst_e = numpy.sum((y2_data - numpy.mean(y2_data)) ** 2)
+        ssr_e = np.sum((y_pred_e - np.mean(y2_data)) ** 2)
+        sst_e = np.sum((y2_data - np.mean(y2_data)) ** 2)
         r_squared_e = ssr_e / sst_e
 
         self.tot_legend = [
@@ -184,7 +185,7 @@ class ScatterTab(BaseTab):
 
         self.canvas.draw()
 
-        # crush_est = numpy.array([0, 1.0])
+        # crush_est = np.array([0, 1.0])
         # print(polynomial(crush_est))
         # print(polynomial_e(crush_est))
 
