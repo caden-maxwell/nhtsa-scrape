@@ -8,7 +8,7 @@ import time
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 from bs4 import BeautifulSoup
-import numpy
+import numpy as np
 
 from . import RequestHandler, RequestQueueItem
 
@@ -245,13 +245,11 @@ class ScrapeEngine(QObject):
             else 9999
         )
 
-        make_match = (
-            lambda veh_sum: make == int(veh_sum.find("Make").get("value")) or make == -1
-        )
-        model_match = (
-            lambda veh_sum: model == int(veh_sum.find("Model").get("value"))
-            or model == -1
-        )
+        def make_match(veh_sum):
+            return make == int(veh_sum.find("Make").get("value")) or make == -1
+
+        def model_match(veh_sum):
+            return model == int(veh_sum.find("Model").get("value")) or model == -1
 
         def year_match(veh_sum: BeautifulSoup, start_year, end_year):
             year = veh_sum.find("Year").text
@@ -447,7 +445,7 @@ class ScrapeEngine(QObject):
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
 
             # Restitution Calculation
-            e = 0.5992 * numpy.exp(
+            e = 0.5992 * np.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
             TOT_dv = NASS_dv * (1.0 + e)
