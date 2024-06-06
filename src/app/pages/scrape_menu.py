@@ -1,17 +1,15 @@
 import json
 import logging
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
-from bs4 import BeautifulSoup
-
-from app.models.db_handler import DatabaseHandler
+from app.models import DatabaseHandler
+from app.pages import DataView
 from app.scrape import RequestHandler, ScrapeEngine, RequestQueueItem, Priority
-from app.ui.ScrapeMenu_ui import Ui_ScrapeMenu
-
-from . import DataView
+from app.ui import Ui_ScrapeMenu
 
 
 class ScrapeMenu(QWidget):

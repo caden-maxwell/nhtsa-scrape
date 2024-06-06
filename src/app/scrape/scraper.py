@@ -1,16 +1,15 @@
 import enum
 import json
 import logging
-from pathlib import Path
-import textwrap  # To make multiline strings look nice in the code
+import textwrap
 import time
-
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
-
+from pathlib import Path
 from bs4 import BeautifulSoup
 import numpy as np
 
-from . import RequestHandler, RequestQueueItem
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+
+from app.scrape import RequestHandler, RequestQueueItem
 
 
 class Priority(enum.Enum):
@@ -416,12 +415,18 @@ class ScrapeEngine(QObject):
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
                     "a_year": alt_ext_form.find("ModelYear").text,
-                    "a_curb_weight": float(curb_weight)
-                    if (curb_weight := alt_ext_form.find("CurbWeight").text).isnumeric()
-                    else event_data["curb_weight"],
-                    "a_dmg_loc": dmg_loc.text
-                    if (dmg_loc := alt_ext_form.find("DeformationLocation"))
-                    else "--",
+                    "a_curb_weight": (
+                        float(curb_weight)
+                        if (
+                            curb_weight := alt_ext_form.find("CurbWeight").text
+                        ).isnumeric()
+                        else event_data["curb_weight"]
+                    ),
+                    "a_dmg_loc": (
+                        dmg_loc.text
+                        if (dmg_loc := alt_ext_form.find("DeformationLocation"))
+                        else "--"
+                    ),
                 }
             else:
                 alt_data = {

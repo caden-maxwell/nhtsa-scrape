@@ -3,11 +3,9 @@ import logging
 from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection
 from PyQt6.QtWidgets import QWidget, QMessageBox, QLineEdit, QInputDialog
 
-from app.ui.ProfileMenu_ui import Ui_ProfileMenu
-from app.models.profile_list import ProfileList
-
-from .data_view import DataView
-from app.models import DatabaseHandler
+from app.ui import Ui_ProfileMenu
+from app.models import ProfileList, DatabaseHandler
+from app.pages import DataView
 
 
 class ProfileMenu(QWidget):

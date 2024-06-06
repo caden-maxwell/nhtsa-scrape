@@ -1,6 +1,6 @@
 import logging
 
-from . import DatabaseHandler
+from app.models import DatabaseHandler
 
 
 class ScatterPlotModel:

@@ -1,7 +1,7 @@
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
-from app.ui.MainMenu_ui import Ui_MainMenu
+from app.ui import Ui_MainMenu
 
 
 class MainMenu(QWidget):

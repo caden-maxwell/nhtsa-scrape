@@ -1,15 +1,14 @@
-from .log_utils import QtLogHandler, ColorFormatter
 import logging
 from pathlib import Path
 
 from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
-from PyQt6.QtCore import QCoreApplication, QThread
+from PyQt6.QtCore import QThread
 
-from .pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
-from .scrape import RequestHandler
-from .models import DatabaseHandler
-
-from .ui.MainWindow_ui import Ui_MainWindow
+from app.log_utils import QtLogHandler, ColorFormatter
+from app.pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
+from app.scrape import RequestHandler
+from app.models import DatabaseHandler
+from app.ui import Ui_MainWindow
 
 
 class MainWindow(QWidget):

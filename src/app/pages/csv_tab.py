@@ -3,9 +3,9 @@ import logging
 import os
 from pathlib import Path
 
-from . import BaseTab
+from app.pages import BaseTab
 from app.models import EventTable
-from app.ui.CSVTab_ui import Ui_CSVTab
+from app.ui import Ui_CSVTab
 
 
 class CSVTab(BaseTab):

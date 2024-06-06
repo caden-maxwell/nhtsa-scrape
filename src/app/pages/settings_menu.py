@@ -6,7 +6,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
 from app.scrape import RequestHandler
-from app.ui.SettingsMenu_ui import Ui_SettingsMenu
+from app.ui import Ui_SettingsMenu
 
 
 class SettingsMenu(QWidget):

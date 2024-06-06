@@ -6,9 +6,9 @@ import re
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
-from . import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
+from app.pages import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
 from app.models import DatabaseHandler
-from app.ui.DataView_ui import Ui_DataView
+from app.ui import Ui_DataView
 
 
 class DataView(QWidget):

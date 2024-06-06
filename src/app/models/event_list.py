@@ -2,7 +2,7 @@ import logging
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
 
-from . import DatabaseHandler
+from app.models import DatabaseHandler
 
 
 class EventList(QAbstractListModel):
