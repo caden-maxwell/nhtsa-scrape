@@ -16,8 +16,20 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+splash = Splash(
+    'image.webp',
+    binaries=a.binaries,
+    datas=a.datas,
+    text_pos=(20, 50),
+    text_size=20,
+    text_color='black',
+    max_img_size=(640, 360),
+    text_default="Initializing..."
+)
+
 exe = EXE(
     pyz,
+    splash,
     a.scripts,
     [],
     exclude_binaries=True,
@@ -35,6 +47,7 @@ exe = EXE(
 )
 coll = COLLECT(
     exe,
+    splash.binaries,
     a.binaries,
     a.datas,
     strip=False,
