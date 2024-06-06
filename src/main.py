@@ -3,6 +3,8 @@ import sys
 from PyQt6.QtWidgets import QApplication
 
 from app.main_window import MainWindow
+import matplotlib
+matplotlib.use('qtagg')
 
 try:
     import pyi_splash
