@@ -1,7 +1,7 @@
 import logging
 
-from app.ui.SummaryTab_ui import Ui_SummaryTab
-from . import BaseTab
+from app.ui import Ui_SummaryTab
+from app.pages import BaseTab
 
 
 class SummaryTab(BaseTab):

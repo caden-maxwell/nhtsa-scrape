@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal, pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
-from app.ui.LogsWindow_ui import Ui_LogsWindow
+from app.ui import Ui_LogsWindow
 
 
 class LogsWindow(QWidget):

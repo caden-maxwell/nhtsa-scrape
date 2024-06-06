@@ -2,7 +2,7 @@ import logging
 
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QVariant
 
-from . import DatabaseHandler
+from app.models import DatabaseHandler
 
 
 class EventTable(QAbstractTableModel):

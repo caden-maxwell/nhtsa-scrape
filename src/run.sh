@@ -1,3 +1,4 @@
 #!/bin/bash
 
-./dist/NHTSA-Scrape/NHTSA-Scrape
+cd dist/NHTSA-Scrape
+./NHTSA-Scrape.exe

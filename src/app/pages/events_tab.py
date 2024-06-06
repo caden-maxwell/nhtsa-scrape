@@ -3,6 +3,8 @@ from io import BytesIO
 import logging
 import os
 from pathlib import Path
+from bs4 import BeautifulSoup
+from PIL import Image, ImageDraw, ImageFont
 
 from PyQt6.QtCore import Qt, pyqtSlot, QModelIndex
 from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
@@ -16,13 +18,10 @@ from PyQt6.QtWidgets import (
     QStyledItemDelegate,
 )
 
-from bs4 import BeautifulSoup
-from PIL import Image, ImageDraw, ImageFont
-
-from . import BaseTab
+from app.pages import BaseTab
 from app.models import DatabaseHandler, EventList
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
-from app.ui.EventsTab_ui import Ui_EventsTab
+from app.ui import Ui_EventsTab
 
 
 class EventsTab(BaseTab):
