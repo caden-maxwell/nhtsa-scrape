@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 
 from app.pages import BaseTab
 from app.models import DatabaseHandler, EventList
-from app.scrape import RequestHandler, Priority, RequestQueueItem, ScrapeEngine
+from app.scrape import RequestHandler, Priority, RequestQueueItem, NassScraper
 from app.ui import Ui_EventsTab
 
 
@@ -207,16 +207,22 @@ class EventsTab(BaseTab):
         )
 
         cached_case = self.response_cache.get(case_id)
+
+        #TODO: Add a check to see which scraper to use
+
         if self.cached_and_valid(case_id):
             self.logger.debug(f"Using cached case ({case_id})")
             self.parse_case(cached_case["xml"], cached_case["cookie"])
         else:
             request = RequestQueueItem(
-                f"{ScrapeEngine.CASE_URL}{case_id}&docinfo=0",
+                f"{NassScraper.CASE_URL}{case_id}&docinfo=0",
                 priority=Priority.CASE_FOR_IMAGE.value,
                 extra_data={"case_id": case_id},
             )
             self.request_handler.enqueue_request(request)
+
+        #TODO: Add a check to see which scraper URL to use
+
         self.update_buttons(event_data)
 
     def stop_btn_clicked(self):

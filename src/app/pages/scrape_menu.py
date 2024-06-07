@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.models import DatabaseHandler
 from app.pages import DataView
-from app.scrape import RequestHandler, ScrapeEngine, RequestQueueItem, Priority
+from app.scrape import RequestHandler, NassScraper, RequestQueueItem, Priority
 from app.ui import Ui_ScrapeMenu
 
 
@@ -24,7 +24,7 @@ class ScrapeMenu(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.profile_id = -1
-        self.scrape_engine = None
+        self.nass_scraper = None
         self.engine_thread = None
         self.db_handler = db_handler
 
@@ -148,7 +148,7 @@ class ScrapeMenu(QWidget):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
-        if self.scrape_engine and self.scrape_engine.running:
+        if self.nass_scraper and self.nass_scraper.running:
             self.logger.warning(
                 "Scrape engine is already running. Ignoring submission."
             )
@@ -202,7 +202,7 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        self.scrape_engine = ScrapeEngine(
+        self.nass_scraper = NassScraper(
             {
                 "ddlMake": self.ui.makeCombo.currentData(),
                 "ddlModel": self.ui.modelCombo.currentData(),
@@ -216,15 +216,15 @@ class ScrapeMenu(QWidget):
             case_limit,
         )
 
-        self.scrape_engine.completed.connect(self.handle_scrape_complete)
-        self.scrape_engine.event_parsed.connect(self.add_event)
+        self.nass_scraper.completed.connect(self.handle_scrape_complete)
+        self.nass_scraper.event_parsed.connect(self.add_event)
 
         self.engine_thread = QThread()
-        self.scrape_engine.moveToThread(self.engine_thread)
-        self.engine_thread.started.connect(self.scrape_engine.start)
+        self.nass_scraper.moveToThread(self.engine_thread)
+        self.engine_thread.started.connect(self.nass_scraper.start)
         self.engine_thread.start()
 
-        self.complete_timer.timeout.connect(self.scrape_engine.check_complete)
+        self.complete_timer.timeout.connect(self.nass_scraper.check_complete)
         self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
 
     @pyqtSlot(dict, bytes, str)
@@ -232,8 +232,8 @@ class ScrapeMenu(QWidget):
         if not self.db_handler.get_profile(self.profile_id):
             if self.data_viewer:
                 self.data_viewer.close()
-            if self.scrape_engine:
-                self.scrape_engine.complete()
+            if self.nass_scraper:
+                self.nass_scraper.complete()
                 self.logger.error("Scrape aborted: No profile to add data to.")
             return
         self.db_handler.add_event(event, self.profile_id)
@@ -247,7 +247,7 @@ class ScrapeMenu(QWidget):
         self.profile_id = -1
         self.complete_timer.stop()
 
-        self.scrape_engine = None
+        self.nass_scraper = None
         self.engine_thread.quit()
         self.engine_thread.wait()
 
@@ -267,5 +267,5 @@ class ScrapeMenu(QWidget):
 
     def cleanup(self):
         self.complete_timer.stop()
-        if self.scrape_engine and self.scrape_engine.running:
-            self.scrape_engine.complete()
+        if self.nass_scraper and self.nass_scraper.running:
+            self.nass_scraper.complete()
