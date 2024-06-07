@@ -259,17 +259,20 @@
      </item>
      <item row="3" column="3">
       <widget class="QGroupBox" name="databasesBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
        <property name="title">
         <string>NHTSA Databases:</string>
        </property>
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
-         <widget class="QCheckBox" name="nassCheckbox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
+         <widget class="QRadioButton" name="nassRadio">
           <property name="text">
-           <string>NASS/CDS</string>
+           <string>NASS</string>
           </property>
           <property name="checked">
            <bool>true</bool>
@@ -277,9 +280,9 @@
          </widget>
         </item>
         <item>
-         <widget class="QCheckBox" name="cissCheckbox">
+         <widget class="QRadioButton" name="cissRadio">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>CISS</string>
