@@ -33,7 +33,6 @@ class ScrapeMenu(QWidget):
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
-        self.ui.noMaxCheckbox.clicked.connect(self.toggle_max_cases)
 
         self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
         self.complete_timer = QTimer()
@@ -154,12 +153,6 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        case_limit = (
-            self.ui.casesSpin.value()
-            if not self.ui.noMaxCheckbox.isChecked()
-            else 100000
-        )
-
         make = self.ui.makeCombo.currentText().upper()
         make_txt = make if make != "ALL" else "ANY MAKE"
 
@@ -188,7 +181,7 @@ class ScrapeMenu(QWidget):
             "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
             "min_dv": self.ui.dvMinSpin.value(),
             "max_dv": self.ui.dvMaxSpin.value(),
-            "max_cases": case_limit,
+            "max_cases": 100000,
             "created": int(now.timestamp()),
             "modified": int(now.timestamp()),
         }
@@ -213,7 +206,7 @@ class ScrapeMenu(QWidget):
                 "tDeltaVFrom": self.ui.dvMinSpin.value(),
                 "tDeltaVTo": self.ui.dvMaxSpin.value(),
             },
-            case_limit,
+            100000,
         )
 
         self.nass_scraper.completed.connect(self.handle_scrape_complete)
