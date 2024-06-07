@@ -1,4 +1,3 @@
-import enum
 import json
 import logging
 import textwrap
@@ -9,26 +8,15 @@ import numpy as np
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from app.scrape import RequestHandler, RequestQueueItem
+from app.scrape import RequestHandler, RequestQueueItem, Priority
 
 
-class Priority(enum.Enum):
-    """Enum for request priorities. Lower integer is higher priority."""
-
-    ALL_COMBOS = 0
-    MODEL_COMBO = 1
-    IMAGE = 2
-    CASE_FOR_IMAGE = 3
-    CASE = 4
-    CASE_LIST = 5
-
-
-class ScrapeEngine(QObject):
+class BaseScraper(QObject):
     event_parsed = pyqtSignal(dict, bytes, str)
     started = pyqtSignal()
     completed = pyqtSignal()
-    CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-    CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
+    CASE_URL = None # Needs to be defined in child classes
+    CASE_LIST_URL = None # Needs to be defined in child classes
 
     def __init__(self, search_params, case_limit):
         super().__init__()
@@ -38,7 +26,7 @@ class ScrapeEngine(QObject):
         self.case_limit = case_limit
 
         # Get default search payload and update with user input
-        payload_path = Path(__file__).parent.parent / "resources" / "payload.json"
+        payload_path = Path(__file__).parent.parent / "resources" / "payloadNASS.json"
         self.search_payload = {}
         with open(payload_path, "r") as f:
             self.search_payload = dict(json.load(f))
