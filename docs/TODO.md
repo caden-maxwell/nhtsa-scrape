@@ -5,6 +5,7 @@
 # To-Do
 
 - Get CISS database working
+    - Figure out how to get the CISS params so that we can choose an "All" option, as this functionality is not provided in the original CISS crashviewer site.
     - Figure out a data-driven way to keep track of what params a scrape was performed with. This way, the scrape menu doesn't have to worry about exactly what the payload needs to look like. The scrape engine itself (whether it be NASS or CISS) will convert the scrape params into a payload. With this, we will also be able to save the params to be used later, for example, if we need to resume a scrape or rescrape a profile altogether.
 - Add EDR information to case page
     - Either as fields or downloadable file
