@@ -37,14 +37,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox">
+      <widget class="QCheckBox" name="nassCheckbox">
        <property name="text">
         <string>NASS</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox_2">
+      <widget class="QCheckBox" name="cissCheckbox">
        <property name="text">
         <string>CISS</string>
        </property>
@@ -158,7 +158,13 @@
              </size>
             </property>
             <property name="editable">
-             <bool>false</bool>
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
             </property>
            </widget>
           </item>
@@ -178,7 +184,13 @@
           <item row="1" column="1">
            <widget class="QComboBox" name="modelCombo">
             <property name="editable">
-             <bool>false</bool>
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
             </property>
            </widget>
           </item>
@@ -318,7 +330,13 @@
              </size>
             </property>
             <property name="editable">
-             <bool>false</bool>
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
             </property>
            </widget>
           </item>
@@ -338,7 +356,13 @@
           <item row="1" column="1">
            <widget class="QComboBox" name="modelCombo_2">
             <property name="editable">
-             <bool>false</bool>
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
             </property>
            </widget>
           </item>
@@ -369,6 +393,12 @@
             <property name="editable">
              <bool>false</bool>
             </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
+            </property>
            </widget>
           </item>
           <item row="1" column="0">
@@ -388,6 +418,12 @@
            <widget class="QComboBox" name="endYearCombo_2">
             <property name="editable">
              <bool>false</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::NoInsert</enum>
+            </property>
+            <property name="sizeAdjustPolicy">
+             <enum>QComboBox::AdjustToContents</enum>
             </property>
            </widget>
           </item>
