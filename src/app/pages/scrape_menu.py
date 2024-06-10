@@ -152,8 +152,9 @@ class ScrapeMenu(QWidget):
         self.ui.cissCheckbox.setEnabled(True)
 
     def enable_submit(self):
-        """Enables the submit button if at least one database is selected."""
+        """Enables the submit button if at least one database is selected, but not if the scraper is already running."""
         self.ui.submitBtn.setEnabled(self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
+        self.ui.submitBtn.setEnabled(not (self.scraper and self.scraper.running))
 
     def fetch_models_nass(self, idx):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
