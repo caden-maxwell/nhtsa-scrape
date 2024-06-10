@@ -67,9 +67,7 @@ class ScrapeMenu(QWidget):
         ):
             request.callback(request, response)
 
-    def update_nass_dropdowns(
-        self, request: RequestQueueItem, response: Response
-    ):
+    def update_nass_dropdowns(self, request: RequestQueueItem, response: Response):
         """Parses the response from the NASS search site and populates the search fields."""
 
         # Parse response
@@ -126,9 +124,7 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setEnabled(True)
         self.logger.info("Search fields populated.")
 
-    def update_ciss_dropdowns(
-        self, request: RequestQueueItem, response: Response
-    ):
+    def update_ciss_dropdowns(self, request: RequestQueueItem, response: Response):
         self.logger.info("CISS dropdowns not implemented yet.")
         pass
 
@@ -158,9 +154,7 @@ class ScrapeMenu(QWidget):
         self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
         self.req_handler.enqueue_request(request)
 
-    def update_model_dropdown_nass(
-        self, request: RequestQueueItem, response: Response
-    ):
+    def update_model_dropdown_nass(self, request: RequestQueueItem, response: Response):
         """Populates the model dropdown with models from the response."""
 
         # Parse response
@@ -179,9 +173,7 @@ class ScrapeMenu(QWidget):
             self.ui.modelCombo.addItem(*model)
         self.logger.info("Updated model dropdown.")
 
-    def update_model_dropdown_ciss(
-        self, request: RequestQueueItem, response: Response
-    ):
+    def update_model_dropdown_ciss(self, request: RequestQueueItem, response: Response):
         """Populates the CISS model dropdown vehicle models from the response."""
         self.logger.info("CISS model dropdown not implemented yet.")
         pass
@@ -262,8 +254,8 @@ class ScrapeMenu(QWidget):
         self.complete_timer.timeout.connect(self.scraper.check_complete)
         self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
 
-    @pyqtSlot(dict, bytes, str)
-    def add_event(self, event, response_content, cookie):
+    @pyqtSlot(dict, Response)
+    def add_event(self, event, response):
         if not self.db_handler.get_profile(self.profile_id):
             if self.data_viewer:
                 self.data_viewer.close()
@@ -273,9 +265,7 @@ class ScrapeMenu(QWidget):
             return
         self.db_handler.add_event(event, self.profile_id)
         if self.data_viewer:
-            self.data_viewer.events_tab.cache_response(
-                int(event["case_id"]), response_content, cookie
-            )
+            self.data_viewer.events_tab.cache_response(int(event["case_id"]), response)
             self.data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):

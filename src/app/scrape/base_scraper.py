@@ -11,7 +11,7 @@ from app.scrape import RequestHandler, RequestQueueItem, Priority
 
 
 class BaseScraper(QObject):
-    event_parsed = pyqtSignal(dict, bytes, str)
+    event_parsed = pyqtSignal(dict, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
     CASE_URL = None  # Define in child classes
@@ -116,7 +116,8 @@ class BaseScraper(QObject):
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
-        request.callback(request, response)
+        if request.priority == Priority.CASE_LIST.value or request.priority == Priority.CASE.value:
+            request.callback(request, response)
 
     def parse_case_list(self, request, response):
         if not self.running:
@@ -446,9 +447,7 @@ class BaseScraper(QObject):
             event_data.update(calcs)
 
             self.total_events += 1
-            self.event_parsed.emit(
-                event_data, response.content, response.headers.get("Set-Cookie", "")
-            )
+            self.event_parsed.emit(event_data, response)
 
         if failed_events >= len(key_events):
             self.logger.warning(

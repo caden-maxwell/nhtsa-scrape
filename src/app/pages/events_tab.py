@@ -98,10 +98,9 @@ class EventsTab(BaseTab):
             index = self.model.index_from_vals(*self.current_index_vals)
             self.ui.eventsList.setCurrentIndex(index)
 
-    def cache_response(self, case_id, response_content, cookie):
+    def cache_response(self, case_id, response):
         self.response_cache[case_id] = {
-            "cookie": cookie,
-            "xml": response_content,
+            "response": response,
             "created": datetime.now(),
         }
 
@@ -205,13 +204,16 @@ class EventsTab(BaseTab):
             (case_id, vehicle_num), {}
         )
 
-        cached_case = self.response_cache.get(case_id)
-
         # TODO: Add a check to see which scraper to use
 
-        if self.cached_and_valid(case_id):
+        cached_case = self.response_cache.get(case_id)
+        if (  # Make sure cached case is valid
+            cached_case
+            and (datetime.now() - cached_case["created"]).total_seconds()
+            < self.COOKIE_EXPIRED_SECS
+        ):
             self.logger.debug(f"Using cached case ({case_id})")
-            self.parse_case(cached_case["xml"], cached_case["cookie"])
+            self.parse_case(None, cached_case["response"])
         else:
             request = RequestQueueItem(
                 f"{ScraperNASS.CASE_URL}{case_id}&docinfo=0",
@@ -239,15 +241,6 @@ class EventsTab(BaseTab):
         self.ui.scrapeBtn.setText("Scrape Images")
         self.ui.scrapeBtn.setEnabled(True)
         self.ui.stopBtn.setVisible(False)
-
-    def cached_and_valid(self, case_id):
-        """Check if the case has been cached and if the cookie is still valid."""
-        cached_case = self.response_cache.get(case_id)
-        return (
-            cached_case
-            and (datetime.now() - cached_case["created"]).total_seconds()
-            < self.COOKIE_EXPIRED_SECS
-        )
 
     def delete_event(self):
         msg_box = QMessageBox()
@@ -298,14 +291,13 @@ class EventsTab(BaseTab):
                 )
                 self.update_buttons(event_data)
 
-
     def parse_case(self, request: RequestQueueItem, response: Response):
         soup = BeautifulSoup(response.content, "xml")
         case_id = int(soup.find("CaseForm").get("caseID"))
         img_form = soup.find("IMGForm")
 
         cookie = response.headers.get("Set-Cookie", "")
-        self.cache_response(case_id, response.content, cookie)
+        self.cache_response(case_id, response)
 
         if not img_form:
             self.logger.debug("No ImgForm found.")
@@ -350,7 +342,7 @@ class EventsTab(BaseTab):
                 img_id = int(img_element[0])
                 img_version = img_element[1]
                 img_url = f"https://crashviewer.nhtsa.dot.gov/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={img_version}"
-                request = RequestQueueItem(
+                rq = RequestQueueItem(
                     img_url,
                     headers={"Cookie": cookie},
                     priority=Priority.IMAGE.value,
@@ -358,7 +350,7 @@ class EventsTab(BaseTab):
                     callback=self.parse_image,
                 )
                 if img_id_dict.get(img_id) is None:
-                    self.req_handler.enqueue_request(request)
+                    self.req_handler.enqueue_request(rq)
                     img_id_dict.update({img_id: None})
             self.case_veh_img_ids[(case_id, vehicle_num)] = img_id_dict
 
