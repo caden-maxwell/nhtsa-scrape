@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from bs4 import BeautifulSoup
 from PIL import Image, ImageDraw, ImageFont
+from requests import Response
 
 from PyQt6.QtCore import Qt, pyqtSlot, QModelIndex
 from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
@@ -20,7 +21,7 @@ from PyQt6.QtWidgets import (
 
 from app.pages import BaseTab
 from app.models import DatabaseHandler, EventList
-from app.scrape import RequestHandler, Priority, RequestQueueItem, NassScraper
+from app.scrape import RequestHandler, Priority, RequestQueueItem, ScraperNASS
 from app.ui import Ui_EventsTab
 
 
@@ -63,8 +64,8 @@ class EventsTab(BaseTab):
         self.ui.imgWidgetGrid.addWidget(self.no_images_label, 0, 0)
         self.no_images_label.setVisible(True)
 
-        self.request_handler = RequestHandler()
-        self.request_handler.response_received.connect(self.handle_response)
+        self.req_handler = RequestHandler()
+        self.req_handler.response_received.connect(self.handle_response)
 
         self.response_cache = {}
         self.case_veh_img_ids: dict[tuple[int, int], dict[int, None | Image.Image]] = {}
@@ -179,11 +180,9 @@ class EventsTab(BaseTab):
         vehicle_num = int(event_data["vehicle_num"])
         img_extra_data = {"case_id": case_id, "vehicle_num": vehicle_num}
         case_extra_data = {"case_id": case_id}
-        if self.request_handler.contains(
+        if self.req_handler.contains(
             Priority.IMAGE.value, img_extra_data
-        ) or self.request_handler.contains(
-            Priority.CASE_FOR_IMAGE.value, case_extra_data
-        ):
+        ) or self.req_handler.contains(Priority.CASE_FOR_IMAGE.value, case_extra_data):
             self.ui.scrapeBtn.setText("Scraping...")
             self.ui.scrapeBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -208,20 +207,21 @@ class EventsTab(BaseTab):
 
         cached_case = self.response_cache.get(case_id)
 
-        #TODO: Add a check to see which scraper to use
+        # TODO: Add a check to see which scraper to use
 
         if self.cached_and_valid(case_id):
             self.logger.debug(f"Using cached case ({case_id})")
             self.parse_case(cached_case["xml"], cached_case["cookie"])
         else:
             request = RequestQueueItem(
-                f"{NassScraper.CASE_URL}{case_id}&docinfo=0",
+                f"{ScraperNASS.CASE_URL}{case_id}&docinfo=0",
                 priority=Priority.CASE_FOR_IMAGE.value,
                 extra_data={"case_id": case_id},
+                callback=self.parse_case,
             )
-            self.request_handler.enqueue_request(request)
+            self.req_handler.enqueue_request(request)
 
-        #TODO: Add a check to see which scraper URL to use
+        # TODO: Add a check to see which scraper URL to use
 
         self.update_buttons(event_data)
 
@@ -231,10 +231,10 @@ class EventsTab(BaseTab):
         )
 
         extra_data = {"case_id": int(event_data["case_id"])}
-        self.request_handler.clear_queue(Priority.CASE_FOR_IMAGE.value, extra_data)
+        self.req_handler.clear_queue(Priority.CASE_FOR_IMAGE.value, extra_data)
 
         extra_data.update({"vehicle_num": int(event_data["vehicle_num"])})
-        self.request_handler.clear_queue(Priority.IMAGE.value, extra_data)
+        self.req_handler.clear_queue(Priority.IMAGE.value, extra_data)
 
         self.ui.scrapeBtn.setText("Scrape Images")
         self.ui.scrapeBtn.setEnabled(True)
@@ -284,25 +284,28 @@ class EventsTab(BaseTab):
         else:
             self.ui.ignoreBtn.setText("Ignore Event")
 
-    @pyqtSlot(int, str, bytes, str, dict)
-    def handle_response(self, priority, url, response_content, cookie, extra_data):
-        if priority == Priority.CASE_FOR_IMAGE.value:
-            self.parse_case(response_content, cookie)
-        elif priority == Priority.IMAGE.value:
-            self.parse_image(url, response_content, extra_data)
+    @pyqtSlot(RequestQueueItem, Response)
+    def handle_response(self, request: RequestQueueItem, response: Response):
+        if (
+            request.priority == Priority.CASE_FOR_IMAGE.value
+            or request.priority == Priority.IMAGE.value
+        ):
+            request.callback(request, response)
 
-        if self.ui.eventsList.currentIndex().isValid():
-            event_data = self.model.data(
-                self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-            )
-            self.update_buttons(event_data)
+            if self.ui.eventsList.currentIndex().isValid():
+                event_data = self.model.data(
+                    self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+                )
+                self.update_buttons(event_data)
 
-    def parse_case(self, response_content, cookie):
-        soup = BeautifulSoup(response_content, "xml")
+
+    def parse_case(self, request: RequestQueueItem, response: Response):
+        soup = BeautifulSoup(response.content, "xml")
         case_id = int(soup.find("CaseForm").get("caseID"))
         img_form = soup.find("IMGForm")
 
-        self.cache_response(case_id, response_content, cookie)
+        cookie = response.headers.get("Set-Cookie", "")
+        self.cache_response(case_id, response.content, cookie)
 
         if not img_form:
             self.logger.debug("No ImgForm found.")
@@ -352,25 +355,28 @@ class EventsTab(BaseTab):
                     headers={"Cookie": cookie},
                     priority=Priority.IMAGE.value,
                     extra_data={"case_id": case_id, "vehicle_num": vehicle_num},
+                    callback=self.parse_image,
                 )
                 if img_id_dict.get(img_id) is None:
-                    self.request_handler.enqueue_request(request)
+                    self.req_handler.enqueue_request(request)
                     img_id_dict.update({img_id: None})
             self.case_veh_img_ids[(case_id, vehicle_num)] = img_id_dict
 
-    def parse_image(self, url: str, response_content: bytes, extra_data: dict):
+    def parse_image(self, request: RequestQueueItem, response: Response):
         vals = self.case_veh_img_ids.values()
-        img_id = int(url.split("&")[1].split("=")[1])
+        img_id = int(request.url.split("&")[1].split("=")[1])
         event_data = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         )
         for img_id_dict in vals:
             if img_id not in img_id_dict.keys():
                 continue
-            img = Image.open(BytesIO(response_content))
+            img = Image.open(BytesIO(response.content))
             img_id_dict[img_id] = img
-            case_match = int(event_data["case_id"]) == extra_data["case_id"]
-            veh_match = int(event_data["vehicle_num"]) == extra_data["vehicle_num"]
+            case_match = int(event_data["case_id"]) == request.extra_data["case_id"]
+            veh_match = (
+                int(event_data["vehicle_num"]) == request.extra_data["vehicle_num"]
+            )
             if case_match and veh_match:
                 self.__add_thumbnail(img_id, img, event_data)
             break

@@ -1,10 +1,9 @@
-import json
 import logging
 import textwrap
 import time
-from pathlib import Path
 from bs4 import BeautifulSoup
 import numpy as np
+from requests import Response
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
@@ -15,22 +14,15 @@ class BaseScraper(QObject):
     event_parsed = pyqtSignal(dict, bytes, str)
     started = pyqtSignal()
     completed = pyqtSignal()
-    CASE_URL = None # Needs to be defined in child classes
-    CASE_LIST_URL = None # Needs to be defined in child classes
+    CASE_URL = None  # Define in child classes
+    CASE_LIST_URL = None  # Define in child classes
 
-    def __init__(self, search_params, case_limit):
+    def __init__(self, search_params):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
-        self.case_limit = case_limit
-
-        # Get default search payload and update with user input
-        payload_path = Path(__file__).parent.parent / "resources" / "payloadNASS.json"
-        self.search_payload = {}
-        with open(payload_path, "r") as f:
-            self.search_payload = dict(json.load(f))
-        self.search_payload.update(search_params)
+        self.case_limit = 100000
 
         self.running = False
         self.start_time = 0
@@ -89,7 +81,9 @@ class BaseScraper(QObject):
             self.logger.debug(f"Enqueuing extra case: {caseid}")
             self.req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.CASE_URL}{caseid}&docinfo=0", priority=Priority.CASE.value
+                    f"{self.CASE_URL}{caseid}&docinfo=0",
+                    priority=Priority.CASE.value,
+                    callback=self.parse_case,
                 )
             )
 
@@ -113,29 +107,23 @@ class BaseScraper(QObject):
         )
         request = RequestQueueItem(
             self.CASE_LIST_URL,
-            method="POST",
+            method="GET",
             params=self.search_payload,
             priority=Priority.CASE_LIST.value,
+            callback=self.parse_case_list,
         )
         self.req_handler.enqueue_request(request)
 
-    @pyqtSlot(int, str, bytes, str, dict)
-    def handle_response(self, priority, url, response_content, cookie, extra_data):
-        if priority == Priority.CASE_LIST.value:
-            self.parse_case_list(url, response_content)
-        elif priority == Priority.CASE.value:
-            self.parse_case(url, response_content, cookie)
-        else:
-            self.logger.error(
-                f"Scrape engine received response with invalid priority: {priority}."
-            )
+    @pyqtSlot(RequestQueueItem, Response)
+    def handle_response(self, request: RequestQueueItem, response: Response):
+        request.callback(request, response)
 
-    def parse_case_list(self, url, response_content):
+    def parse_case_list(self, request, response):
         if not self.running:
             return
 
-        if not response_content:
-            self.logger.error(f"Received empty response from {url}.")
+        if not response.content:
+            self.logger.error(f"Received empty response from {request.url}.")
             self.final_page = True
             return
 
@@ -144,7 +132,7 @@ class BaseScraper(QObject):
             self.complete()
             return
 
-        soup = BeautifulSoup(response_content, "html.parser")
+        soup = BeautifulSoup(response.content, "html.parser")
         page_dropdown = soup.find("select", id="ddlPage")
         if not page_dropdown:
             self.logger.warning(
@@ -177,7 +165,9 @@ class BaseScraper(QObject):
         for case_id in case_ids:
             self.req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.CASE_URL}{case_id}&docinfo=0", priority=Priority.CASE.value
+                    f"{self.CASE_URL}{case_id}&docinfo=0",
+                    priority=Priority.CASE.value,
+                    callback=self.parse_case,
                 )
             )
 
@@ -197,15 +187,16 @@ class BaseScraper(QObject):
                 method="POST",
                 params=self.search_payload,
                 priority=Priority.CASE_LIST.value,
+                callback=self.parse_case_list,
             )
         )
 
-    def parse_case(self, url, response_content, cookie):
+    def parse_case(self, request, response):
         if not self.running:
             return
 
-        if not response_content:
-            self.logger.error(f"Received empty response from {url}.")
+        if not response.content:
+            self.logger.error(f"Received empty response from {request.url}.")
             self.enqueue_extra_case()
             self.failed_cases += 1
             return
@@ -215,7 +206,7 @@ class BaseScraper(QObject):
             self.complete()
             return
 
-        case_xml = BeautifulSoup(response_content, "xml")
+        case_xml = BeautifulSoup(response.content, "xml")
 
         case_id = case_xml.find("CaseForm").get("caseID")
         summary = case_xml.find("Summary").text
@@ -455,7 +446,9 @@ class BaseScraper(QObject):
             event_data.update(calcs)
 
             self.total_events += 1
-            self.event_parsed.emit(event_data, response_content, cookie)
+            self.event_parsed.emit(
+                event_data, response.content, response.headers.get("Set-Cookie", "")
+            )
 
         if failed_events >= len(key_events):
             self.logger.warning(

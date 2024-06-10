@@ -16,7 +16,8 @@ class RequestQueueItem:
         params: dict = {},
         headers: dict = {},
         priority=0,
-        extra_data={},
+        extra_data={},  # Additional data used to identify the request (not sent with the request)
+        callback=None,
     ):
         self.url = url
         self.params = params
@@ -24,6 +25,7 @@ class RequestQueueItem:
         self.headers = headers
         self.priority = priority
         self.extra_data = extra_data
+        self.callback = callback
 
     def __str__(self):
         return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
@@ -51,7 +53,7 @@ class Singleton(type(QObject), type):
 class RequestHandler(QObject, metaclass=Singleton):
     started = pyqtSignal()
     stopped = pyqtSignal()
-    response_received = pyqtSignal(int, str, bytes, str, dict)
+    response_received = pyqtSignal(RequestQueueItem, requests.Response)
     DEFAULT_MIN_RATE_LIMIT = 0.75
     DEFAULT_MAX_RATE_LIMIT = 2.50
     ABS_MIN_RATE_LIMIT = 0.2
@@ -216,10 +218,4 @@ class RequestHandler(QObject, metaclass=Singleton):
                 )
                 return
         if response is not None and self.running:
-            self.response_received.emit(
-                request.priority,
-                request.url,
-                response.content,
-                response.headers.get("Set-Cookie", ""),
-                request.extra_data,
-            )
+            self.response_received.emit(request, response)
