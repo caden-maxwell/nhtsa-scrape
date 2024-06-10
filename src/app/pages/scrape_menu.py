@@ -35,11 +35,13 @@ class ScrapeMenu(QWidget):
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
 
-        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models_nass)
-        self.ui.makeCombo_2.currentTextChanged.connect(self.fetch_models_ciss)
-        self.complete_timer = QTimer()
+        self.ui.makeCombo.activated.connect(self.fetch_models_nass)
+        self.ui.makeCombo_2.activated.connect(self.fetch_models_ciss)
+        self.ui.nassCheckbox.stateChanged.connect(self.enable_submit)
+        self.ui.cissCheckbox.stateChanged.connect(self.enable_submit)
 
         self.data_viewer = None
+        self.complete_timer = QTimer()
 
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
@@ -82,58 +84,78 @@ class ScrapeMenu(QWidget):
                 (option.text, option.get("value")) for option in options
             ]
 
-        # Block signals temporarily to prevent unnessesary calls to handle_make_change while populating make dropdown
-        self.ui.makeCombo.currentTextChanged.disconnect(self.fetch_models_nass)
+        # Populate dropdowns
         self.ui.makeCombo.clear()
         for data in dropdown_data["ddlMake"]:
             self.ui.makeCombo.addItem(*data)
-        self.ui.makeCombo.setCurrentIndex(0)
-        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models_nass)
 
-        # Populate remaining dropdowns
-        self.ui.modelCombo.blockSignals(True)
-        self.ui.modelCombo.clear()
-        self.ui.modelCombo.blockSignals(False)
-        for data in dropdown_data["ddlModel"]:
-            self.ui.modelCombo.addItem(*data)
-
-        self.ui.startYearCombo.blockSignals(True)
         self.ui.startYearCombo.clear()
-        self.ui.startYearCombo.blockSignals(False)
         for data in dropdown_data["ddlStartModelYear"]:
             self.ui.startYearCombo.addItem(*data)
 
-        self.ui.endYearCombo.blockSignals(True)
         self.ui.endYearCombo.clear()
-        self.ui.endYearCombo.blockSignals(False)
         for data in dropdown_data["ddlEndModelYear"]:
             self.ui.endYearCombo.addItem(*data)
 
-        self.ui.pDmgCombo.blockSignals(True)
         self.ui.pDmgCombo.clear()
-        self.ui.pDmgCombo.blockSignals(False)
         for data in dropdown_data["ddlPrimaryDamage"]:
             self.ui.pDmgCombo.addItem(*data)
 
-        self.ui.sDmgCombo.blockSignals(True)
         self.ui.sDmgCombo.clear()
-        self.ui.sDmgCombo.blockSignals(False)
         for data in dropdown_data["lSecondaryDamage"]:
             self.ui.sDmgCombo.addItem(*data)
 
-        self.ui.submitBtn.setEnabled(True)
-        self.logger.info("Search fields populated.")
+        self.logger.info("NASS search fields populated.")
+        self.ui.nassCheckbox.setEnabled(True)
 
     def update_ciss_dropdowns(self, request: RequestQueueItem, response: Response):
-        self.logger.info("CISS dropdowns not implemented yet.")
-        pass
+        soup = BeautifulSoup(response.content, "html.parser")
+        options = soup.find("div", id="panel-options")
+        dropdowns = options.select("select")
 
-    def fetch_models_nass(self, make):
+        dropdown_data = {}
+        for dropdown in dropdowns:
+            options = dropdown.find_all("option")
+            dropdown_data[dropdown["name"]] = [
+                (option.text, option.get("value")) for option in options
+            ]
+
+        self.ui.makeCombo_2.clear()
+        self.ui.startYearCombo_2.addItem("All", -1)
+        for data in dropdown_data["vPICVehicleMakes"]:
+            self.ui.makeCombo_2.addItem(*data)
+
+        self.ui.startYearCombo_2.clear()
+        self.ui.startYearCombo_2.addItem("All", -1)
+        for data in dropdown_data["VehicleModelYears"]:
+            self.ui.startYearCombo_2.addItem(*data)
+
+        self.ui.endYearCombo_2.clear()
+        self.ui.endYearCombo_2.addItem("All", -1)
+        for data in dropdown_data["VehicleModelYears"]:
+            self.ui.endYearCombo_2.addItem(*data)
+
+        self.ui.pDmgCombo_2.clear()
+        for data in dropdown_data["VehicleDamageImpactPlane"]:
+            self.ui.pDmgCombo_2.addItem(*data)
+
+        self.ui.sDmgCombo_2.clear()
+        for data in dropdown_data["VehicleDamageImpactSubSection"]:
+            self.ui.sDmgCombo_2.addItem(*data)
+
+        self.logger.info("CISS search fields populated.")
+        self.ui.cissCheckbox.setEnabled(True)
+
+    def enable_submit(self):
+        """Enables the submit button if at least one database is selected."""
+        self.ui.submitBtn.setEnabled(self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
+
+    def fetch_models_nass(self, idx):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"database": "NASS"}
         request = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/",
-            params={"make": make},
+            params={"make": self.ui.makeCombo.currentText()},
             priority=Priority.MODEL_COMBO.value,
             extra_data=extra_data,
             callback=self.update_model_dropdown_nass,
@@ -141,12 +163,12 @@ class ScrapeMenu(QWidget):
         self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
         self.req_handler.enqueue_request(request)
 
-    def fetch_models_ciss(self, make):
+    def fetch_models_ciss(self, idx):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"database": "CISS"}
         request = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/SCI/GetvPICVehicleModelbyMake/",
-            params={"MakeIds": make},
+            params={"MakeIds": self.ui.makeCombo_2.currentData()},
             priority=Priority.MODEL_COMBO.value,
             extra_data=extra_data,
             callback=self.update_model_dropdown_ciss,
@@ -165,18 +187,28 @@ class ScrapeMenu(QWidget):
         models.sort()
 
         # Populate model dropdown
-        self.ui.modelCombo.blockSignals(True)
         self.ui.modelCombo.clear()
-        self.ui.modelCombo.blockSignals(False)
         self.ui.modelCombo.addItem("All", -1)
         for model in models:
             self.ui.modelCombo.addItem(*model)
-        self.logger.info("Updated model dropdown.")
+        self.logger.info("Updated NASS model dropdown.")
 
     def update_model_dropdown_ciss(self, request: RequestQueueItem, response: Response):
         """Populates the CISS model dropdown vehicle models from the response."""
-        self.logger.info("CISS model dropdown not implemented yet.")
-        pass
+
+        # Parse response
+        model_dcts = json.loads(response.content)
+        models = []
+        for model in model_dcts:
+            models.append((model["Value"], model["Key"]))
+        models.sort()
+
+        # Populate model dropdown
+        self.ui.modelCombo_2.clear()
+        self.ui.modelCombo_2.addItem("All", -1)
+        for model in models:
+            self.ui.modelCombo_2.addItem(*model)
+        self.logger.info("Updated CISS model dropdown.")
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
