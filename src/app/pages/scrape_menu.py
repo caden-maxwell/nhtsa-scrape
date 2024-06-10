@@ -2,13 +2,14 @@ import json
 import logging
 from datetime import datetime
 from bs4 import BeautifulSoup
+from requests import Response
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.models import DatabaseHandler
 from app.pages import DataView
-from app.scrape import RequestHandler, NassScraper, RequestQueueItem, Priority
+from app.scrape import RequestHandler, ScraperNASS, RequestQueueItem, Priority
 from app.ui import Ui_ScrapeMenu
 
 
@@ -24,7 +25,7 @@ class ScrapeMenu(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.profile_id = -1
-        self.nass_scraper = None
+        self.scraper = None
         self.engine_thread = None
         self.db_handler = db_handler
 
@@ -34,34 +35,45 @@ class ScrapeMenu(QWidget):
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
 
-        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
+        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models_nass)
+        self.ui.makeCombo_2.currentTextChanged.connect(self.fetch_models_ciss)
         self.complete_timer = QTimer()
 
         self.data_viewer = None
 
     def fetch_search(self):
-        """Fetches the NASS/CDS search website and calls parse_retrieved once there is a response."""
-        if not self.req_handler.contains(
-            priority=Priority.ALL_COMBOS.value
-        ):  # We only ever need one of these requests at a time
-            request = RequestQueueItem(
-                "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
-                priority=Priority.ALL_COMBOS.value,
-            )
-            self.req_handler.enqueue_request(request)
+        """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
+        request_NASS = RequestQueueItem(
+            "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
+            priority=Priority.ALL_COMBOS.value,
+            extra_data={"database": "NASS"},
+            callback=self.update_nass_dropdowns,
+        )
+        self.req_handler.enqueue_request(request_NASS)
 
-    @pyqtSlot(int, str, bytes, str, dict)
-    def handle_response(self, priority, url, response_content, cookie, extra_data):
-        if priority == Priority.ALL_COMBOS.value:
-            self.update_all_dropdowns(response_content)
-        elif priority == Priority.MODEL_COMBO.value:
-            self.update_model_dropdown(response_content)
+        request_CISS = RequestQueueItem(
+            "https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter",
+            priority=Priority.ALL_COMBOS.value,
+            extra_data={"database": "CISS"},
+            callback=self.update_ciss_dropdowns,
+        )
+        self.req_handler.enqueue_request(request_CISS)
 
-    def update_all_dropdowns(self, response_content):
-        """Parses the response from the NASS/CDS search website and populates the search fields."""
+    @pyqtSlot(RequestQueueItem, Response)
+    def handle_response(self, request: RequestQueueItem, response: Response):
+        if (
+            request.priority == Priority.ALL_COMBOS.value
+            or request.priority == Priority.MODEL_COMBO.value
+        ):
+            request.callback(request, response)
+
+    def update_nass_dropdowns(
+        self, request: RequestQueueItem, response: Response
+    ):
+        """Parses the response from the NASS search site and populates the search fields."""
 
         # Parse response
-        soup = BeautifulSoup(response_content, "html.parser")
+        soup = BeautifulSoup(response.content, "html.parser")
         table = soup.find("table", id="searchTable")
         dropdowns = table.select("select")
 
@@ -73,11 +85,12 @@ class ScrapeMenu(QWidget):
             ]
 
         # Block signals temporarily to prevent unnessesary calls to handle_make_change while populating make dropdown
-        self.ui.makeCombo.currentTextChanged.disconnect(self.fetch_models)
+        self.ui.makeCombo.currentTextChanged.disconnect(self.fetch_models_nass)
         self.ui.makeCombo.clear()
         for data in dropdown_data["ddlMake"]:
             self.ui.makeCombo.addItem(*data)
-        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models)
+        self.ui.makeCombo.setCurrentIndex(0)
+        self.ui.makeCombo.currentTextChanged.connect(self.fetch_models_nass)
 
         # Populate remaining dropdowns
         self.ui.modelCombo.blockSignals(True)
@@ -113,22 +126,45 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setEnabled(True)
         self.logger.info("Search fields populated.")
 
-    def fetch_models(self, make):
+    def update_ciss_dropdowns(
+        self, request: RequestQueueItem, response: Response
+    ):
+        self.logger.info("CISS dropdowns not implemented yet.")
+        pass
+
+    def fetch_models_nass(self, make):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
+        extra_data = {"database": "NASS"}
         request = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/",
-            method="POST",
             params={"make": make},
             priority=Priority.MODEL_COMBO.value,
+            extra_data=extra_data,
+            callback=self.update_model_dropdown_nass,
         )
-        self.req_handler.clear_queue(Priority.MODEL_COMBO.value)
+        self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
         self.req_handler.enqueue_request(request)
 
-    def update_model_dropdown(self, response_content):
+    def fetch_models_ciss(self, make):
+        """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
+        extra_data = {"database": "CISS"}
+        request = RequestQueueItem(
+            "https://crashviewer.nhtsa.dot.gov/SCI/GetvPICVehicleModelbyMake/",
+            params={"MakeIds": make},
+            priority=Priority.MODEL_COMBO.value,
+            extra_data=extra_data,
+            callback=self.update_model_dropdown_ciss,
+        )
+        self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
+        self.req_handler.enqueue_request(request)
+
+    def update_model_dropdown_nass(
+        self, request: RequestQueueItem, response: Response
+    ):
         """Populates the model dropdown with models from the response."""
 
         # Parse response
-        model_dcts = json.loads(response_content)
+        model_dcts = json.loads(response.content)
         models = []
         for model in model_dcts:
             models.append((model["Value"], model["Key"]))
@@ -143,11 +179,18 @@ class ScrapeMenu(QWidget):
             self.ui.modelCombo.addItem(*model)
         self.logger.info("Updated model dropdown.")
 
+    def update_model_dropdown_ciss(
+        self, request: RequestQueueItem, response: Response
+    ):
+        """Populates the CISS model dropdown vehicle models from the response."""
+        self.logger.info("CISS model dropdown not implemented yet.")
+        pass
+
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
-        if self.nass_scraper and self.nass_scraper.running:
+        if self.scraper and self.scraper.running:
             self.logger.warning(
                 "Scrape engine is already running. Ignoring submission."
             )
@@ -195,7 +238,7 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        self.nass_scraper = NassScraper(
+        self.scraper = ScraperNASS(
             {
                 "ddlMake": self.ui.makeCombo.currentData(),
                 "ddlModel": self.ui.modelCombo.currentData(),
@@ -205,19 +248,18 @@ class ScrapeMenu(QWidget):
                 "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
                 "tDeltaVFrom": self.ui.dvMinSpin.value(),
                 "tDeltaVTo": self.ui.dvMaxSpin.value(),
-            },
-            100000,
+            }
         )
 
-        self.nass_scraper.completed.connect(self.handle_scrape_complete)
-        self.nass_scraper.event_parsed.connect(self.add_event)
+        self.scraper.completed.connect(self.handle_scrape_complete)
+        self.scraper.event_parsed.connect(self.add_event)
 
         self.engine_thread = QThread()
-        self.nass_scraper.moveToThread(self.engine_thread)
-        self.engine_thread.started.connect(self.nass_scraper.start)
+        self.scraper.moveToThread(self.engine_thread)
+        self.engine_thread.started.connect(self.scraper.start)
         self.engine_thread.start()
 
-        self.complete_timer.timeout.connect(self.nass_scraper.check_complete)
+        self.complete_timer.timeout.connect(self.scraper.check_complete)
         self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
 
     @pyqtSlot(dict, bytes, str)
@@ -225,8 +267,8 @@ class ScrapeMenu(QWidget):
         if not self.db_handler.get_profile(self.profile_id):
             if self.data_viewer:
                 self.data_viewer.close()
-            if self.nass_scraper:
-                self.nass_scraper.complete()
+            if self.scraper:
+                self.scraper.complete()
                 self.logger.error("Scrape aborted: No profile to add data to.")
             return
         self.db_handler.add_event(event, self.profile_id)
@@ -240,12 +282,12 @@ class ScrapeMenu(QWidget):
         self.profile_id = -1
         self.complete_timer.stop()
 
-        self.nass_scraper = None
+        self.scraper = None
         self.engine_thread.quit()
         self.engine_thread.wait()
 
         dialog = QMessageBox()
-        dialog.setText("Scrape complete.")
+        dialog.setText("Scrape complete. :)")
         dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
         dialog.setDefaultButton(QMessageBox.StandardButton.Ok)
         dialog.setIcon(QMessageBox.Icon.Information)
@@ -260,5 +302,5 @@ class ScrapeMenu(QWidget):
 
     def cleanup(self):
         self.complete_timer.stop()
-        if self.nass_scraper and self.nass_scraper.running:
-            self.nass_scraper.complete()
+        if self.scraper and self.scraper.running:
+            self.scraper.complete()

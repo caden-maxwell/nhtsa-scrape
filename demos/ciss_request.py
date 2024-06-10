@@ -1,6 +1,6 @@
 import requests
 
-url = "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId=6028"
+url = "https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter"
 
 response = requests.get(url)
 print(response.text)
