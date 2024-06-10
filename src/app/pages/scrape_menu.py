@@ -89,6 +89,8 @@ class ScrapeMenu(QWidget):
         for data in dropdown_data["ddlMake"]:
             self.ui.makeCombo.addItem(*data)
 
+        self.fetch_models_nass(0)
+
         self.ui.startYearCombo.clear()
         for data in dropdown_data["ddlStartModelYear"]:
             self.ui.startYearCombo.addItem(*data)
@@ -120,10 +122,13 @@ class ScrapeMenu(QWidget):
                 (option.text, option.get("value")) for option in options
             ]
 
+        # Populate dropdowns
         self.ui.makeCombo_2.clear()
         self.ui.startYearCombo_2.addItem("All", -1)
         for data in dropdown_data["vPICVehicleMakes"]:
             self.ui.makeCombo_2.addItem(*data)
+
+        self.fetch_models_ciss(0)
 
         self.ui.startYearCombo_2.clear()
         self.ui.startYearCombo_2.addItem("All", -1)

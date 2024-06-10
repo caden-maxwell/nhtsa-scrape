@@ -38,6 +38,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="nassCheckbox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>NASS</string>
        </property>
@@ -45,6 +48,9 @@
      </item>
      <item>
       <widget class="QCheckBox" name="cissCheckbox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>CISS</string>
        </property>
