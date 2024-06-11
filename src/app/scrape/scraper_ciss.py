@@ -1,4 +1,7 @@
-from app.scrape import BaseScraper
+import textwrap
+from time import time
+
+from app.scrape import BaseScraper, RequestQueueItem, Priority
 from app.resources import payload_CISS
 
 
@@ -11,3 +14,32 @@ class ScraperCISS(BaseScraper):
 
         self.search_payload = payload_CISS
         self.search_payload.update(search_params)
+
+    def _scrape(self):
+        self.start_time = time()
+        self.logger.debug(
+            textwrap.dedent(
+                f"""Scrape engine started with these params:
+                {{
+                    Make: {self.search_payload['ddlMake']},
+                    Model: {self.search_payload['ddlModel']},
+                    Model Start Year: {self.search_payload['ddlStartModelYear']},
+                    Model End Year: {self.search_payload['ddlEndModelYear']},
+                    Min Delta V: {self.search_payload['tDeltaVFrom']},
+                    Max Delta V: {self.search_payload['tDeltaVTo']},
+                    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
+                    Secondary Damage: {self.search_payload['lSecondaryDamage']},
+                }}"""
+            )
+        )
+        request = RequestQueueItem(
+            self.CASE_LIST_URL,
+            method="GET",
+            params=self.search_payload,
+            priority=Priority.CASE_LIST.value,
+            callback=self.__parse_case_list,
+        )
+        self.req_handler.enqueue_request(request)
+
+    def __parse_case_list(self):
+        raise NotImplementedError
