@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
 from PyQt6.QtCore import QThread
+from PyQt6.QtGui import QCloseEvent
 
 from app.log_utils import QtLogHandler, ColorFormatter
 from app.pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
@@ -73,7 +74,7 @@ class MainWindow(QWidget):
     def switch_page(self, page):
         self.ui.stackedWidget.setCurrentWidget(page)
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent):
         """Safely close all threads/processes"""
 
         reply = QMessageBox.question(

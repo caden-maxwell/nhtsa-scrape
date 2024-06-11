@@ -124,19 +124,16 @@ class ScrapeMenu(QWidget):
 
         # Populate dropdowns
         self.ui.makeCombo_2.clear()
-        self.ui.startYearCombo_2.addItem("All", -1)
         for data in dropdown_data["vPICVehicleMakes"]:
             self.ui.makeCombo_2.addItem(*data)
 
         self.fetch_models_ciss(0)
 
         self.ui.startYearCombo_2.clear()
-        self.ui.startYearCombo_2.addItem("All", -1)
         for data in dropdown_data["VehicleModelYears"]:
             self.ui.startYearCombo_2.addItem(*data)
 
         self.ui.endYearCombo_2.clear()
-        self.ui.endYearCombo_2.addItem("All", -1)
         for data in dropdown_data["VehicleModelYears"]:
             self.ui.endYearCombo_2.addItem(*data)
 
@@ -153,8 +150,11 @@ class ScrapeMenu(QWidget):
 
     def enable_submit(self):
         """Enables the submit button if at least one database is selected, but not if the scraper is already running."""
-        self.ui.submitBtn.setEnabled(self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
-        self.ui.submitBtn.setEnabled(not (self.scraper and self.scraper.running))
+        self.ui.submitBtn.setEnabled(
+            self.ui.nassCheckbox.isChecked()
+            or self.ui.cissCheckbox.isChecked()
+            and not (self.scraper and self.scraper.running)
+        )
 
     def fetch_models_nass(self, idx):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
@@ -211,7 +211,6 @@ class ScrapeMenu(QWidget):
 
         # Populate model dropdown
         self.ui.modelCombo_2.clear()
-        self.ui.modelCombo_2.addItem("All", -1)
         for model in models:
             self.ui.modelCombo_2.addItem(*model)
         self.logger.info("Updated CISS model dropdown.")

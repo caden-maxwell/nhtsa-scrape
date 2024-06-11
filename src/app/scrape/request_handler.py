@@ -75,7 +75,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def start(self):
         self.running = True
         self.started.emit()
-        self.process_requests()
+        self.__process_requests()
 
     def stop(self):
         self.stopped.emit()
@@ -145,7 +145,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def update_max_rate_limit(self, value):
         self.max_rate_limit = value
 
-    def process_requests(self):
+    def __process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
                 if self.request_queue.empty():
@@ -171,13 +171,13 @@ class RequestHandler(QObject, metaclass=Singleton):
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
                 request = self.request_queue.get()
-                executor.submit(self.send_request, request)
+                executor.submit(self.__send_request, request)
 
                 start = time.time()
                 while time.time() - start < rand_time and self.running:
                     time.sleep(0.01)  # Avoid busy waiting
 
-    def send_request(self, request: RequestQueueItem):
+    def __send_request(self, request: RequestQueueItem):
         response = None
         self.ongoing_requests.append(request)
         try:
@@ -214,7 +214,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                 self.ongoing_requests.remove(request)
             else:
                 self.logger.debug(
-                    f"Ignoring response for {request}, already removed from ongoing requests."
+                    f"Ignoring response for {request}, removed from ongoing requests."
                 )
                 return
         if response is not None and self.running:
