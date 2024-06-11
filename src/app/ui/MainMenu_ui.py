@@ -43,6 +43,8 @@ class Ui_MainMenu(object):
         self.line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self.line.setObjectName("line")
         self.mainVLayout.addWidget(self.line)
+        spacerItem4 = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        self.mainVLayout.addItem(spacerItem4)
         self.scrapeBtn = QtWidgets.QPushButton(parent=self.frame)
         self.scrapeBtn.setObjectName("scrapeBtn")
         self.mainVLayout.addWidget(self.scrapeBtn)
