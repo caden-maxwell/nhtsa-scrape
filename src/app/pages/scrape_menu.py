@@ -41,7 +41,6 @@ class ScrapeMenu(QWidget):
         self.ui.cissCheckbox.stateChanged.connect(self.enable_submit)
 
         self.data_viewer = None
-        self.complete_timer = QTimer()
 
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
@@ -151,8 +150,7 @@ class ScrapeMenu(QWidget):
     def enable_submit(self):
         """Enables the submit button if at least one database is selected, but not if the scraper is already running."""
         self.ui.submitBtn.setEnabled(
-            self.ui.nassCheckbox.isChecked()
-            or self.ui.cissCheckbox.isChecked()
+            (self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
             and not (self.scraper and self.scraper.running)
         )
 
@@ -253,7 +251,7 @@ class ScrapeMenu(QWidget):
             "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
             "min_dv": self.ui.dvMinSpin.value(),
             "max_dv": self.ui.dvMaxSpin.value(),
-            "max_cases": 100000,
+            "max_cases": 999999,
             "created": int(now.timestamp()),
             "modified": int(now.timestamp()),
         }
@@ -288,9 +286,6 @@ class ScrapeMenu(QWidget):
         self.engine_thread.started.connect(self.scraper.start)
         self.engine_thread.start()
 
-        self.complete_timer.timeout.connect(self.scraper.check_complete)
-        self.complete_timer.start(500)  # Check if scrape is complete every 0.5s
-
     @pyqtSlot(dict, Response)
     def add_event(self, event, response):
         if not self.db_handler.get_profile(self.profile_id):
@@ -307,7 +302,6 @@ class ScrapeMenu(QWidget):
 
     def handle_scrape_complete(self):
         self.profile_id = -1
-        self.complete_timer.stop()
 
         self.scraper = None
         self.engine_thread.quit()
@@ -324,10 +318,6 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setEnabled(True)
         self.ui.submitBtn.setText("Scrape")
 
-    def toggle_max_cases(self, checked):
-        self.ui.casesSpin.setEnabled(not checked)
-
     def cleanup(self):
-        self.complete_timer.stop()
         if self.scraper and self.scraper.running:
             self.scraper.complete()
