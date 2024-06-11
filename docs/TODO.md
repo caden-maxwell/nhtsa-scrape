@@ -26,3 +26,4 @@
         - Stopping scraping altogether, and optionally implementing a "Resume scrape" or "Re-scrape" functionality on the data viewer page.
 - Fix empty fields in the data viewer summary tab
 - Include link for each case
+- Add proper app icon
