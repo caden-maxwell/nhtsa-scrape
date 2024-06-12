@@ -44,17 +44,8 @@ class BaseScraper(QObject):
             request.priority == Priority.CASE_LIST.value
             or request.priority == Priority.CASE.value
         ):
+            print("Response handled by", self.__class__.__name__, "with Callback", request.callback)
             request.callback(request, response)
-
-    def _check_complete(self):
-        if (
-            not (
-                self.req_handler.contains(Priority.CASE.value)
-                or self.req_handler.contains(Priority.CASE_LIST.value)
-            )
-            and self.running
-        ):
-            self.complete()
 
     def complete(self):
         # Order matters here, otherwise the request handler will start making

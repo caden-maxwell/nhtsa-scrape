@@ -1,5 +1,8 @@
 import textwrap
 from time import time
+from requests import Response
+
+from PyQt6.QtCore import QThread
 
 from app.scrape import BaseScraper, RequestQueueItem, Priority
 from app.resources import payload_CISS
@@ -10,7 +13,7 @@ class ScraperCISS(BaseScraper):
     CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/CISS"
 
     def __init__(self, search_params):
-        super().__init__(search_params)
+        super().__init__()
 
         self.search_payload = payload_CISS
         self.search_payload.update(search_params)
@@ -19,7 +22,7 @@ class ScraperCISS(BaseScraper):
         self.start_time = time()
         self.logger.debug(
             textwrap.dedent(
-                f"""Scrape engine started with these params:
+                f"""CISS Scrape Engine started with these params:
                 {{
                     Make: {self.search_payload['ddlMake']},
                     Model: {self.search_payload['ddlModel']},
@@ -37,9 +40,11 @@ class ScraperCISS(BaseScraper):
             method="GET",
             params=self.search_payload,
             priority=Priority.CASE_LIST.value,
-            callback=self.__parse_case_list,
+            callback=self._parse_case_list,
         )
+        print("Sent request to CISS")
         self.req_handler.enqueue_request(request)
 
-    def __parse_case_list(self):
-        raise NotImplementedError
+    def _parse_case_list(self, request: RequestQueueItem, response: Response):
+        print("CISS Scraper not yet implemented.")
+        self.complete()

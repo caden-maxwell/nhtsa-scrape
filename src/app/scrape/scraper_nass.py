@@ -4,6 +4,8 @@ from bs4 import BeautifulSoup
 import numpy as np
 from requests import Response
 
+from PyQt6.QtCore import QThread
+
 from app.scrape import RequestQueueItem, BaseScraper, Priority
 from app.resources import payload_NASS
 
@@ -22,7 +24,7 @@ class ScraperNASS(BaseScraper):
         self.start_time = time()
         self.logger.debug(
             textwrap.dedent(
-                f"""Scrape engine started with these params:
+                f"""NASS Scrape Engine started with these params:
                 {{
                     Make: {self.search_payload['ddlMake']},
                     Model: {self.search_payload['ddlModel']},
@@ -40,11 +42,13 @@ class ScraperNASS(BaseScraper):
             method="GET",
             params=self.search_payload,
             priority=Priority.CASE_LIST.value,
-            callback=self.__parse_case_list,
+            callback=self._parse_case_list,
         )
+        print("Sent request to NASS")
+        print("NASS SCRAPER THREAD:", int(QThread.currentThreadId()))
         self.req_handler.enqueue_request(request)
 
-    def __parse_case_list(self, request: RequestQueueItem, response: Response):
+    def _parse_case_list(self, request: RequestQueueItem, response: Response):
         if not self.running:
             return
 
@@ -94,7 +98,7 @@ class ScraperNASS(BaseScraper):
                 method="POST",
                 params=self.search_payload,
                 priority=Priority.CASE_LIST.value,
-                callback=self.__parse_case_list,
+                callback=self._parse_case_list,
             )
         )
 
@@ -323,7 +327,7 @@ class ScraperNASS(BaseScraper):
 
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
 
-            # Restitution Calculation
+            # Restitution Calculation...?
             e = 0.5992 * np.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )

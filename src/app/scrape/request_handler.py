@@ -67,7 +67,7 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.running = False
         self.rate_limit = 2.5
         self.ongoing_requests = []
-        self.timeout = 4
+        self.timeout = 5
 
         self.min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
         self.max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
@@ -218,4 +218,5 @@ class RequestHandler(QObject, metaclass=Singleton):
                 )
                 return
         if response is not None and self.running:
+            print(f"Response received for {request.url}")
             self.response_received.emit(request, response)
