@@ -4,12 +4,19 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 from requests import Response
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread, QTimer
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
 from PyQt6.QtWidgets import QWidget, QMessageBox
 
 from app.models import DatabaseHandler
 from app.pages import DataView
-from app.scrape import RequestHandler, ScraperNASS, RequestQueueItem, Priority
+from app.scrape import (
+    RequestHandler,
+    BaseScraper,
+    ScraperNASS,
+    ScraperCISS,
+    RequestQueueItem,
+    Priority,
+)
 from app.ui import Ui_ScrapeMenu
 
 
@@ -25,7 +32,7 @@ class ScrapeMenu(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.profile_id = -1
-        self.scraper = None
+        self.scrapers: list[BaseScraper] = []
         self.engine_thread = None
         self.db_handler = db_handler
 
@@ -148,10 +155,10 @@ class ScrapeMenu(QWidget):
         self.ui.cissCheckbox.setEnabled(True)
 
     def enable_submit(self):
-        """Enables the submit button if at least one database is selected, but not if the scraper is already running."""
+        """Enables the submit button if at least one database is selected, but not if a scraper is already running."""
         self.ui.submitBtn.setEnabled(
             (self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
-            and not (self.scraper and self.scraper.running)
+            and not (self.scrapers and self.current_scraper.running)
         )
 
     def fetch_models_nass(self, idx):
@@ -217,7 +224,7 @@ class ScrapeMenu(QWidget):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
-        if self.scraper and self.scraper.running:
+        if self.__get_current_scraper():
             self.logger.warning(
                 "Scrape engine is already running. Ignoring submission."
             )
@@ -265,34 +272,67 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        self.scraper = ScraperNASS(
-            {
-                "ddlMake": self.ui.makeCombo.currentData(),
-                "ddlModel": self.ui.modelCombo.currentData(),
-                "ddlStartModelYear": self.ui.startYearCombo.currentData(),
-                "ddlEndModelYear": self.ui.endYearCombo.currentData(),
-                "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
-                "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
-                "tDeltaVFrom": self.ui.dvMinSpin.value(),
-                "tDeltaVTo": self.ui.dvMaxSpin.value(),
-            }
-        )
+        params = {
+            "ddlMake": self.ui.makeCombo.currentData(),
+            "ddlModel": self.ui.modelCombo.currentData(),
+            "ddlStartModelYear": self.ui.startYearCombo.currentData(),
+            "ddlEndModelYear": self.ui.endYearCombo.currentData(),
+            "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
+            "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
+            "tDeltaVFrom": self.ui.dvMinSpin.value(),
+            "tDeltaVTo": self.ui.dvMaxSpin.value(),
+        }
 
-        self.scraper.completed.connect(self.handle_scrape_complete)
-        self.scraper.event_parsed.connect(self.add_event)
+        self.scrapers = []
+        self.scrapers.append(
+            ScraperCISS(params) if self.ui.cissCheckbox.isChecked() else None
+        )
+        self.scrapers.append(
+            ScraperNASS(params) if self.ui.nassCheckbox.isChecked() else None
+        )
+        self.scrapers = [
+            scraper for scraper in self.scrapers if scraper
+        ]  # Remove None values
+        if not self.scrapers:
+            self.logger.error("Scrape aborted: No databases selected.")
+            return
+
+        prev_scraper: BaseScraper = None
+        for scraper in self.scrapers:
+            print("Connecting", scraper.__class__.__name__)
+            scraper.event_parsed.connect(self.add_event)
+            if prev_scraper:
+                print("Connecting", prev_scraper.__class__.__name__, "completed to", scraper.__class__.__name__, "start")
+                prev_scraper.completed.connect(scraper.start)
+            prev_scraper = scraper
+
+        print("Connecting", self.scrapers[-1].__class__.__name__, "completed to handle_scrape_complete")
+        self.scrapers[-1].completed.connect(self.handle_scrape_complete)
 
         self.engine_thread = QThread()
-        self.scraper.moveToThread(self.engine_thread)
-        self.engine_thread.started.connect(self.scraper.start)
+        for scraper in self.scrapers:
+            scraper.moveToThread(self.engine_thread)
+        self.engine_thread.started.connect(self.scrapers[0].start)
         self.engine_thread.start()
+
+    def __get_current_scraper(self) -> BaseScraper | None:
+        """Returns the running scraper if there is one, otherwise None."""
+        for scraper in self.scrapers:
+            if scraper.running:
+                return scraper
+        return None
 
     @pyqtSlot(dict, Response)
     def add_event(self, event, response):
         if not self.db_handler.get_profile(self.profile_id):
             if self.data_viewer:
                 self.data_viewer.close()
-            if self.scraper:
-                self.scraper.complete()
+
+            current_scraper = self.__get_current_scraper()
+            if current_scraper: # Remove connection to the next scraper's start signal and complete scrape
+                current_scraper.completed.disconnect()
+                current_scraper.completed.connect(self.handle_scrape_complete)
+                current_scraper.complete()
                 self.logger.error("Scrape aborted: No profile to add data to.")
             return
         self.db_handler.add_event(event, self.profile_id)
@@ -303,7 +343,7 @@ class ScrapeMenu(QWidget):
     def handle_scrape_complete(self):
         self.profile_id = -1
 
-        self.scraper = None
+        self.scrapers = []
         self.engine_thread.quit()
         self.engine_thread.wait()
 
@@ -319,5 +359,10 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setText("Scrape")
 
     def cleanup(self):
-        if self.scraper and self.scraper.running:
-            self.scraper.complete()
+        current_scraper = self.__get_current_scraper()
+        if current_scraper:
+            self.logger.warning("Scrape engine is still running. Aborting.")
+            current_scraper.completed.disconnect()
+            current_scraper.completed.connect(self.handle_scrape_complete)
+            current_scraper.complete()
+            return
