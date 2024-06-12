@@ -5,7 +5,7 @@
 # To-Do
 
 - Get CISS database working
-    - Connect dropdown params to scrapers, using info from checkboxes (NASS, CISS, or NASS+CISS)
+    - Refactor request handler to be non-blocking on qt signals
     - Get the CISS params so that we can choose an "All" option, as this functionality is not provided in the original CISS crashviewer site.
     - Figure out a data-driven way to keep track of what params a scrape was performed with. This way, the scrape menu doesn't have to worry about exactly what the payload needs to look like. The scrape engine itself (whether it be NASS or CISS) will convert the scrape params into a payload. With this, we will also be able to save the params to be used later, for example, if we need to resume a scrape or rescrape a profile altogether.
     - Fix issue to do with multiplied handled responses. If response has been handled already, don't handle it again (both NASS and CISS are handling each response via BaseScraper)
@@ -17,10 +17,6 @@
     - Could be fixed by:
         - Autoselect first case in list if nothing is selected
         - Block buttons until case is selected
-- Fix dark/light themes in compiled app not working -- only the light theme is ever applied
-    - Could be fixed by:
-        - Nuitka instead of Pyinstaller?
-        - Create custom stylesheet and change via settings
 - Fix "Scraping..." issue when exited out of data viewer before scrape is finished
     - Scraping still continues and cases are saved, but the data viewer is not updated accordingly upon being opened again.
     - Could be fixed by:
@@ -28,4 +24,4 @@
 - Fix empty fields in the data viewer summary tab
 - Include link for each case
 - Add proper app icon
-- Add request handler timeout setting
+- Add request handler timeout in settings

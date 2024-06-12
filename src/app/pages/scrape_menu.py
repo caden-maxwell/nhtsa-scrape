@@ -156,9 +156,10 @@ class ScrapeMenu(QWidget):
 
     def enable_submit(self):
         """Enables the submit button if at least one database is selected, but not if a scraper is already running."""
+        current_scraper = self.__get_current_scraper()
         self.ui.submitBtn.setEnabled(
             (self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
-            and not (self.scrapers and self.current_scraper.running)
+            and not (current_scraper and current_scraper.running)
         )
 
     def fetch_models_nass(self, idx):
@@ -302,11 +303,21 @@ class ScrapeMenu(QWidget):
             print("Connecting", scraper.__class__.__name__)
             scraper.event_parsed.connect(self.add_event)
             if prev_scraper:
-                print("Connecting", prev_scraper.__class__.__name__, "completed to", scraper.__class__.__name__, "start")
+                print(
+                    "Connecting",
+                    prev_scraper.__class__.__name__,
+                    "completed to",
+                    scraper.__class__.__name__,
+                    "start",
+                )
                 prev_scraper.completed.connect(scraper.start)
             prev_scraper = scraper
 
-        print("Connecting", self.scrapers[-1].__class__.__name__, "completed to handle_scrape_complete")
+        print(
+            "Connecting",
+            self.scrapers[-1].__class__.__name__,
+            "completed to handle_scrape_complete",
+        )
         self.scrapers[-1].completed.connect(self.handle_scrape_complete)
 
         self.engine_thread = QThread()
@@ -329,7 +340,9 @@ class ScrapeMenu(QWidget):
                 self.data_viewer.close()
 
             current_scraper = self.__get_current_scraper()
-            if current_scraper: # Remove connection to the next scraper's start signal and complete scrape
+            if (
+                current_scraper
+            ):  # Remove connection to the next scraper's start signal and complete scrape
                 current_scraper.completed.disconnect()
                 current_scraper.completed.connect(self.handle_scrape_complete)
                 current_scraper.complete()

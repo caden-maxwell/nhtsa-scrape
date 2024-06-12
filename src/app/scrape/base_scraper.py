@@ -19,7 +19,7 @@ class BaseScraper(QObject):
         super().__init__()
         self.logger = logging.getLogger(__name__)
         self.req_handler = RequestHandler()
-        self.req_handler.response_received.connect(self.__handle_response)
+        self.req_handler.response_received.connect(self._handle_response)
         self.search_payload = {}  # Define in child classes
 
         self.running = False
@@ -39,12 +39,17 @@ class BaseScraper(QObject):
         raise NotImplementedError
 
     @pyqtSlot(RequestQueueItem, Response)
-    def __handle_response(self, request: RequestQueueItem, response: Response):
+    def _handle_response(self, request: RequestQueueItem, response: Response):
         if (
             request.priority == Priority.CASE_LIST.value
             or request.priority == Priority.CASE.value
         ):
-            print("Response handled by", self.__class__.__name__, "with Callback", request.callback)
+            print(
+                "Response handled by",
+                self.__class__.__name__,
+                "with Callback",
+                request.callback,
+            )
             request.callback(request, response)
 
     def complete(self):

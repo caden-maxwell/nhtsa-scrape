@@ -1,5 +1,8 @@
 {
-    "minRateLimit": 0.45,
-    "maxRateLimit": 1.8,
-    "debug": true
+    "minRateLimit": 0.7,
+    "maxRateLimit": 0.8,
+    "timeout": 3.0,
+    "debug": true,
+    "rateLimit": 1.3,
+    "rateLimitVariance": 0.3
 }
