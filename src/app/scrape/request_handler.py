@@ -5,7 +5,8 @@ import random
 import requests
 import time
 
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 
 class RequestQueueItem:
@@ -30,10 +31,10 @@ class RequestQueueItem:
     def __str__(self):
         return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
 
-    def __lt__(self, other):
+    def __lt__(self, other: "RequestQueueItem"):
         return self.priority < other.priority
 
-    def __eq__(self, other):
+    def __eq__(self, other: "RequestQueueItem"):
         return self.priority == other.priority
 
 
@@ -54,9 +55,14 @@ class RequestHandler(QObject, metaclass=Singleton):
     started = pyqtSignal()
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
-    DEFAULT_MIN_RATE_LIMIT = 0.75
-    DEFAULT_MAX_RATE_LIMIT = 2.50
+
+    DEFAULT_MIN_RATE_LIMIT = 0.5  # Default rate limit in seconds
+    DEFAULT_MAX_RATE_LIMIT = 2.5  # How much the rate limit can vary as a percentage of the rate limit
+    DEFAULT_TIMEOUT = 5  # Default request timeout in seconds
+
     ABS_MIN_RATE_LIMIT = 0.2
+    MIN_TIMEOUT = 1
+
     _instance = None
 
     def __init__(self):
@@ -65,12 +71,11 @@ class RequestHandler(QObject, metaclass=Singleton):
 
         self.request_queue = queue.PriorityQueue()
         self.running = False
-        self.rate_limit = 2.5
         self.ongoing_requests = []
-        self.timeout = 5
 
         self.min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
-        self.max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
+        self.max_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
+        self.timeout = self.DEFAULT_TIMEOUT
 
     def start(self):
         self.running = True
@@ -131,51 +136,67 @@ class RequestHandler(QObject, metaclass=Singleton):
                 ongoing_requests.append(request)
         return ongoing_requests
 
-    def __priority_data_match(
-        self, request: RequestQueueItem, priority: int, match_data: dict
-    ):
+    def __priority_data_match(self, request: RequestQueueItem, priority: int, match_data: dict):
         """Return True if the request matches the given priority and match_data, but only if match_data is not empty."""
-        return request.priority == priority and (
-            request.extra_data == match_data or not match_data
+        return request.priority == priority and (request.extra_data == match_data or not match_data)
+
+    @pyqtSlot(float)
+    def update_min_rate_limit(self, min_rate_limit):
+        self.min_rate_limit = max(min_rate_limit, self.ABS_MIN_RATE_LIMIT)
+        self.logger.debug(
+            f"Successfully updated request handler min rate limit to {self.min_rate_limit}s."
         )
 
-    def update_min_rate_limit(self, value):
-        self.min_rate_limit = value
+    @pyqtSlot(float)
+    def update_max_rate_limit(self, max_rate_limit):
+        self.max_rate_limit = max(max_rate_limit, self.min_rate_limit)
+        self.logger.debug(
+            f"Successfully updated request handler max rate limits to {self.max_rate_limit}s."
+        )
 
-    def update_max_rate_limit(self, value):
-        self.max_rate_limit = value
+    @pyqtSlot(float)
+    def update_timeout(self, timeout):
+        self.timeout = max(timeout, self.MIN_TIMEOUT)
+        self.logger.debug(f"Successfully updated request handler timeout to {self.timeout}s")
 
     def __process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
                 if self.request_queue.empty():
+                    # Process pending qt events while waiting for new requests
+
+                    # TODO: refactor this function to use a QTimer instead of busy waiting and processEvents
+                    QApplication.processEvents()
+                    # TODO: refactor this function to use a QTimer instead of busy waiting and processEvents
+
                     time.sleep(0.1)  # Avoid busy waiting
                     continue
 
                 # Adjust rate limit based on queue size and settings
                 interval = (self.max_rate_limit - self.min_rate_limit) / 4
                 if self.request_queue.qsize() <= 10:
-                    self.rate_limit = self.min_rate_limit
+                    self.min_rate_limit = self.min_rate_limit
                 elif self.request_queue.qsize() <= 20:
-                    self.rate_limit = self.min_rate_limit + interval
+                    self.min_rate_limit = self.min_rate_limit + interval
                 elif self.request_queue.qsize() <= 30:
-                    self.rate_limit = self.min_rate_limit + interval * 2
+                    self.min_rate_limit = self.min_rate_limit + interval * 2
                 elif self.request_queue.qsize() <= 40:
-                    self.rate_limit = self.min_rate_limit + interval * 3
+                    self.min_rate_limit = self.min_rate_limit + interval * 3
                 else:
-                    self.rate_limit = self.max_rate_limit
+                    self.min_rate_limit = self.max_rate_limit
 
-                rand_time = self.rate_limit + random.uniform(
-                    -self.rate_limit / 3, self.rate_limit / 2
+                rand_time = self.min_rate_limit + random.uniform(
+                    -self.min_rate_limit / 3, self.min_rate_limit / 2
                 )
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
                 request = self.request_queue.get()
                 executor.submit(self.__send_request, request)
 
+                # Rate limit the requests
                 start = time.time()
                 while time.time() - start < rand_time and self.running:
-                    time.sleep(0.01)  # Avoid busy waiting
+                    time.sleep(0.01)
 
     def __send_request(self, request: RequestQueueItem):
         response = None
