@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_SettingsMenu(object):
     def setupUi(self, SettingsMenu):
         SettingsMenu.setObjectName("SettingsMenu")
-        SettingsMenu.resize(498, 386)
+        SettingsMenu.resize(538, 376)
         self.verticalLayout_4 = QtWidgets.QVBoxLayout(SettingsMenu)
         self.verticalLayout_4.setObjectName("verticalLayout_4")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -56,7 +56,7 @@ class Ui_SettingsMenu(object):
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label)
         self.minRateSpinBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
         self.minRateSpinBox.setDecimals(2)
-        self.minRateSpinBox.setSingleStep(0.1)
+        self.minRateSpinBox.setSingleStep(0.05)
         self.minRateSpinBox.setObjectName("minRateSpinBox")
         self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minRateSpinBox)
         self.label_2 = QtWidgets.QLabel(parent=self.groupBox_2)
@@ -64,7 +64,7 @@ class Ui_SettingsMenu(object):
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label_2)
         self.maxRateSpinBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
         self.maxRateSpinBox.setDecimals(2)
-        self.maxRateSpinBox.setSingleStep(0.1)
+        self.maxRateSpinBox.setSingleStep(0.05)
         self.maxRateSpinBox.setObjectName("maxRateSpinBox")
         self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxRateSpinBox)
         self.timeoutLabel = QtWidgets.QLabel(parent=self.groupBox_2)

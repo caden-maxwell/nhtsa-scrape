@@ -27,52 +27,47 @@ class MainWindow(QWidget):
         self.req_handler.moveToThread(self.req_thread)
         self.req_thread.started.connect(self.req_handler.start)
 
-        self.setup_logger()
-        self.setup_ui()
-        self.setup_signals()
-
-        self.req_thread.start()
-
-    def setup_logger(self):
+        # Setup logger
         self.logs_window = LogsWindow()
-
         self.log_handler = QtLogHandler()
-        self.log_handler.setFormatter(
-            ColorFormatter("%(levelname)s - %(name)s - %(message)s")
-        )
+        self.log_handler.setFormatter(ColorFormatter("%(levelname)s - %(name)s - %(message)s"))
         self.log_handler.setLevel(logging.DEBUG)
         self.log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[self.log_handler])
         self.logger = logging.getLogger(__name__)
 
-    def setup_ui(self):
-        # Instantiate and add menus to the stacked widget
-        self.main_menu = MainMenu()
-        self.scrape_menu = ScrapeMenu(self.db_handler)
-        self.req_handler.started.connect(self.scrape_menu.fetch_search)
-        self.profile_menu = ProfileMenu(self.db_handler)
-        self.settings_menu = SettingsMenu()
-        self.ui.stackedWidget.addWidget(self.main_menu)
-        self.ui.stackedWidget.addWidget(self.scrape_menu)
-        self.ui.stackedWidget.addWidget(self.profile_menu)
-        self.ui.stackedWidget.addWidget(self.settings_menu)
+        # Setup menus
+        self.mainMenuPage = MainMenu()
+        self.scrapeMenuPage = ScrapeMenu(self.db_handler)
+        self.profilesMenuPage = ProfileMenu(self.db_handler)
+        self.settingsMenuPage = SettingsMenu()
+        self.ui.stackedWidget.addWidget(self.mainMenuPage)
+        self.ui.stackedWidget.addWidget(self.scrapeMenuPage)
+        self.ui.stackedWidget.addWidget(self.profilesMenuPage)
+        self.ui.stackedWidget.addWidget(self.settingsMenuPage)
 
-        self.ui.stackedWidget.setCurrentWidget(self.main_menu)
+        self.req_handler.started.connect(self.scrapeMenuPage.fetch_search)
+        self.req_thread.start()
 
-    def setup_signals(self):
-        # If a menu has a back signal, connect it to switch to the main menu
-        for idx in range(self.ui.stackedWidget.count()):
-            menu = self.ui.stackedWidget.widget(idx)
-            if getattr(menu, "back", None):
-                menu.back.connect(lambda: self.switch_page(self.main_menu))
+        # Setup signals
+        back_btns = [
+            self.scrapeMenuPage.back,
+            self.profilesMenuPage.back,
+            self.settingsMenuPage.back,
+        ]
+        for btn in back_btns:
+            btn.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.mainMenuPage))
 
-        self.main_menu.new.connect(lambda: self.switch_page(self.scrape_menu))
-        self.main_menu.existing.connect(lambda: self.switch_page(self.profile_menu))
-        self.main_menu.settings.connect(lambda: self.switch_page(self.settings_menu))
-        self.main_menu.logs.connect(self.logs_window.show)
-
-    def switch_page(self, page):
-        self.ui.stackedWidget.setCurrentWidget(page)
+        self.mainMenuPage.new.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self.scrapeMenuPage)
+        )
+        self.mainMenuPage.existing.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self.profilesMenuPage)
+        )
+        self.mainMenuPage.settings.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self.settingsMenuPage)
+        )
+        self.mainMenuPage.logs.connect(self.logs_window.show)
 
     def closeEvent(self, event: QCloseEvent):
         """Safely close all threads/processes"""
@@ -94,7 +89,7 @@ class MainWindow(QWidget):
             self.req_handler.stop()
             self.req_thread.quit()
             self.req_thread.wait()
-            self.scrape_menu.cleanup()
+            self.scrapeMenuPage.cleanup()
 
             # Database connection
             self.db_handler.close_connection()
