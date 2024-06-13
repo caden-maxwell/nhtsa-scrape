@@ -41,5 +41,5 @@ payload_NASS = {
     "ddlAirBagDeployed": -1,
     "ddlChildSeatUsed": -1,
     "btnSubmit": "Submit2",
-    "currentPage": 1
+    "currentPage": 1,
 }

@@ -24,7 +24,12 @@ class Ui_SettingsMenu(object):
         self.mainTitle.setText("Scrape Settings")
         self.mainTitle.setObjectName("mainTitle")
         self.horizontalLayout.addWidget(self.mainTitle)
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.horizontalLayout.addItem(spacerItem)
         self.verticalLayout_4.addLayout(self.horizontalLayout)
         self.line = QtWidgets.QFrame(parent=SettingsMenu)
@@ -33,7 +38,10 @@ class Ui_SettingsMenu(object):
         self.line.setObjectName("line")
         self.verticalLayout_4.addWidget(self.line)
         self.gridWidget = QtWidgets.QWidget(parent=SettingsMenu)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.gridWidget.sizePolicy().hasHeightForWidth())
@@ -53,30 +61,44 @@ class Ui_SettingsMenu(object):
         self.formLayout.setObjectName("formLayout")
         self.label = QtWidgets.QLabel(parent=self.groupBox_2)
         self.label.setObjectName("label")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label)
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label
+        )
         self.minRateSpinBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
         self.minRateSpinBox.setDecimals(2)
         self.minRateSpinBox.setSingleStep(0.05)
         self.minRateSpinBox.setObjectName("minRateSpinBox")
-        self.formLayout.setWidget(0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minRateSpinBox)
+        self.formLayout.setWidget(
+            0, QtWidgets.QFormLayout.ItemRole.FieldRole, self.minRateSpinBox
+        )
         self.label_2 = QtWidgets.QLabel(parent=self.groupBox_2)
         self.label_2.setObjectName("label_2")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label_2)
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.LabelRole, self.label_2
+        )
         self.maxRateSpinBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
         self.maxRateSpinBox.setDecimals(2)
         self.maxRateSpinBox.setSingleStep(0.05)
         self.maxRateSpinBox.setObjectName("maxRateSpinBox")
-        self.formLayout.setWidget(1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxRateSpinBox)
+        self.formLayout.setWidget(
+            1, QtWidgets.QFormLayout.ItemRole.FieldRole, self.maxRateSpinBox
+        )
         self.timeoutLabel = QtWidgets.QLabel(parent=self.groupBox_2)
         self.timeoutLabel.setObjectName("timeoutLabel")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.timeoutLabel)
+        self.formLayout.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.LabelRole, self.timeoutLabel
+        )
         self.timeoutSpinBox = QtWidgets.QDoubleSpinBox(parent=self.groupBox_2)
         self.timeoutSpinBox.setDecimals(2)
         self.timeoutSpinBox.setSingleStep(0.5)
         self.timeoutSpinBox.setObjectName("timeoutSpinBox")
-        self.formLayout.setWidget(2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.timeoutSpinBox)
+        self.formLayout.setWidget(
+            2, QtWidgets.QFormLayout.ItemRole.FieldRole, self.timeoutSpinBox
+        )
         self.verticalLayout_5.addWidget(self.groupBox_2)
-        self.gridLayout.addWidget(self.verticalWidget_2, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.gridLayout.addWidget(
+            self.verticalWidget_2, 1, 0, 1, 1, QtCore.Qt.AlignmentFlag.AlignTop
+        )
         self.verticalWidget = QtWidgets.QWidget(parent=self.gridWidget)
         self.verticalWidget.setObjectName("verticalWidget")
         self.verticalLayout_3 = QtWidgets.QVBoxLayout(self.verticalWidget)
@@ -91,7 +113,9 @@ class Ui_SettingsMenu(object):
         self.debugCheckbox.setObjectName("debugCheckbox")
         self.verticalLayout_2.addWidget(self.debugCheckbox)
         self.verticalLayout_3.addWidget(self.groupBox)
-        self.gridLayout.addWidget(self.verticalWidget, 1, 1, 1, 1, QtCore.Qt.AlignmentFlag.AlignTop)
+        self.gridLayout.addWidget(
+            self.verticalWidget, 1, 1, 1, 1, QtCore.Qt.AlignmentFlag.AlignTop
+        )
         self.verticalLayout_4.addWidget(self.gridWidget)
 
         self.retranslateUi(SettingsMenu)

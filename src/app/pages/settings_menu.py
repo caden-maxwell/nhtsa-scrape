@@ -58,7 +58,9 @@ class SettingsMenu(QWidget):
         self.max_rate_limit_changed.connect(self.request_handler.update_max_rate_limit)
         self.timeout_changed.connect(self.request_handler.update_timeout)
 
-        self.settings_path = Path(__file__).parent.parent / "resources" / "settings.json"
+        self.settings_path = (
+            Path(__file__).parent.parent / "resources" / "settings.json"
+        )
         self.logger.debug(f"Settings path: {self.settings_path}")
 
         self.settings = {}
@@ -79,7 +81,9 @@ class SettingsMenu(QWidget):
                 if len(error.absolute_schema_path) > 1:
                     param = error.absolute_schema_path[1]
                     self.logger.error(f"'{param}' in settings file is invalid: {error}")
-                    tmp_settings[param] = self.SETTINGS_SCHEMA["properties"][param]["default"]
+                    tmp_settings[param] = self.SETTINGS_SCHEMA["properties"][param][
+                        "default"
+                    ]
                     self.logger.debug(f"Set '{param}' to default value.")
             self.settings = tmp_settings
             validate(
@@ -87,14 +91,20 @@ class SettingsMenu(QWidget):
             )  # Make sure the settings are valid after fixing them
             self.settings_path.write_text(json.dumps(self.settings, indent=4))
         except Exception as e:
-            self.logger.error(f"Failed to load settings file: {e}. Using default settings.")
+            self.logger.error(
+                f"Failed to load settings file: {e}. Using default settings."
+            )
 
-        self.logger.debug(f"Successfully loaded settings:\n{json.dumps(self.settings, indent=4)}")
+        self.logger.debug(
+            f"Successfully loaded settings:\n{json.dumps(self.settings, indent=4)}"
+        )
 
         self.ui.backBtn.clicked.connect(self.back.emit)
 
         # Set up debug checkbox
-        self.ui.debugCheckbox.setToolTip(self.SETTINGS_SCHEMA["properties"]["debug"]["description"])
+        self.ui.debugCheckbox.setToolTip(
+            self.SETTINGS_SCHEMA["properties"]["debug"]["description"]
+        )
         self.ui.debugCheckbox.setChecked(self.settings["debug"])
         self.ui.debugCheckbox.clicked.connect(self.toggle_debug)
 

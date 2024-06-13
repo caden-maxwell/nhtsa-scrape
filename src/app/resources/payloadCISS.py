@@ -40,5 +40,5 @@ payload_CISS = {
     "ChildSeatUsed": -1,
     "legacyCriteria": None,
     "SearchStr": None,
-    "currentPage": 1
+    "currentPage": 1,
 }

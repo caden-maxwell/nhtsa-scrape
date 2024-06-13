@@ -10,4 +10,3 @@ class Priority(enum.Enum):
     CASE_FOR_IMAGE = 3
     CASE = 4
     CASE_LIST = 5
-

@@ -15,13 +15,33 @@ class Ui_MainMenu(object):
         MainMenu.resize(582, 408)
         self.gridLayout_2 = QtWidgets.QGridLayout(MainMenu)
         self.gridLayout_2.setObjectName("gridLayout_2")
-        spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem, 1, 0, 1, 1)
-        spacerItem1 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        spacerItem1 = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+        )
         self.gridLayout_2.addItem(spacerItem1, 2, 1, 1, 1)
-        spacerItem2 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem2 = QtWidgets.QSpacerItem(
+            40,
+            20,
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem2, 1, 2, 1, 1)
-        spacerItem3 = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem3 = QtWidgets.QSpacerItem(
+            20,
+            40,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.gridLayout_2.addItem(spacerItem3, 0, 1, 1, 1)
         self.frame = QtWidgets.QFrame(parent=MainMenu)
         self.frame.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
@@ -37,13 +57,20 @@ class Ui_MainMenu(object):
         font.setBold(True)
         self.mainTitle.setFont(font)
         self.mainTitle.setObjectName("mainTitle")
-        self.mainVLayout.addWidget(self.mainTitle, 0, QtCore.Qt.AlignmentFlag.AlignHCenter)
+        self.mainVLayout.addWidget(
+            self.mainTitle, 0, QtCore.Qt.AlignmentFlag.AlignHCenter
+        )
         self.line = QtWidgets.QFrame(parent=self.frame)
         self.line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         self.line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
         self.line.setObjectName("line")
         self.mainVLayout.addWidget(self.line)
-        spacerItem4 = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        spacerItem4 = QtWidgets.QSpacerItem(
+            20,
+            20,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+            QtWidgets.QSizePolicy.Policy.Minimum,
+        )
         self.mainVLayout.addItem(spacerItem4)
         self.scrapeBtn = QtWidgets.QPushButton(parent=self.frame)
         self.scrapeBtn.setObjectName("scrapeBtn")
