@@ -61,7 +61,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     DEFAULT_TIMEOUT = 5  # Default request timeout in seconds
 
     ABS_MIN_RATE_LIMIT = 0.2
-    MIN_TIMEOUT = 1
+    MIN_TIMEOUT = 0.1
 
     _instance = None
 
@@ -151,7 +151,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def update_max_rate_limit(self, max_rate_limit):
         self.max_rate_limit = max(max_rate_limit, self.min_rate_limit)
         self.logger.debug(
-            f"Successfully updated request handler max rate limits to {self.max_rate_limit}s."
+            f"Successfully updated request handler max rate limit to {self.max_rate_limit}s."
         )
 
     @pyqtSlot(float)

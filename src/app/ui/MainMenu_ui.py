@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_MainMenu(object):
     def setupUi(self, MainMenu):
         MainMenu.setObjectName("MainMenu")
-        MainMenu.resize(1080, 720)
+        MainMenu.resize(582, 408)
         self.gridLayout_2 = QtWidgets.QGridLayout(MainMenu)
         self.gridLayout_2.setObjectName("gridLayout_2")
         spacerItem = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)

@@ -6,7 +6,7 @@ from app.main_window import MainWindow
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setStyle("windows11")
+    app.setStyle("fusion")
 
     main_window = MainWindow()
     main_window.show()

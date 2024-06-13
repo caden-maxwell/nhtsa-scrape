@@ -44,8 +44,6 @@ class ScraperNASS(BaseScraper):
             priority=Priority.CASE_LIST.value,
             callback=self._parse_case_list,
         )
-        print("Sent request to NASS")
-        print("NASS SCRAPER THREAD:", int(QThread.currentThreadId()))
         self.req_handler.enqueue_request(request)
 
     def _parse_case_list(self, request: RequestQueueItem, response: Response):

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>498</width>
-    <height>386</height>
+    <width>538</width>
+    <height>376</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -110,7 +110,7 @@
                <number>2</number>
               </property>
               <property name="singleStep">
-               <double>0.100000000000000</double>
+               <double>0.050000000000000</double>
               </property>
              </widget>
             </item>
@@ -130,7 +130,7 @@
                <number>2</number>
               </property>
               <property name="singleStep">
-               <double>0.100000000000000</double>
+               <double>0.050000000000000</double>
               </property>
              </widget>
             </item>

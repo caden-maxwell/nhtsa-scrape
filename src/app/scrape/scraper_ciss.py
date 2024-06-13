@@ -42,7 +42,6 @@ class ScraperCISS(BaseScraper):
             priority=Priority.CASE_LIST.value,
             callback=self._parse_case_list,
         )
-        print("Sent request to CISS")
         self.req_handler.enqueue_request(request)
 
     def _parse_case_list(self, request: RequestQueueItem, response: Response):
