@@ -226,7 +226,9 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
         if self.__get_current_scraper():
-            self.logger.warning("Scrape engine is already running. Ignoring submission.")
+            self.logger.warning(
+                "Scrape engine is already running. Ignoring submission."
+            )
             return
 
         make = self.ui.makeCombo.currentText().upper()
@@ -283,9 +285,15 @@ class ScrapeMenu(QWidget):
         }
 
         self.scrapers = []
-        self.scrapers.append(ScraperCISS(params) if self.ui.cissCheckbox.isChecked() else None)
-        self.scrapers.append(ScraperNASS(params) if self.ui.nassCheckbox.isChecked() else None)
-        self.scrapers = [scraper for scraper in self.scrapers if scraper]  # Remove None values
+        self.scrapers.append(
+            ScraperCISS(params) if self.ui.cissCheckbox.isChecked() else None
+        )
+        self.scrapers.append(
+            ScraperNASS(params) if self.ui.nassCheckbox.isChecked() else None
+        )
+        self.scrapers = [
+            scraper for scraper in self.scrapers if scraper
+        ]  # Remove None values
         if not self.scrapers:
             self.logger.error("Scrape aborted: No databases selected.")
             return

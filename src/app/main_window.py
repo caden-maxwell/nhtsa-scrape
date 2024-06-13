@@ -30,7 +30,9 @@ class MainWindow(QWidget):
         # Setup logger
         self.logs_window = LogsWindow()
         self.log_handler = QtLogHandler()
-        self.log_handler.setFormatter(ColorFormatter("%(levelname)s - %(name)s - %(message)s"))
+        self.log_handler.setFormatter(
+            ColorFormatter("%(levelname)s - %(name)s - %(message)s")
+        )
         self.log_handler.setLevel(logging.DEBUG)
         self.log_handler.log_message.connect(self.logs_window.handle_logger_message)
         logging.basicConfig(level=logging.DEBUG, handlers=[self.log_handler])
@@ -56,7 +58,9 @@ class MainWindow(QWidget):
             self.settingsMenuPage.back,
         ]
         for btn in back_btns:
-            btn.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self.mainMenuPage))
+            btn.connect(
+                lambda: self.ui.stackedWidget.setCurrentWidget(self.mainMenuPage)
+            )
 
         self.mainMenuPage.new.connect(
             lambda: self.ui.stackedWidget.setCurrentWidget(self.scrapeMenuPage)

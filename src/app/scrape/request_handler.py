@@ -57,7 +57,9 @@ class RequestHandler(QObject, metaclass=Singleton):
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
 
     DEFAULT_MIN_RATE_LIMIT = 0.5  # Default rate limit in seconds
-    DEFAULT_MAX_RATE_LIMIT = 2.5  # How much the rate limit can vary as a percentage of the rate limit
+    DEFAULT_MAX_RATE_LIMIT = (
+        2.5  # How much the rate limit can vary as a percentage of the rate limit
+    )
     DEFAULT_TIMEOUT = 5  # Default request timeout in seconds
 
     ABS_MIN_RATE_LIMIT = 0.2
@@ -136,9 +138,13 @@ class RequestHandler(QObject, metaclass=Singleton):
                 ongoing_requests.append(request)
         return ongoing_requests
 
-    def __priority_data_match(self, request: RequestQueueItem, priority: int, match_data: dict):
+    def __priority_data_match(
+        self, request: RequestQueueItem, priority: int, match_data: dict
+    ):
         """Return True if the request matches the given priority and match_data, but only if match_data is not empty."""
-        return request.priority == priority and (request.extra_data == match_data or not match_data)
+        return request.priority == priority and (
+            request.extra_data == match_data or not match_data
+        )
 
     @pyqtSlot(float)
     def update_min_rate_limit(self, min_rate_limit):
@@ -157,7 +163,9 @@ class RequestHandler(QObject, metaclass=Singleton):
     @pyqtSlot(float)
     def update_timeout(self, timeout):
         self.timeout = max(timeout, self.MIN_TIMEOUT)
-        self.logger.debug(f"Successfully updated request handler timeout to {self.timeout}s")
+        self.logger.debug(
+            f"Successfully updated request handler timeout to {self.timeout}s"
+        )
 
     def __process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:

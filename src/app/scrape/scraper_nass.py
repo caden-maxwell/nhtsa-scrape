@@ -4,8 +4,6 @@ from bs4 import BeautifulSoup
 import numpy as np
 from requests import Response
 
-from PyQt6.QtCore import QThread
-
 from app.scrape import RequestQueueItem, BaseScraper, Priority
 from app.resources import payload_NASS
 

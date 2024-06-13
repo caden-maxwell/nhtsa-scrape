@@ -2,8 +2,6 @@ import textwrap
 from time import time
 from requests import Response
 
-from PyQt6.QtCore import QThread
-
 from app.scrape import BaseScraper, RequestQueueItem, Priority
 from app.resources import payload_CISS
 
