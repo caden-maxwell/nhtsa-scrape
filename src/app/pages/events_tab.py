@@ -216,7 +216,7 @@ class EventsTab(BaseTab):
             self.parse_case(None, cached_case["response"])
         else:
             request = RequestQueueItem(
-                f"{ScraperNASS.CASE_URL}{case_id}&docinfo=0",
+                f"{ScraperNASS.CASE_URL}{case_id}{ScraperNASS.CASE_URL_ENDING}",
                 priority=Priority.CASE_FOR_IMAGE.value,
                 extra_data={"case_id": case_id},
                 callback=self.parse_case,

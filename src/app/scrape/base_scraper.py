@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import logging
 import textwrap
 import time
@@ -8,19 +10,49 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 from app.scrape import RequestHandler, RequestQueueItem, Priority
 
 
-class BaseScraper(QObject):
+@dataclass
+class NHTSA_FIELDS:
+    make: str
+    model: str
+    start_model_year: str
+    end_model_year: str
+    primary_damage: str
+    secondary_damage: str
+    min_dv: float
+    max_dv: float
+
+
+class _Meta(type(ABC), type(QObject)):
+    """Metaclass for BaseScraper."""
+
+
+class BaseScraper(QObject, ABC, metaclass=_Meta):
     event_parsed = pyqtSignal(dict, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
-    CASE_URL = None  # Define in child classes
-    CASE_LIST_URL = None  # Define in child classes
+    FIELD_NAMES: NHTSA_FIELDS
 
+    @property
+    @abstractmethod
+    def case_url(self):
+        """Returns the URL for a specific case."""
+
+    @property
+    @abstractmethod
+    def case_list_url(self):
+        """Returns the URL for a list of cases."""
+
+    @property
+    @abstractmethod
+    def case_url_ending(self):
+        """Returns the ending of the URL for a specific case."""
+
+    @abstractmethod
     def __init__(self):
         super().__init__()
-        self.logger = logging.getLogger(__name__)
-        self.req_handler = RequestHandler()
-        self.req_handler.response_received.connect(self._handle_response)
-        self.search_payload = {}  # Define in child classes
+        self._logger = logging.getLogger(__name__)
+        self._req_handler = RequestHandler()
+        self._req_handler.response_received.connect(self._handle_response)
 
         self.running = False
         self.start_time = 0
@@ -35,34 +67,28 @@ class BaseScraper(QObject):
         self.started.emit()
         self._scrape()
 
+    @abstractmethod
     def _scrape(self):
-        raise NotImplementedError
+        """Starts the scraping process."""
 
     @pyqtSlot(RequestQueueItem, Response)
+    @abstractmethod
     def _handle_response(self, request: RequestQueueItem, response: Response):
-        if (
-            request.priority == Priority.CASE_LIST.value
-            or request.priority == Priority.CASE.value
-        ):
-            print(
-                "Response handled by",
-                self.__class__.__name__,
-                "with Callback",
-                request.callback,
-            )
-            request.callback(request, response)
+        """Handles the response from a request."""
 
     def complete(self):
+        """Completes the scraping process and emits the completed signal."""
+
         # Order matters here, otherwise the request handler will start making
         # unnecessary case list requests once the individual cases are cleared
-        self.req_handler.clear_queue(Priority.CASE_LIST.value)
-        self.req_handler.clear_queue(Priority.CASE.value)
+        self._req_handler.clear_queue(Priority.CASE_LIST.value)
+        self._req_handler.clear_queue(Priority.CASE.value)
 
         if self.success_cases + self.failed_cases < 1:
-            self.logger.info("No data was found. Scrape complete.")
+            self._logger.info("No data was found. Scrape complete.")
         else:
             total_cases = self.success_cases + self.failed_cases
-            self.logger.info(
+            self._logger.info(
                 textwrap.dedent(
                     f"""
                 ---- Scrape Summary ----

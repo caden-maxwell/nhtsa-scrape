@@ -2,45 +2,91 @@ import textwrap
 from time import time
 from requests import Response
 
-from app.scrape import BaseScraper, RequestQueueItem, Priority
+from app.scrape import BaseScraper, RequestQueueItem, Priority, NHTSA_FIELDS
 from app.resources import payload_CISS
 
 
 class ScraperCISS(BaseScraper):
-    CASE_URL = "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId="
-    CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/CISS"
+
+    # CISS-specific dropdown field ids
+    FIELD_NAMES = NHTSA_FIELDS(
+        make="vPICVehicleMakes",
+        model="vPICVehicleModels",
+        start_model_year="VehicleModelYears",
+        end_model_year="VehicleModelYears",
+        primary_damage="VehicleDamageImpactPlane",
+        secondary_damage="VehicleDamageImpactSubSection",
+        min_dv="VehicleDamageDeltaVFrom",
+        max_dv="VehicleDamageDeltaVTo",
+    )
+
+    @property
+    def case_url(self):
+        return "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId="
+
+    @property
+    def case_list_url(self):
+        return "https://crashviewer.nhtsa.dot.gov/CISS"
+
+    @property
+    def case_url_ending(self):
+        return ""
 
     def __init__(self, search_params):
         super().__init__()
 
-        self.search_payload = payload_CISS
-        self.search_payload.update(search_params)
+        self._payload = payload_CISS
+
+        # Not included in requests
+        # vPICVehicleMakes: [483, ],
+        # vPICVehicleModels: [1945, ],
+        # VehicleModelYears:  [2024 , ],
+
+        # Already included, need to update
+        # VehicleDamageImpactPlane
+        # VehicleDamageImpactSubSection
+        # VehicleDamagePDOFFrom
+        # VehicleDamagePDOFTo
+        # VehicleDamageDeltaVFrom
+        # VehicleDamageDeltaVTo
+
+        # TODO: Convert search params to CISS payload format
+
+        self._payload.update(search_params)
 
     def _scrape(self):
         self.start_time = time()
-        self.logger.debug(
+        self._logger.debug(
             textwrap.dedent(
                 f"""CISS Scrape Engine started with these params:
                 {{
-                    Make: {self.search_payload['ddlMake']},
-                    Model: {self.search_payload['ddlModel']},
-                    Model Start Year: {self.search_payload['ddlStartModelYear']},
-                    Model End Year: {self.search_payload['ddlEndModelYear']},
-                    Min Delta V: {self.search_payload['tDeltaVFrom']},
-                    Max Delta V: {self.search_payload['tDeltaVTo']},
-                    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
-                    Secondary Damage: {self.search_payload['lSecondaryDamage']},
+                    Make: {self._payload['ddlMake']},
+                    Model: {self._payload['ddlModel']},
+                    Model Start Year: {self._payload['ddlStartModelYear']},
+                    Model End Year: {self._payload['ddlEndModelYear']},
+                    Min Delta V: {self._payload['tDeltaVFrom']},
+                    Max Delta V: {self._payload['tDeltaVTo']},
+                    Primary Damage: {self._payload['ddlPrimaryDamage']},
+                    Secondary Damage: {self._payload['lSecondaryDamage']},
                 }}"""
             )
         )
         request = RequestQueueItem(
-            self.CASE_LIST_URL,
+            self.case_list_url,
             method="GET",
-            params=self.search_payload,
+            params=self._payload,
             priority=Priority.CASE_LIST.value,
             callback=self._parse_case_list,
+            extra_data={"database": "CISS"},
         )
-        self.req_handler.enqueue_request(request)
+        self._req_handler.enqueue_request(request)
+
+    def _handle_response(self, request: RequestQueueItem, response: Response):
+        if (
+            request.priority == Priority.CASE_LIST.value
+            or request.priority == Priority.CASE.value
+        ) and request.extra_data.get("database") == "CISS":
+            request.callback(request, response)
 
     def _parse_case_list(self, request: RequestQueueItem, response: Response):
         print("CISS Scraper not yet implemented.")

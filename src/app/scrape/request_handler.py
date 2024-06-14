@@ -4,32 +4,23 @@ import queue
 import random
 import requests
 import time
+from dataclasses import dataclass, field
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
 
+@dataclass
 class RequestQueueItem:
-    def __init__(
-        self,
-        url: str,
-        method: str = "GET",
-        params: dict = {},
-        headers: dict = {},
-        priority=0,
-        extra_data={},  # Additional data used to identify the request (not sent with the request)
-        callback=None,
-    ):
-        self.url = url
-        self.params = params
-        self.method = method
-        self.headers = headers
-        self.priority = priority
-        self.extra_data = extra_data
-        self.callback = callback
-
-    def __str__(self):
-        return f"Request(url={self.url}, method={self.method}, params={self.params}, headers={self.headers})"
+    url: str
+    method: str = "GET"
+    params: dict = field(default_factory=dict)
+    headers: dict = field(default_factory=dict)
+    priority: int = 0
+    extra_data: dict = field(
+        default_factory=dict
+    )  # Additional data used to identify the request (not sent)
+    callback: callable = None
 
     def __lt__(self, other: "RequestQueueItem"):
         return self.priority < other.priority
@@ -56,16 +47,14 @@ class RequestHandler(QObject, metaclass=Singleton):
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
 
-    DEFAULT_MIN_RATE_LIMIT = 0.5  # Default rate limit in seconds
-    DEFAULT_MAX_RATE_LIMIT = (
-        2.5  # How much the rate limit can vary as a percentage of the rate limit
-    )
+    DEFAULT_MIN_RATE_LIMIT = 0.5  # Default minimum rate limit in seconds
+    DEFAULT_MAX_RATE_LIMIT = 2.5  # Default maximum rate limit in seconds
     DEFAULT_TIMEOUT = 5  # Default request timeout in seconds
 
-    ABS_MIN_RATE_LIMIT = 0.2
-    MIN_TIMEOUT = 0.1
+    ABS_MIN_RATE_LIMIT = 0.2  # Absolute minimum rate limit in seconds
+    MIN_TIMEOUT = 0.1  # Minimum request timeout in seconds
 
-    _instance = None
+    _instance = None  # Singleton instance
 
     def __init__(self):
         super().__init__()
@@ -247,5 +236,5 @@ class RequestHandler(QObject, metaclass=Singleton):
                 )
                 return
         if response is not None and self.running:
-            print(f"Response received for {request.url}")
+            print(f"Response received from {request.url}.")
             self.response_received.emit(request, response)
