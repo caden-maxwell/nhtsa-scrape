@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import logging
 from datetime import datetime
@@ -5,7 +6,7 @@ from bs4 import BeautifulSoup
 from requests import Response
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
-from PyQt6.QtWidgets import QWidget, QMessageBox
+from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QCheckBox, QSpinBox
 
 from app.models import DatabaseHandler
 from app.pages import DataView
@@ -18,6 +19,23 @@ from app.scrape import (
     Priority,
 )
 from app.ui import Ui_ScrapeMenu
+
+
+@dataclass
+class _SEARCH_MODEL:
+    scraper: BaseScraper  # The scraper to use
+    html_name: str  # The name of the HTML tag containing the dropdown options
+    html_id: str  # The ID of the HTML tag containing the dropdown options
+    model_callback: callable  # The function call to populate the model dropdown
+    make: QComboBox  # The make dropdown
+    model: QComboBox  # The model dropdown
+    start_model_year: QComboBox  # The start model year dropdown
+    end_model_year: QComboBox  # The end model year dropdown
+    primary_dmg: QComboBox  # The primary damage dropdown
+    secondary_dmg: QComboBox  # The secondary damage dropdown
+    min_dv: QSpinBox  # The minimum delta-v spinbox
+    max_dv: QSpinBox  # The maximum delta-v spinbox
+    enabled_status: QCheckBox  # The checkbox to enable a certain database
 
 
 class ScrapeMenu(QWidget):
@@ -49,21 +67,53 @@ class ScrapeMenu(QWidget):
 
         self.data_viewer = None
 
+        self.nass_model = _SEARCH_MODEL(
+            scraper=ScraperNASS,
+            html_name="table",
+            html_id="searchTable",
+            model_callback=lambda: self.fetch_models_nass(0),
+            make=self.ui.makeCombo,
+            model=self.ui.modelCombo,
+            start_model_year=self.ui.startYearCombo,
+            end_model_year=self.ui.endYearCombo,
+            primary_dmg=self.ui.pDmgCombo,
+            secondary_dmg=self.ui.sDmgCombo,
+            min_dv=self.ui.dvMinSpin,
+            max_dv=self.ui.dvMaxSpin,
+            enabled_status=self.ui.nassCheckbox,
+        )
+
+        self.ciss_model = _SEARCH_MODEL(
+            scraper=ScraperCISS,
+            html_name="div",
+            html_id="panel-options",
+            model_callback=lambda: self.fetch_models_ciss(0),
+            make=self.ui.makeCombo_2,
+            model=self.ui.modelCombo_2,
+            start_model_year=self.ui.startYearCombo_2,
+            end_model_year=self.ui.endYearCombo_2,
+            primary_dmg=self.ui.pDmgCombo_2,
+            secondary_dmg=self.ui.sDmgCombo_2,
+            min_dv=self.ui.dvMinSpin_2,
+            max_dv=self.ui.dvMaxSpin_2,
+            enabled_status=self.ui.cissCheckbox,
+        )
+
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
         request_NASS = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
             priority=Priority.ALL_COMBOS.value,
-            extra_data={"database": "NASS"},
-            callback=self.update_nass_dropdowns,
+            callback=self.update_dropdowns,
+            extra_data={"search_model": self.nass_model},
         )
         self.req_handler.enqueue_request(request_NASS)
 
         request_CISS = RequestQueueItem(
             "https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter",
             priority=Priority.ALL_COMBOS.value,
-            extra_data={"database": "CISS"},
-            callback=self.update_ciss_dropdowns,
+            callback=self.update_dropdowns,
+            extra_data={"search_model": self.ciss_model},
         )
         self.req_handler.enqueue_request(request_CISS)
 
@@ -75,50 +125,13 @@ class ScrapeMenu(QWidget):
         ):
             request.callback(request, response)
 
-    def update_nass_dropdowns(self, request: RequestQueueItem, response: Response):
-        """Parses the response from the NASS search site and populates the search fields."""
+    def update_dropdowns(self, request: RequestQueueItem, response: Response):
+        """Parses the response from a search site and populates the search fields."""
+        nhtsa_model: _SEARCH_MODEL = request.extra_data["search_model"]
 
         # Parse response
         soup = BeautifulSoup(response.content, "html.parser")
-        table = soup.find("table", id="searchTable")
-        dropdowns = table.select("select")
-
-        dropdown_data = {}
-        for dropdown in dropdowns:
-            options = dropdown.find_all("option")
-            dropdown_data[dropdown["name"]] = [
-                (option.text, option.get("value")) for option in options
-            ]
-
-        # Populate dropdowns
-        self.ui.makeCombo.clear()
-        for data in dropdown_data["ddlMake"]:
-            self.ui.makeCombo.addItem(*data)
-
-        self.fetch_models_nass(0)
-
-        self.ui.startYearCombo.clear()
-        for data in dropdown_data["ddlStartModelYear"]:
-            self.ui.startYearCombo.addItem(*data)
-
-        self.ui.endYearCombo.clear()
-        for data in dropdown_data["ddlEndModelYear"]:
-            self.ui.endYearCombo.addItem(*data)
-
-        self.ui.pDmgCombo.clear()
-        for data in dropdown_data["ddlPrimaryDamage"]:
-            self.ui.pDmgCombo.addItem(*data)
-
-        self.ui.sDmgCombo.clear()
-        for data in dropdown_data["lSecondaryDamage"]:
-            self.ui.sDmgCombo.addItem(*data)
-
-        self.logger.info("NASS search fields populated.")
-        self.ui.nassCheckbox.setEnabled(True)
-
-    def update_ciss_dropdowns(self, request: RequestQueueItem, response: Response):
-        soup = BeautifulSoup(response.content, "html.parser")
-        options = soup.find("div", id="panel-options")
+        options = soup.find(nhtsa_model.html_name, id=nhtsa_model.html_id)
         dropdowns = options.select("select")
 
         dropdown_data = {}
@@ -129,30 +142,30 @@ class ScrapeMenu(QWidget):
             ]
 
         # Populate dropdowns
-        self.ui.makeCombo_2.clear()
-        for data in dropdown_data["vPICVehicleMakes"]:
-            self.ui.makeCombo_2.addItem(*data)
+        nhtsa_model.make.clear()
+        for data in dropdown_data[nhtsa_model.scraper.FIELD_NAMES.make]:
+            nhtsa_model.make.addItem(*data)
 
-        self.fetch_models_ciss(0)
+        nhtsa_model.model_callback()
 
-        self.ui.startYearCombo_2.clear()
-        for data in dropdown_data["VehicleModelYears"]:
-            self.ui.startYearCombo_2.addItem(*data)
+        nhtsa_model.start_model_year.clear()
+        for data in dropdown_data[nhtsa_model.scraper.FIELD_NAMES.start_model_year]:
+            nhtsa_model.start_model_year.addItem(*data)
 
-        self.ui.endYearCombo_2.clear()
-        for data in dropdown_data["VehicleModelYears"]:
-            self.ui.endYearCombo_2.addItem(*data)
+        nhtsa_model.end_model_year.clear()
+        for data in dropdown_data[nhtsa_model.scraper.FIELD_NAMES.end_model_year]:
+            nhtsa_model.end_model_year.addItem(*data)
 
-        self.ui.pDmgCombo_2.clear()
-        for data in dropdown_data["VehicleDamageImpactPlane"]:
-            self.ui.pDmgCombo_2.addItem(*data)
+        nhtsa_model.primary_dmg.clear()
+        for data in dropdown_data[nhtsa_model.scraper.FIELD_NAMES.primary_damage]:
+            nhtsa_model.primary_dmg.addItem(*data)
 
-        self.ui.sDmgCombo_2.clear()
-        for data in dropdown_data["VehicleDamageImpactSubSection"]:
-            self.ui.sDmgCombo_2.addItem(*data)
+        nhtsa_model.secondary_dmg.clear()
+        for data in dropdown_data[nhtsa_model.scraper.FIELD_NAMES.secondary_damage]:
+            nhtsa_model.secondary_dmg.addItem(*data)
 
-        self.logger.info("CISS search fields populated.")
-        self.ui.cissCheckbox.setEnabled(True)
+        self.logger.info(f"{nhtsa_model.scraper} search fields populated.")
+        nhtsa_model.enabled_status.setEnabled(True)
 
     def enable_submit(self):
         """Enables the submit button if at least one database is selected, but not if a scraper is already running."""

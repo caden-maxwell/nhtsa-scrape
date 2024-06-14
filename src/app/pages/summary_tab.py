@@ -36,3 +36,6 @@ class SummaryTab(BaseTab):
         self.ui.minDVEdit.setText(str(profile[9]))
         self.ui.maxDVEdit.setText(str(profile[10]))
         self.ui.maxCasesEdit.setText(str(profile[11]))
+
+    def refresh_tab(self):
+        pass

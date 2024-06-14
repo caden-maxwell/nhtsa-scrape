@@ -4,52 +4,86 @@ from bs4 import BeautifulSoup
 import numpy as np
 from requests import Response
 
-from app.scrape import RequestQueueItem, BaseScraper, Priority
+from PyQt6.QtCore import pyqtSlot
+
+from app.scrape import RequestQueueItem, BaseScraper, Priority, NHTSA_FIELDS
 from app.resources import payload_NASS
 
 
 class ScraperNASS(BaseScraper):
-    CASE_URL = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-    CASE_LIST_URL = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
+
+    # NASS-specific dropdown field ids
+    FIELD_NAMES = NHTSA_FIELDS(
+        make="ddlMake",
+        model="ddlModel",
+        start_model_year="ddlStartModelYear",
+        end_model_year="ddlEndModelYear",
+        primary_damage="ddlPrimaryDamage",
+        secondary_damage="lSecondaryDamage",
+        min_dv="tDeltaVFrom",
+        max_dv="tDeltaVTo",
+    )
+
+    @property
+    def case_url(self):
+        return "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+
+    @property
+    def case_list_url(self):
+        return "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
+
+    @property
+    def case_url_ending(self):
+        return "&docinfo=0"
 
     def __init__(self, search_params):
         super().__init__()
 
-        self.search_payload = payload_NASS
-        self.search_payload.update(search_params)
+        self._payload = payload_NASS
+        # TODO: Convert search params to NASS payload format
+        self._payload.update(search_params)
 
     def _scrape(self):
         self.start_time = time()
-        self.logger.debug(
+        self._logger.debug(
             textwrap.dedent(
                 f"""NASS Scrape Engine started with these params:
                 {{
-                    Make: {self.search_payload['ddlMake']},
-                    Model: {self.search_payload['ddlModel']},
-                    Model Start Year: {self.search_payload['ddlStartModelYear']},
-                    Model End Year: {self.search_payload['ddlEndModelYear']},
-                    Min Delta V: {self.search_payload['tDeltaVFrom']},
-                    Max Delta V: {self.search_payload['tDeltaVTo']},
-                    Primary Damage: {self.search_payload['ddlPrimaryDamage']},
-                    Secondary Damage: {self.search_payload['lSecondaryDamage']},
+                    Make: {self._payload['ddlMake']},
+                    Model: {self._payload['ddlModel']},
+                    Model Start Year: {self._payload['ddlStartModelYear']},
+                    Model End Year: {self._payload['ddlEndModelYear']},
+                    Min Delta V: {self._payload['tDeltaVFrom']},
+                    Max Delta V: {self._payload['tDeltaVTo']},
+                    Primary Damage: {self._payload['ddlPrimaryDamage']},
+                    Secondary Damage: {self._payload['lSecondaryDamage']},
                 }}"""
             )
         )
         request = RequestQueueItem(
-            self.CASE_LIST_URL,
+            self.case_list_url,
             method="GET",
-            params=self.search_payload,
+            params=self._payload,
             priority=Priority.CASE_LIST.value,
             callback=self._parse_case_list,
+            extra_data={"database": "NASS"},
         )
-        self.req_handler.enqueue_request(request)
+        self._req_handler.enqueue_request(request)
+
+    @pyqtSlot(RequestQueueItem, Response)
+    def _handle_response(self, request: RequestQueueItem, response: Response):
+        if (
+            request.priority == Priority.CASE_LIST.value
+            or request.priority == Priority.CASE.value
+        ) and request.extra_data.get("database") == "NASS":
+            request.callback(request, response)
 
     def _parse_case_list(self, request: RequestQueueItem, response: Response):
         if not self.running:
             return
 
         if not response.content:
-            self.logger.error(
+            self._logger.error(
                 f"Received empty response from {request.url}. Ending scrape..."
             )
             self.complete()
@@ -66,35 +100,37 @@ class ScraperNASS(BaseScraper):
             case_ids = [url.split("=")[2] for url in case_urls]
 
         if not case_ids:
-            self.logger.debug(
-                f"No cases found on page {self.search_payload['currentPage']}. Scrape complete."
+            self._logger.debug(
+                f"No cases found on page {self._payload['currentPage']}. Scrape complete."
             )
             self.complete()
             return
 
-        self.logger.info(
+        self._logger.info(
             f"Requesting {len(case_ids)} case{'s'[:len(case_ids)^1]} from page {self.current_page}..."
         )
         for case_id in case_ids:
-            self.req_handler.enqueue_request(
+            self._req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.CASE_URL}{case_id}&docinfo=0",
+                    f"{self.case_url}{case_id}{self.case_url_ending}",
                     priority=Priority.CASE.value,
                     callback=self.__parse_case,
+                    extra_data={"database": "NASS"},
                 )
             )
 
         self.current_page += 1
-        self.search_payload["currentPage"] = self.current_page
-        self.logger.debug(f"Queueing page {self.current_page}...")
+        self._payload["currentPage"] = self.current_page
+        self._logger.debug(f"Queueing page {self.current_page}...")
 
-        self.req_handler.enqueue_request(
+        self._req_handler.enqueue_request(
             RequestQueueItem(
-                self.CASE_LIST_URL,
+                self.case_list_url,
                 method="POST",
-                params=self.search_payload,
+                params=self._payload,
                 priority=Priority.CASE_LIST.value,
                 callback=self._parse_case_list,
+                extra_data={"database": "NASS"},
             )
         )
 
@@ -103,7 +139,7 @@ class ScraperNASS(BaseScraper):
             return
 
         if not response.content:
-            self.logger.error(f"Received empty response from {request.url}.")
+            self._logger.error(f"Received empty response from {request.url}.")
             self.failed_cases += 1
             return
 
@@ -112,13 +148,11 @@ class ScraperNASS(BaseScraper):
         case_id = case_xml.find("CaseForm").get("caseID")
         summary = case_xml.find("Summary").text
 
-        make = int(self.search_payload["ddlMake"])
-        model = int(self.search_payload["ddlModel"])
-        start_year = int(self.search_payload["ddlStartModelYear"])
+        make = int(self._payload["ddlMake"])
+        model = int(self._payload["ddlModel"])
+        start_year = int(self._payload["ddlStartModelYear"])
         end_year = (
-            year
-            if (year := int(self.search_payload["ddlEndModelYear"])) != -1
-            else 9999
+            year if (year := int(self._payload["ddlEndModelYear"])) != -1 else 9999
         )
 
         def make_match(veh_sum):
@@ -146,10 +180,10 @@ class ScraperNASS(BaseScraper):
         ]
 
         if not vehicle_nums:
-            self.logger.warning(f"No matching vehicles found in case {case_id}.")
+            self._logger.warning(f"No matching vehicles found in case {case_id}.")
             self.failed_cases += 1
             return
-        self.logger.debug(f"Vehicle numbers: {vehicle_nums}")
+        self._logger.debug(f"Vehicle numbers: {vehicle_nums}")
 
         veh_amount = int(case_xml.find("NumberVehicles").text)
         key_events = [
@@ -164,20 +198,20 @@ class ScraperNASS(BaseScraper):
                 an := self.__get_an(voi, event, veh_amount)
             )  # Add event to key_events only if 'an' is truthy.
         ]
-        self.logger.debug(f"Key events: {key_events}")
+        self._logger.debug(f"Key events: {key_events}")
 
         veh_ext_forms = case_xml.find("VehicleExteriorForms")
         gen_veh_forms = case_xml.find("GeneralVehicleForms")
 
         failed_events = 0
         for event in key_events:
-            self.logger.debug(f"Event: {event}")
+            self._logger.debug(f"Event: {event}")
 
             veh_ext_form = veh_ext_forms.find(
                 "VehicleExteriorForm", {"VehicleNumber": event["voi"]}
             )
             if not veh_ext_form:
-                self.logger.warning(
+                self._logger.warning(
                     f"No VehicleExteriorForm found for vehicle {event['voi']} in case {case_id}."
                 )
                 failed_events += 1
@@ -206,12 +240,12 @@ class ScraperNASS(BaseScraper):
                     else None
                 )
             else:
-                self.logger.warning(
+                self._logger.warning(
                     f"No CDCevent found for event {event['en']} in case {case_id}."
                 )
 
             if total_dv is None or lat_dv is None or long_dv is None:
-                self.logger.warning(
+                self._logger.warning(
                     f"Delta-V not found for event {event['en']} in case {case_id}."
                 )
                 failed_events += 1
@@ -224,7 +258,7 @@ class ScraperNASS(BaseScraper):
                     break
 
             if not crush_object:
-                self.logger.warning(
+                self._logger.warning(
                     f"No CrushObject found for event {event['en']} in case {case_id}."
                 )
                 failed_events += 1
@@ -244,7 +278,7 @@ class ScraperNASS(BaseScraper):
                 ]
                 smash_l = crush_object.find("SMASHL")["value"]
             else:
-                self.logger.warning(
+                self._logger.warning(
                     f"No crush in file for event {event['en']} in case {case_id}."
                 )
                 failed_events += 1
@@ -344,7 +378,7 @@ class ScraperNASS(BaseScraper):
             self.event_parsed.emit(event_data, response)
 
         if failed_events >= len(key_events):
-            self.logger.warning(
+            self._logger.warning(
                 f"Insufficient data for caseID {case_id}. Excluding from results."
             )
             self.failed_cases += 1
@@ -356,18 +390,18 @@ class ScraperNASS(BaseScraper):
         # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
         area_of_dmg = int(event.find("AreaOfDamage")["value"]) - 1
         contacted_aod = int(event.find("ContactedAreaOfDamage")["value"]) - 1
-        self.logger.debug(f"AODs: {area_of_dmg}, {contacted_aod}")
+        self._logger.debug(f"AODs: {area_of_dmg}, {contacted_aod}")
 
         contacted = event.find("Contacted")
         vehicle_number = int(event["VehicleNumber"])
-        self.logger.debug(f"Nums: {vehicle_number}, {contacted['value']}")
+        self._logger.debug(f"Nums: {vehicle_number}, {contacted['value']}")
 
-        primary_damage = int(self.search_payload["ddlPrimaryDamage"])
-        self.logger.debug(f"Primary Damage: {primary_damage}")
+        primary_damage = int(self._payload["ddlPrimaryDamage"])
+        self._logger.debug(f"Primary Damage: {primary_damage}")
 
         primary_dmg_match = primary_damage == area_of_dmg or primary_damage == -1
         contacted_dmg_match = primary_damage == contacted_aod or primary_damage == -1
-        self.logger.debug(
+        self._logger.debug(
             f"Matches: primary-{primary_dmg_match}, contacted-{contacted_dmg_match}"
         )
 
