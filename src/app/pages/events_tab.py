@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from requests import Response
 
 from PyQt6.QtCore import Qt, pyqtSlot, QModelIndex
-from PyQt6.QtGui import QPixmap, QFont, QImage, QColor, QPalette
+from PyQt6.QtGui import QPixmap, QFont, QImage
 from PyQt6.QtWidgets import (
     QWidget,
     QLabel,
@@ -216,7 +216,7 @@ class EventsTab(BaseTab):
             self.parse_case(None, cached_case["response"])
         else:
             request = RequestQueueItem(
-                f"{ScraperNASS.CASE_URL}{case_id}{ScraperNASS.CASE_URL_ENDING}",
+                f"{ScraperNASS.case_url}{case_id}{ScraperNASS.case_url_ending}",
                 priority=Priority.CASE_FOR_IMAGE.value,
                 extra_data={"case_id": case_id},
                 callback=self.parse_case,
@@ -488,8 +488,5 @@ class ImageThumbnail(QWidget):
 class CustomItemDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         ignored = index.data(Qt.ItemDataRole.FontRole)
-        if ignored:
-            option.palette.setColor(QPalette.ColorRole.Text, QColor("gray"))
-        else:
-            option.palette.setColor(QPalette.ColorRole.Text, QColor("black"))
+        painter.setOpacity(0.5 if ignored else 1.0)
         super().paint(painter, option, index)

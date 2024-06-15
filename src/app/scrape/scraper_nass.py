@@ -12,8 +12,12 @@ from app.resources import payload_NASS
 
 class ScraperNASS(BaseScraper):
 
+    case_url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
+    case_list_url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
+    case_url_ending = "&docinfo=0"
+
     # NASS-specific dropdown field ids
-    FIELD_NAMES = NHTSA_FIELDS(
+    field_names = NHTSA_FIELDS(
         make="ddlMake",
         model="ddlModel",
         start_model_year="ddlStartModelYear",
@@ -24,20 +28,11 @@ class ScraperNASS(BaseScraper):
         max_dv="tDeltaVTo",
     )
 
-    @property
-    def case_url(self):
-        return "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-
-    @property
-    def case_list_url(self):
-        return "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-
-    @property
-    def case_url_ending(self):
-        return "&docinfo=0"
-
     def __init__(self, search_params):
         super().__init__()
+
+        # Do not make any signal/slot connections here, as this function will be run in the main thread
+        # If you need to connect signals/slots, do so in the start() function
 
         self._payload = payload_NASS
         # TODO: Convert search params to NASS payload format

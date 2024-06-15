@@ -8,8 +8,12 @@ from app.resources import payload_CISS
 
 class ScraperCISS(BaseScraper):
 
+    case_url = "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId="
+    case_list_url = "https://crashviewer.nhtsa.dot.gov/CISS"
+    case_url_ending = ""
+
     # CISS-specific dropdown field ids
-    FIELD_NAMES = NHTSA_FIELDS(
+    field_names = NHTSA_FIELDS(
         make="vPICVehicleMakes",
         model="vPICVehicleModels",
         start_model_year="VehicleModelYears",
@@ -19,18 +23,6 @@ class ScraperCISS(BaseScraper):
         min_dv="VehicleDamageDeltaVFrom",
         max_dv="VehicleDamageDeltaVTo",
     )
-
-    @property
-    def case_url(self):
-        return "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId="
-
-    @property
-    def case_list_url(self):
-        return "https://crashviewer.nhtsa.dot.gov/CISS"
-
-    @property
-    def case_url_ending(self):
-        return ""
 
     def __init__(self, search_params):
         super().__init__()

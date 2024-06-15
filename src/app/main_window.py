@@ -97,6 +97,10 @@ class MainWindow(QWidget):
 
             # Database connection
             self.db_handler.close_connection()
+
+            # Wait for all signals/slots to finish
+            QApplication.processEvents()
+
             QApplication.closeAllWindows()
             event.accept()
             return super().closeEvent(event)
