@@ -65,7 +65,7 @@ class RequestHandler(QObject, metaclass=Singleton):
         self.ongoing_requests = []
 
         self.min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
-        self.max_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
+        self.max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
         self.timeout = self.DEFAULT_TIMEOUT
 
     def start(self):
@@ -159,31 +159,30 @@ class RequestHandler(QObject, metaclass=Singleton):
     def __process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
+                # Process signals (e.g. update min/max rate limit)
+                QApplication.processEvents()
+
                 if self.request_queue.empty():
-                    # Process pending qt events while waiting for new requests
-
-                    # TODO: refactor this function to use a QTimer instead of busy waiting and processEvents
-                    QApplication.processEvents()
-                    # TODO: refactor this function to use a QTimer instead of busy waiting and processEvents
-
                     time.sleep(0.1)  # Avoid busy waiting
                     continue
 
-                # Adjust rate limit based on queue size and settings
+                # Adjust rate limit based on queue size
                 interval = (self.max_rate_limit - self.min_rate_limit) / 4
+                current_rate_limit = self.min_rate_limit
                 if self.request_queue.qsize() <= 10:
-                    self.min_rate_limit = self.min_rate_limit
+                    pass
                 elif self.request_queue.qsize() <= 20:
-                    self.min_rate_limit = self.min_rate_limit + interval
+                    current_rate_limit = self.min_rate_limit + interval
                 elif self.request_queue.qsize() <= 30:
-                    self.min_rate_limit = self.min_rate_limit + interval * 2
+                    current_rate_limit = self.min_rate_limit + interval * 2
                 elif self.request_queue.qsize() <= 40:
-                    self.min_rate_limit = self.min_rate_limit + interval * 3
+                    current_rate_limit = self.min_rate_limit + interval * 3
                 else:
-                    self.min_rate_limit = self.max_rate_limit
+                    current_rate_limit = self.max_rate_limit
 
-                rand_time = self.min_rate_limit + random.uniform(
-                    -self.min_rate_limit / 3, self.min_rate_limit / 2
+                # Randomize the rate limit to be 25% above or below the current rate limit
+                rand_time = current_rate_limit + random.uniform(
+                    -current_rate_limit / 4, current_rate_limit / 4
                 )
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
@@ -193,7 +192,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                 # Rate limit the requests
                 start = time.time()
                 while time.time() - start < rand_time and self.running:
-                    time.sleep(0.01)
+                    time.sleep(0.05)
 
     def __send_request(self, request: RequestQueueItem):
         response = None
@@ -236,5 +235,4 @@ class RequestHandler(QObject, metaclass=Singleton):
                 )
                 return
         if response is not None and self.running:
-            print(f"Response received from {request.url}.")
             self.response_received.emit(request, response)

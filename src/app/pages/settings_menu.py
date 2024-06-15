@@ -132,6 +132,11 @@ class SettingsMenu(QWidget):
             lambda: self.update_timeout(self.ui.timeoutSpinBox.value())
         )
 
+        # Update request handler with settings
+        self.min_rate_limit_changed.emit(self.settings["minRateLimit"])
+        self.max_rate_limit_changed.emit(self.settings["maxRateLimit"])
+        self.timeout_changed.emit(self.settings["timeout"])
+
     def toggle_debug(self, checked):
         root_logger = logging.getLogger()
         if checked:
@@ -145,6 +150,7 @@ class SettingsMenu(QWidget):
 
     def update_min_rate(self, value):
         value = round(value, 2)
+
         # Ensure minimum rate is no smaller than the absolute minimum
         abs_min_rate = self.SETTINGS_SCHEMA["properties"]["minRateLimit"]["minimum"]
         if value < abs_min_rate:
