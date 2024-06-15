@@ -34,6 +34,15 @@ class ScraperNASS(BaseScraper):
         # Do not make any signal/slot connections here, as this function will be run in the main thread
         # If you need to connect signals/slots, do so in the start() function
 
+        # ddlMake 
+        # ddlModel
+        # ddlStartModelYear 
+        # ddlEndModelYear 
+        # ddlPrimaryDamage 
+        # lSecondaryDamage 
+        # tDeltaVFrom 
+        # tDeltaVTo 
+
         self._payload = payload_NASS
         # TODO: Convert search params to NASS payload format
         self._payload.update(search_params)
