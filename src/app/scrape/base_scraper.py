@@ -1,25 +1,30 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 import logging
 import textwrap
-import time
+from typing import Generic, TypeVar
 from requests import Response
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 
 from app.scrape import RequestHandler, RequestQueueItem, Priority
 
+T = TypeVar("T", str, int)
+
 
 @dataclass
-class NHTSA_FIELDS:
-    make: str
-    model: str
-    start_model_year: str
-    end_model_year: str
-    primary_damage: str
-    secondary_damage: str
-    min_dv: float
-    max_dv: float
+class ScrapeParams(Generic[T]):
+    """Dataclass for dropdown field names (str) or values (int) for each parameter of the scraper."""
+
+    make: T
+    model: T
+    start_model_year: T
+    end_model_year: T
+    primary_damage: T
+    secondary_damage: T
+    min_dv: T
+    max_dv: T
 
 
 class _Meta(type(ABC), type(QObject)):
@@ -48,25 +53,35 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
 
     @property
     @abstractmethod
-    def field_names(self) -> NHTSA_FIELDS:
+    def field_names(self) -> ScrapeParams[str]:
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 
     @abstractmethod
     def __init__(self):
+        """
+        Initializes the BaseScraper. Do not make any signal/slot connections here,
+        as this function will be run in the main thread. If you need to connect signals/slots,
+        do so in the start() function.
+        """
         super().__init__()
+
         self._logger = logging.getLogger(__name__)
         self._req_handler = RequestHandler()
 
         self.running = False
-        self.start_time = 0
+        self.start_time = datetime.now()
 
         self.current_page = 1
         self.success_cases = 0
         self.failed_cases = 0
         self.total_events = 0
 
+        self._payload = {}
+
     def start(self):
-        self._req_handler.response_received.connect(self._handle_response) # This needs to be connected here instead of init to avoid running in the main thread
+        self._req_handler.response_received.connect(
+            self._handle_response
+        )  # This needs to be connected here instead of init to avoid running in the main thread
 
         self._timer = QTimer()
         self._timer.setInterval(500)  # Every 0.5 seconds
@@ -75,7 +90,12 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
 
         self.running = True
         self.started.emit()
+
         self._scrape()
+
+    @abstractmethod
+    def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
+        """Converts the user's search parameters to the payload format of the scraper."""
 
     @abstractmethod
     def _scrape(self):
@@ -117,11 +137,11 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
                     - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
                     - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
                 - Total Collision Events Extracted: {self.total_events}
-                - Time Elapsed: {time.time() - self.start_time:.2f}s
+                - Time Elapsed: {datetime.now() - self.start_time:.2f}s
                 -------------------------"""
                 )
             )
-        
+
         self.running = False
         self._timer.stop()
         self.completed.emit()
