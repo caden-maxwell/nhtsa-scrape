@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from requests import Response
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
-from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QCheckBox, QSpinBox
+from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpinBox
 
 from app.models import DatabaseHandler
 from app.pages import DataView
@@ -37,7 +37,7 @@ class _SearchModel:
     s_dmg_combo: QComboBox  # The secondary damage dropdown
     min_dv_spinbox: QSpinBox  # The minimum delta-v spinbox
     max_dv_spinbox: QSpinBox  # The maximum delta-v spinbox
-    status_checkbox: QCheckBox  # The checkbox indicating wheter a certain database is enabled
+    radio_button: QRadioButton  # The radio button to enable the scraper
 
 
 class ScrapeMenu(QWidget):
@@ -53,7 +53,7 @@ class ScrapeMenu(QWidget):
         self.logger = logging.getLogger(__name__)
 
         self.profile_id = -1
-        self.scrapers: list[BaseScraper] = []
+        self.scraper: BaseScraper = None
         self.engine_thread: QThread = None
         self.db_handler = db_handler
 
@@ -77,7 +77,7 @@ class ScrapeMenu(QWidget):
             s_dmg_combo=self.ui.sDmgCombo,
             min_dv_spinbox=self.ui.dvMinSpin,
             max_dv_spinbox=self.ui.dvMaxSpin,
-            status_checkbox=self.ui.nassCheckbox,
+            radio_button=self.ui.nassRadioBtn,
         )
 
         ciss_model = _SearchModel(
@@ -94,15 +94,15 @@ class ScrapeMenu(QWidget):
             s_dmg_combo=self.ui.sDmgCombo_2,
             min_dv_spinbox=self.ui.dvMinSpin_2,
             max_dv_spinbox=self.ui.dvMaxSpin_2,
-            status_checkbox=self.ui.cissCheckbox,
+            radio_button=self.ui.cissRadioBtn,
         )
 
         self.nhtsa_models = [ciss_model, nass_model]
 
         self.ui.makeCombo.activated.connect(lambda: self.fetch_models(nass_model))
         self.ui.makeCombo_2.activated.connect(lambda: self.fetch_models(ciss_model))
-        self.ui.nassCheckbox.stateChanged.connect(self.enable_submit)
-        self.ui.cissCheckbox.stateChanged.connect(self.enable_submit)
+
+        self.ui.databaseBtnGroup.buttonClicked.connect(self.enable_submit)
 
         self.data_viewer = None
 
@@ -134,11 +134,12 @@ class ScrapeMenu(QWidget):
         options = soup.find(
             nhtsa_model.html_options_name, id=nhtsa_model.html_options_id
         )
-        dropdowns = options.select("select")
+        dropdowns: list[BeautifulSoup] = options.select("select")
 
         dropdown_data = {}
         for dropdown in dropdowns:
             options = dropdown.find_all("option")
+            options: list[BeautifulSoup]
             dropdown_data[dropdown["name"]] = [
                 (option.text, option.get("value")) for option in options
             ]
@@ -167,7 +168,7 @@ class ScrapeMenu(QWidget):
             nhtsa_model.s_dmg_combo.addItem(*data)
 
         self.logger.info(f"{nhtsa_model.scraper.__name__} search fields populated.")
-        nhtsa_model.status_checkbox.setEnabled(True)
+        nhtsa_model.radio_button.setEnabled(True)
 
     def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
@@ -208,17 +209,16 @@ class ScrapeMenu(QWidget):
 
     def enable_submit(self):
         """Enables the submit button if at least one database is selected, but not if a scraper is already running."""
-        current_scraper = self.__get_current_scraper()
         self.ui.submitBtn.setEnabled(
-            (self.ui.nassCheckbox.isChecked() or self.ui.cissCheckbox.isChecked())
-            and not (current_scraper and current_scraper.running)
+            any(button.isChecked() for button in self.ui.databaseBtnGroup.buttons())
+            and not (self.scraper and self.scraper.running)
         )
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
-        if self.__get_current_scraper():
+        if self.scraper and self.scraper.running:
             self.logger.warning(
                 "Scrape engine is already running. Ignoring submission."
             )
@@ -266,52 +266,35 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        for nhtsa_model in self.nhtsa_models:
-            params = ScrapeParams[int](
-                make=int(nhtsa_model.make_combo.currentData()),
-                model=int(nhtsa_model.model_combo.currentData()),
-                start_model_year=int(nhtsa_model.start_year_combo.currentData()),
-                end_model_year=int(nhtsa_model.end_year_combo.currentData()),
-                primary_damage=int(nhtsa_model.p_dmg_combo.currentData() or -1),
-                secondary_damage=int(nhtsa_model.s_dmg_combo.currentData() or -1),
-                min_dv=nhtsa_model.min_dv_spinbox.value(),
-                max_dv=nhtsa_model.max_dv_spinbox.value(),
-            )
-            print(params)
-            self.scrapers.append(
-                nhtsa_model.scraper(params)
-                if nhtsa_model.status_checkbox.isChecked()
-                else None
-            )
-
-        self.scrapers = [
-            scraper for scraper in self.scrapers if scraper
-        ]  # Remove scrapers that are not enabled
-        if not self.scrapers:
-            self.logger.error("Scrape aborted: No databases selected.")
+        # Get the active database based on the radio button
+        nhtsa_model = next(
+            model for model in self.nhtsa_models if model.radio_button.isChecked()
+        )
+        if not nhtsa_model:
+            self.logger.error("Scrape aborted: No database selected.")
             return
+
+        params = ScrapeParams[int](
+            make=int(nhtsa_model.make_combo.currentData()),
+            model=int(nhtsa_model.model_combo.currentData()),
+            start_model_year=int(nhtsa_model.start_year_combo.currentData()),
+            end_model_year=int(nhtsa_model.end_year_combo.currentData()),
+            primary_damage=int(nhtsa_model.p_dmg_combo.currentData() or -1),
+            secondary_damage=int(nhtsa_model.s_dmg_combo.currentData() or -1),
+            min_dv=nhtsa_model.min_dv_spinbox.value(),
+            max_dv=nhtsa_model.max_dv_spinbox.value(),
+        )
+        self.scraper = nhtsa_model.scraper(params)
 
         # Set up and connect scrapers
         self.engine_thread = QThread()
-        prev_scraper: BaseScraper = None
-        for nhtsa_model in self.scrapers:
-            nhtsa_model.moveToThread(self.engine_thread)
-            if prev_scraper:
-                prev_scraper.completed.connect(nhtsa_model.start)
-            nhtsa_model.event_parsed.connect(self.add_event)
-            prev_scraper = nhtsa_model
+        self.scraper.moveToThread(self.engine_thread)
+        self.scraper.event_parsed.connect(self.add_event)
+        self.end_scrape.connect(self.scraper.complete)
+        self.scraper.completed.connect(self.handle_scrape_complete)
 
-        self.scrapers[-1].completed.connect(self.handle_scrape_complete)
-
-        self.engine_thread.started.connect(self.scrapers[0].start)
+        self.engine_thread.started.connect(self.scraper.start)
         self.engine_thread.start()
-
-    def __get_current_scraper(self) -> BaseScraper | None:
-        """Returns the running scraper if there is one, otherwise None."""
-        for scraper in self.scrapers:
-            if scraper.running:
-                return scraper
-        return None
 
     @pyqtSlot(dict, Response)
     def add_event(self, event, response):
@@ -319,13 +302,7 @@ class ScrapeMenu(QWidget):
             if self.data_viewer:
                 self.data_viewer.close()
 
-            # Remove connection to all next scraper's start signals and complete scrape
-            for scraper in self.scrapers:
-                scraper.completed.disconnect()
-
-            if current_scraper := self.__get_current_scraper():
-                current_scraper.completed.connect(self.handle_scrape_complete)
-                self.end_scrape.connect(current_scraper.complete)
+            if self.scraper and self.scraper.running:
                 self.end_scrape.emit()
                 self.logger.error("Scrape aborted: No profile to add data to.")
             return
@@ -338,7 +315,7 @@ class ScrapeMenu(QWidget):
     def handle_scrape_complete(self):
         self.profile_id = -1
 
-        self.scrapers = []
+        self.scraper = None
         self.engine_thread.quit()
         self.engine_thread.wait()
 
@@ -354,11 +331,6 @@ class ScrapeMenu(QWidget):
         self.ui.submitBtn.setText("Scrape")
 
     def cleanup(self):
-        for scraper in self.scrapers:
-            scraper.completed.disconnect()
-
-        if current_scraper := self.__get_current_scraper():
+        if self.scraper and self.scraper.running:
             self.logger.warning("Scrape engine is still running. Aborting.")
-            current_scraper.completed.connect(self.handle_scrape_complete)
-            self.end_scrape.connect(current_scraper.complete)
             self.end_scrape.emit()

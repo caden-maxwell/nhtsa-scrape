@@ -137,7 +137,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
                     - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
                     - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
                 - Total Collision Events Extracted: {self.total_events}
-                - Time Elapsed: {datetime.now() - self.start_time:.2f}s
+                - Time Elapsed: {(datetime.now() - self.start_time).total_seconds():.2f}s
                 -------------------------"""
                 )
             )
