@@ -42,22 +42,23 @@ class ScatterTab(BaseTab):
         )
 
         self.figure, self.ax = plt.subplots()
-        self.figure.set_tight_layout(True)
+        self.ax: plt.Axes
+
+        self.figure.tight_layout()
         self.figure.set_dpi(60)
 
         self.canvas = FigureCanvas(self.figure)
         toolbar = CustomToolbar(self.canvas, self)
-        toolbar.setStyleSheet("background-color: none;")
 
         self.ui.scatterLayout.addWidget(toolbar)
         self.ui.scatterLayout.addWidget(self.canvas)
 
-        self.nass_plots = []
-        self.nass_labels = []
-        self.nass_legend = []
-        self.tot_plots = []
-        self.tot_labels = []
-        self.tot_legend = []
+        self.nass_plots: list[plt.Artist] = []
+        self.nass_labels: list[plt.Annotation] = []
+        self.nass_legend: list[str] = []
+        self.tot_plots: list[plt.Artist] = []
+        self.tot_labels: list[plt.Annotation] = []
+        self.tot_legend: list[str] = []
 
     def btn_update(self, btn_func):
         btn_func()
@@ -186,10 +187,6 @@ class ScatterTab(BaseTab):
         self.update_tot_data()
 
         self.canvas.draw()
-
-        # crush_est = np.array([0, 1.0])
-        # print(polynomial(crush_est))
-        # print(polynomial_e(crush_est))
 
     def save_figure(self):
         os.makedirs(self.data_dir, exist_ok=True)
