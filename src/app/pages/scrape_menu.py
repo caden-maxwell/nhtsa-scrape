@@ -17,25 +17,27 @@ from app.scrape import (
     ScraperCISS,
     RequestQueueItem,
     Priority,
+    ScrapeParams,
 )
 from app.ui import Ui_ScrapeMenu
 
 
 @dataclass
-class _SEARCH_MODEL:
+class _SearchModel:
     scraper: BaseScraper  # The scraper to use
-    html_name: str  # The name of the HTML tag containing the dropdown options
-    html_id: str  # The ID of the HTML tag containing the dropdown options
-    make: QComboBox  # The make dropdown
-    model: QComboBox  # The model dropdown
-    models_url: str
-    start_model_year: QComboBox  # The start model year dropdown
-    end_model_year: QComboBox  # The end model year dropdown
-    primary_dmg: QComboBox  # The primary damage dropdown
-    secondary_dmg: QComboBox  # The secondary damage dropdown
-    min_dv: QSpinBox  # The minimum delta-v spinbox
-    max_dv: QSpinBox  # The maximum delta-v spinbox
-    enabled_status: QCheckBox  # The checkbox to enable a certain database
+    dropdowns_url: str  # The URL to fetch the dropdown options from
+    models_url: str  # The URL to fetch the models from
+    html_options_name: str  # The name of the HTML tag containing the dropdown options
+    html_options_id: str  # The ID of the HTML tag containing the dropdown options
+    make_combo: QComboBox  # The make dropdown
+    model_combo: QComboBox  # The model dropdown
+    start_year_combo: QComboBox  # The start model year dropdown
+    end_year_combo: QComboBox  # The end model year dropdown
+    p_dmg_combo: QComboBox  # The primary damage dropdown
+    s_dmg_combo: QComboBox  # The secondary damage dropdown
+    min_dv_spinbox: QSpinBox  # The minimum delta-v spinbox
+    max_dv_spinbox: QSpinBox  # The maximum delta-v spinbox
+    status_checkbox: QCheckBox  # The checkbox indicating wheter a certain database is enabled
 
 
 class ScrapeMenu(QWidget):
@@ -61,42 +63,44 @@ class ScrapeMenu(QWidget):
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
 
-        self.nass_model = _SEARCH_MODEL(
+        nass_model = _SearchModel(
             scraper=ScraperNASS,
-            html_name="table",
-            html_id="searchTable",
-            make=self.ui.makeCombo,
-            model=self.ui.modelCombo,
+            dropdowns_url="https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
             models_url="https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/",
-            start_model_year=self.ui.startYearCombo,
-            end_model_year=self.ui.endYearCombo,
-            primary_dmg=self.ui.pDmgCombo,
-            secondary_dmg=self.ui.sDmgCombo,
-            min_dv=self.ui.dvMinSpin,
-            max_dv=self.ui.dvMaxSpin,
-            enabled_status=self.ui.nassCheckbox,
+            html_options_name="table",
+            html_options_id="searchTable",
+            make_combo=self.ui.makeCombo,
+            model_combo=self.ui.modelCombo,
+            start_year_combo=self.ui.startYearCombo,
+            end_year_combo=self.ui.endYearCombo,
+            p_dmg_combo=self.ui.pDmgCombo,
+            s_dmg_combo=self.ui.sDmgCombo,
+            min_dv_spinbox=self.ui.dvMinSpin,
+            max_dv_spinbox=self.ui.dvMaxSpin,
+            status_checkbox=self.ui.nassCheckbox,
         )
 
-        self.ciss_model = _SEARCH_MODEL(
+        ciss_model = _SearchModel(
             scraper=ScraperCISS,
-            html_name="div",
-            html_id="panel-options",
-            make=self.ui.makeCombo_2,
-            model=self.ui.modelCombo_2,
+            dropdowns_url="https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter",
             models_url="https://crashviewer.nhtsa.dot.gov/SCI/GetvPICVehicleModelbyMake/",
-            start_model_year=self.ui.startYearCombo_2,
-            end_model_year=self.ui.endYearCombo_2,
-            primary_dmg=self.ui.pDmgCombo_2,
-            secondary_dmg=self.ui.sDmgCombo_2,
-            min_dv=self.ui.dvMinSpin_2,
-            max_dv=self.ui.dvMaxSpin_2,
-            enabled_status=self.ui.cissCheckbox,
+            html_options_name="div",
+            html_options_id="panel-options",
+            make_combo=self.ui.makeCombo_2,
+            model_combo=self.ui.modelCombo_2,
+            start_year_combo=self.ui.startYearCombo_2,
+            end_year_combo=self.ui.endYearCombo_2,
+            p_dmg_combo=self.ui.pDmgCombo_2,
+            s_dmg_combo=self.ui.sDmgCombo_2,
+            min_dv_spinbox=self.ui.dvMinSpin_2,
+            max_dv_spinbox=self.ui.dvMaxSpin_2,
+            status_checkbox=self.ui.cissCheckbox,
         )
 
-        self.ui.makeCombo.activated.connect(lambda: self.fetch_models(self.nass_model))
-        self.ui.makeCombo_2.activated.connect(
-            lambda: self.fetch_models(self.ciss_model)
-        )
+        self.nhtsa_models = [ciss_model, nass_model]
+
+        self.ui.makeCombo.activated.connect(lambda: self.fetch_models(nass_model))
+        self.ui.makeCombo_2.activated.connect(lambda: self.fetch_models(ciss_model))
         self.ui.nassCheckbox.stateChanged.connect(self.enable_submit)
         self.ui.cissCheckbox.stateChanged.connect(self.enable_submit)
 
@@ -104,21 +108,14 @@ class ScrapeMenu(QWidget):
 
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
-        request_NASS = RequestQueueItem(
-            "https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
-            priority=Priority.ALL_COMBOS.value,
-            callback=self.update_dropdowns,
-            extra_data={"search_model": self.nass_model},
-        )
-        self.req_handler.enqueue_request(request_NASS)
-
-        request_CISS = RequestQueueItem(
-            "https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter",
-            priority=Priority.ALL_COMBOS.value,
-            callback=self.update_dropdowns,
-            extra_data={"search_model": self.ciss_model},
-        )
-        self.req_handler.enqueue_request(request_CISS)
+        for nhtsa_model in self.nhtsa_models:
+            request_NASS = RequestQueueItem(
+                nhtsa_model.dropdowns_url,
+                priority=Priority.ALL_COMBOS.value,
+                callback=self.update_dropdowns,
+                extra_data={"search_model": nhtsa_model},
+            )
+            self.req_handler.enqueue_request(request_NASS)
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
@@ -130,11 +127,13 @@ class ScrapeMenu(QWidget):
 
     def update_dropdowns(self, request: RequestQueueItem, response: Response):
         """Parses the response from a search site and populates the search fields."""
-        nhtsa_model: _SEARCH_MODEL = request.extra_data["search_model"]
+        nhtsa_model: _SearchModel = request.extra_data["search_model"]
 
         # Parse response
         soup = BeautifulSoup(response.content, "html.parser")
-        options = soup.find(nhtsa_model.html_name, id=nhtsa_model.html_id)
+        options = soup.find(
+            nhtsa_model.html_options_name, id=nhtsa_model.html_options_id
+        )
         dropdowns = options.select("select")
 
         dropdown_data = {}
@@ -145,38 +144,38 @@ class ScrapeMenu(QWidget):
             ]
 
         # Populate dropdowns
-        nhtsa_model.make.clear()
+        nhtsa_model.make_combo.clear()
         for data in dropdown_data[nhtsa_model.scraper.field_names.make]:
-            nhtsa_model.make.addItem(*data)
+            nhtsa_model.make_combo.addItem(*data)
 
         self.fetch_models(nhtsa_model)
 
-        nhtsa_model.start_model_year.clear()
+        nhtsa_model.start_year_combo.clear()
         for data in dropdown_data[nhtsa_model.scraper.field_names.start_model_year]:
-            nhtsa_model.start_model_year.addItem(*data)
+            nhtsa_model.start_year_combo.addItem(*data)
 
-        nhtsa_model.end_model_year.clear()
+        nhtsa_model.end_year_combo.clear()
         for data in dropdown_data[nhtsa_model.scraper.field_names.end_model_year]:
-            nhtsa_model.end_model_year.addItem(*data)
+            nhtsa_model.end_year_combo.addItem(*data)
 
-        nhtsa_model.primary_dmg.clear()
+        nhtsa_model.p_dmg_combo.clear()
         for data in dropdown_data[nhtsa_model.scraper.field_names.primary_damage]:
-            nhtsa_model.primary_dmg.addItem(*data)
+            nhtsa_model.p_dmg_combo.addItem(*data)
 
-        nhtsa_model.secondary_dmg.clear()
+        nhtsa_model.s_dmg_combo.clear()
         for data in dropdown_data[nhtsa_model.scraper.field_names.secondary_damage]:
-            nhtsa_model.secondary_dmg.addItem(*data)
+            nhtsa_model.s_dmg_combo.addItem(*data)
 
         self.logger.info(f"{nhtsa_model.scraper.__name__} search fields populated.")
-        nhtsa_model.enabled_status.setEnabled(True)
+        nhtsa_model.status_checkbox.setEnabled(True)
 
-    def fetch_models(self, search_model: _SEARCH_MODEL):
+    def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"search_model": search_model}
         params = (
-            {"make": search_model.make.currentText()}
+            {"make": search_model.make_combo.currentText()}
             if search_model.scraper == ScraperNASS
-            else {"makeIds": search_model.make.currentData()}
+            else {"makeIds": search_model.make_combo.currentData()}
         )
         request = RequestQueueItem(
             search_model.models_url,
@@ -198,13 +197,13 @@ class ScrapeMenu(QWidget):
             models.append((model["Value"], model["Key"]))
         models.sort()
 
-        search_model: _SEARCH_MODEL = request.extra_data["search_model"]
+        search_model: _SearchModel = request.extra_data["search_model"]
 
         # Populate model dropdown
-        search_model.model.clear()
-        search_model.model.addItem("All", -1)
+        search_model.model_combo.clear()
+        search_model.model_combo.addItem("All", -1)
         for model in models:
-            search_model.model.addItem(*model)
+            search_model.model_combo.addItem(*model)
         self.logger.info(f"Updated {search_model.scraper.__name__} model dropdown.")
 
     def enable_submit(self):
@@ -267,39 +266,40 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
         self.data_viewer.show()
 
-        params = {
-            "ddlMake": self.ui.makeCombo.currentData(),
-            "ddlModel": self.ui.modelCombo.currentData(),
-            "ddlStartModelYear": self.ui.startYearCombo.currentData(),
-            "ddlEndModelYear": self.ui.endYearCombo.currentData(),
-            "ddlPrimaryDamage": self.ui.pDmgCombo.currentData(),
-            "lSecondaryDamage": self.ui.sDmgCombo.currentData(),
-            "tDeltaVFrom": self.ui.dvMinSpin.value(),
-            "tDeltaVTo": self.ui.dvMaxSpin.value(),
-        }
+        for nhtsa_model in self.nhtsa_models:
+            params = ScrapeParams[int](
+                make=int(nhtsa_model.make_combo.currentData()),
+                model=int(nhtsa_model.model_combo.currentData()),
+                start_model_year=int(nhtsa_model.start_year_combo.currentData()),
+                end_model_year=int(nhtsa_model.end_year_combo.currentData()),
+                primary_damage=int(nhtsa_model.p_dmg_combo.currentData() or -1),
+                secondary_damage=int(nhtsa_model.s_dmg_combo.currentData() or -1),
+                min_dv=nhtsa_model.min_dv_spinbox.value(),
+                max_dv=nhtsa_model.max_dv_spinbox.value(),
+            )
+            print(params)
+            self.scrapers.append(
+                nhtsa_model.scraper(params)
+                if nhtsa_model.status_checkbox.isChecked()
+                else None
+            )
 
-        self.scrapers = []
-        self.scrapers.append(
-            ScraperCISS(params) if self.ui.cissCheckbox.isChecked() else None
-        )
-        self.scrapers.append(
-            ScraperNASS(params) if self.ui.nassCheckbox.isChecked() else None
-        )
         self.scrapers = [
             scraper for scraper in self.scrapers if scraper
-        ]  # Remove None values
+        ]  # Remove scrapers that are not enabled
         if not self.scrapers:
             self.logger.error("Scrape aborted: No databases selected.")
             return
 
+        # Set up and connect scrapers
         self.engine_thread = QThread()
         prev_scraper: BaseScraper = None
-        for scraper in self.scrapers:
-            scraper.moveToThread(self.engine_thread)
+        for nhtsa_model in self.scrapers:
+            nhtsa_model.moveToThread(self.engine_thread)
             if prev_scraper:
-                prev_scraper.completed.connect(scraper.start)
-            scraper.event_parsed.connect(self.add_event)
-            prev_scraper = scraper
+                prev_scraper.completed.connect(nhtsa_model.start)
+            nhtsa_model.event_parsed.connect(self.add_event)
+            prev_scraper = nhtsa_model
 
         self.scrapers[-1].completed.connect(self.handle_scrape_complete)
 

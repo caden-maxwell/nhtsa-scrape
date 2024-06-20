@@ -1,12 +1,11 @@
 import textwrap
-from time import time
 from bs4 import BeautifulSoup
 import numpy as np
 from requests import Response
 
 from PyQt6.QtCore import pyqtSlot
 
-from app.scrape import RequestQueueItem, BaseScraper, Priority, NHTSA_FIELDS
+from app.scrape import RequestQueueItem, BaseScraper, Priority, ScrapeParams
 from app.resources import payload_NASS
 
 
@@ -17,7 +16,7 @@ class ScraperNASS(BaseScraper):
     case_url_ending = "&docinfo=0"
 
     # NASS-specific dropdown field ids
-    field_names = NHTSA_FIELDS(
+    field_names = ScrapeParams[str](
         make="ddlMake",
         model="ddlModel",
         start_model_year="ddlStartModelYear",
@@ -28,42 +27,41 @@ class ScraperNASS(BaseScraper):
         max_dv="tDeltaVTo",
     )
 
-    def __init__(self, search_params):
+    def __init__(self, params: ScrapeParams[int]):
         super().__init__()
 
-        # Do not make any signal/slot connections here, as this function will be run in the main thread
-        # If you need to connect signals/slots, do so in the start() function
-
-        # ddlMake 
-        # ddlModel
-        # ddlStartModelYear 
-        # ddlEndModelYear 
-        # ddlPrimaryDamage 
-        # lSecondaryDamage 
-        # tDeltaVFrom 
-        # tDeltaVTo 
-
         self._payload = payload_NASS
-        # TODO: Convert search params to NASS payload format
-        self._payload.update(search_params)
+        self._payload.update(self._convert_params_to_payload(params))
+
+    def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
+        return {
+            self.field_names.make: params.make,
+            self.field_names.model: params.model,
+            self.field_names.start_model_year: params.start_model_year,
+            self.field_names.end_model_year: params.end_model_year,
+            self.field_names.primary_damage: params.primary_damage,
+            self.field_names.secondary_damage: params.secondary_damage if params.secondary_damage != -1 else None,
+            self.field_names.min_dv: params.min_dv,
+            self.field_names.max_dv: params.max_dv,
+        }
 
     def _scrape(self):
-        self.start_time = time()
         self._logger.debug(
             textwrap.dedent(
-                f"""NASS Scrape Engine started with these params:
+                f"""{self.__class__.__name__} started with these params:
                 {{
-                    Make: {self._payload['ddlMake']},
-                    Model: {self._payload['ddlModel']},
-                    Model Start Year: {self._payload['ddlStartModelYear']},
-                    Model End Year: {self._payload['ddlEndModelYear']},
-                    Min Delta V: {self._payload['tDeltaVFrom']},
-                    Max Delta V: {self._payload['tDeltaVTo']},
-                    Primary Damage: {self._payload['ddlPrimaryDamage']},
-                    Secondary Damage: {self._payload['lSecondaryDamage']},
+                    Make: {self._payload[self.field_names.make]},
+                    Model: {self._payload[self.field_names.model]},
+                    Model Start Year: {self._payload[self.field_names.start_model_year]},
+                    Model End Year: {self._payload[self.field_names.end_model_year]},
+                    Min Delta V: {self._payload[self.field_names.min_dv]},
+                    Max Delta V: {self._payload[self.field_names.max_dv]},
+                    Primary Damage: {self._payload[self.field_names.primary_damage]},
+                    Secondary Damage: {self._payload[self.field_names.secondary_damage]},
                 }}"""
             )
         )
+
         request = RequestQueueItem(
             self.case_list_url,
             method="GET",
