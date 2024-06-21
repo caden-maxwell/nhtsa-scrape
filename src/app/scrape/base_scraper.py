@@ -9,6 +9,7 @@ from requests import Response
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 
 from app.scrape import RequestHandler, RequestQueueItem, Priority
+from app.models import Event
 
 T = TypeVar("T", str, int)
 
@@ -32,7 +33,7 @@ class _Meta(type(ABC), type(QObject)):
 
 
 class BaseScraper(QObject, ABC, metaclass=_Meta):
-    event_parsed = pyqtSignal(dict, Response)
+    event_parsed = pyqtSignal(Event, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
 

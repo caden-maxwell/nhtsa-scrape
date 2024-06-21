@@ -7,6 +7,7 @@ from PyQt6.QtCore import pyqtSlot
 
 from app.scrape import RequestQueueItem, BaseScraper, Priority, ScrapeParams
 from app.resources import payload_NASS
+from app.models import Event
 
 
 class ScraperNASS(BaseScraper):
@@ -40,7 +41,9 @@ class ScraperNASS(BaseScraper):
             self.field_names.start_model_year: params.start_model_year,
             self.field_names.end_model_year: params.end_model_year,
             self.field_names.primary_damage: params.primary_damage,
-            self.field_names.secondary_damage: params.secondary_damage if params.secondary_damage != -1 else None,
+            self.field_names.secondary_damage: (
+                params.secondary_damage if params.secondary_damage != -1 else None
+            ),
             self.field_names.min_dv: params.min_dv,
             self.field_names.max_dv: params.max_dv,
         }
@@ -255,6 +258,7 @@ class ScraperNASS(BaseScraper):
 
             crush_object = None
             for obj in veh_ext_form.find_all("CrushObject"):
+                obj: BeautifulSoup
                 if event["en"] == int(obj.find("EventNumber").text):
                     crush_object = obj
                     break
@@ -267,7 +271,7 @@ class ScraperNASS(BaseScraper):
                 continue
 
             avg_c1 = float(crush_object.find("AVG_C1")["value"])
-            smash_l = None
+            smashl = None
             crush = []
             if avg_c1 >= 0:
                 crush = [
@@ -278,7 +282,7 @@ class ScraperNASS(BaseScraper):
                     float(crush_object.find("AVG_C5")["value"]),
                     float(crush_object.find("AVG_C6")["value"]),
                 ]
-                smash_l = crush_object.find("SMASHL")["value"]
+                smashl = crush_object.find("SMASHL")["value"]
             else:
                 self._logger.warning(
                     f"No crush in file for event {event['en']} in case {case_id}."
@@ -286,29 +290,7 @@ class ScraperNASS(BaseScraper):
                 failed_events += 1
                 continue
 
-            # VOI Info
-            event_data = {
-                "summary": summary,
-                "case_id": case_id,
-                "event_num": event["en"],
-                "case_num": case_xml.find("Case")["CaseStr"],
-                "vehicle_num": veh_ext_form["VehicleNumber"],
-                "make": veh_ext_form.find("Make").text,
-                "model": veh_ext_form.find("Model").text,
-                "model_year": veh_ext_form.find("ModelYear").text,
-                "curb_weight": float(veh_ext_form.find("CurbWeight").text),
-                "dmg_loc": cdc_event.find("DeformationLocation").text,
-                "underride": cdc_event.find("OverUnderride").text,
-                "edr": veh_ext_form.find("EDR").text,
-                "total_dv": float(total_dv),
-                "long_dv": float(long_dv),
-                "lat_dv": float(lat_dv),
-                "smashl": float(smash_l),
-                "crush": crush,
-            }
-
             # Alternate Vehicle Info
-            event_data["a_veh_num"] = event["an"]
             alt_ext_form = veh_ext_forms.find(
                 "VehicleExteriorForm", {"VehicleNumber": event["an"]}
             )
@@ -320,17 +302,18 @@ class ScraperNASS(BaseScraper):
                 )
             )
 
+            voi_curb_weight = float(veh_ext_form.find("CurbWeight").text)
             if alt_ext_form:
                 alt_data = {
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
                     "a_year": alt_ext_form.find("ModelYear").text,
                     "a_curb_weight": (
-                        float(curb_weight)
+                        float(voi_curb_weight)
                         if (
-                            curb_weight := alt_ext_form.find("CurbWeight").text
+                            voi_curb_weight := alt_ext_form.find("CurbWeight").text
                         ).isnumeric()
-                        else event_data["curb_weight"]
+                        else voi_curb_weight
                     ),
                     "a_dmg_loc": (
                         dmg_loc.text
@@ -354,30 +337,56 @@ class ScraperNASS(BaseScraper):
             NASS_dv = float(total_dv) * 0.621371
 
             # Vehicle Weights in LBS
-            voi_wt = event_data["curb_weight"] * 2.20462
+            voi_wt = float(voi_curb_weight) * 2.20462
             a_wt = alt_data["a_curb_weight"] * 2.20462
 
             NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
 
-            # Restitution Calculation...?
+            # Restitution...?
             e = 0.5992 * np.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
             TOT_dv = NASS_dv * (1.0 + e)
 
-            calcs = {
-                "c_bar": c_bar,
-                "NASS_dv": NASS_dv,
-                "NASS_vc": NASS_vc,
-                "e": e,
-                "TOT_dv": TOT_dv,
-            }
-
-            event_data.update(alt_data)
-            event_data.update(calcs)
-
+            self.event_parsed.emit(
+                Event(
+                    summary=summary,
+                    case_num=case_xml.find("Case")["CaseStr"],
+                    case_id=case_id,
+                    vehicle_num=veh_ext_form["VehicleNumber"],
+                    event_num=event["en"],
+                    make=veh_ext_form.find("Make").text,
+                    model=veh_ext_form.find("Model").text,
+                    model_year=veh_ext_form.find("ModelYear").text,
+                    curb_weight=float(veh_ext_form.find("CurbWeight").text),
+                    dmg_loc=cdc_event.find("DeformationLocation").text,
+                    underride=cdc_event.find("OverUnderride").text,
+                    edr=veh_ext_form.find("EDR").text,
+                    total_dv=total_dv,
+                    long_dv=long_dv,
+                    lat_dv=lat_dv,
+                    smashl=float(smashl),
+                    crush1=crush[0],
+                    crush2=crush[1],
+                    crush3=crush[2],
+                    crush4=crush[3],
+                    crush5=crush[4],
+                    crush6=crush[5],
+                    a_veh_num=event["an"],
+                    a_make=alt_data["a_make"],
+                    a_model=alt_data["a_model"],
+                    a_year=alt_data["a_year"],
+                    a_curb_weight=alt_data["a_curb_weight"],
+                    a_dmg_loc=alt_data["a_dmg_loc"],
+                    c_bar=c_bar,
+                    NASS_dv=NASS_dv,
+                    NASS_vc=NASS_vc,
+                    e=e,
+                    TOT_dv=TOT_dv,
+                ),
+                response,
+            )
             self.total_events += 1
-            self.event_parsed.emit(event_data, response)
 
         if failed_events >= len(key_events):
             self._logger.warning(

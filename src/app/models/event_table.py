@@ -51,6 +51,6 @@ class EventTable(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def refresh_data(self):
-        self._data = self.db_handler.get_events(self.profile[0], include_ignored=False)
+        self._data = self.db_handler.get_events(self.profile.id, include_ignored=False)
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")

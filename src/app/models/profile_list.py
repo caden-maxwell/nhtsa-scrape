@@ -2,7 +2,7 @@ import logging
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
 
-from app.models import DatabaseHandler
+from app.models import DatabaseHandler, Profile
 
 
 class ProfileList(QAbstractListModel):
@@ -11,7 +11,7 @@ class ProfileList(QAbstractListModel):
         self.logger = logging.getLogger(__name__)
 
         self.db_handler = db_handler
-        self._data = []
+        self._data: list[Profile] = []
 
         self.refresh_data()
 
@@ -22,11 +22,11 @@ class ProfileList(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
             return QVariant()
 
+        profile = self._data[index.row()]
         if role == Qt.ItemDataRole.DisplayRole:
-            data = self._data[index.row()]
-            return f"{data[1]}"
+            return profile.name
         elif role == Qt.ItemDataRole.UserRole:
-            return self._data[index.row()]
+            return profile
 
         return QVariant()
 
@@ -34,8 +34,8 @@ class ProfileList(QAbstractListModel):
         for index in indices:
             if not index.isValid() or not (0 <= index.row() < self.rowCount()):
                 continue
-            data = self._data[index.row()]
-            self.db_handler.delete_profile(data[0])
+            profile = self._data[index.row()]
+            self.db_handler.delete_profile(profile.id)
         self.refresh_data()
 
     def refresh_data(self):

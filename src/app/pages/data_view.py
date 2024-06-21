@@ -25,11 +25,11 @@ class DataView(QWidget):
         self.profile = db_handler.get_profile(profile_id)
 
         # Get a filename-safe string for the new directory
-        created = datetime.fromtimestamp(float(self.profile[12])).strftime(
+        created = datetime.fromtimestamp(float(self.profile.created)).strftime(
             "%Y-%m-%d %H-%M-%S"
         )
 
-        dir_name = f"{self.profile[1]}_{created}".replace(" ", "_")
+        dir_name = f"{self.profile.name}_{created}".replace(" ", "_")
         filename_safe = ["_", "-", "(", ")"]
         dir_name = "".join(
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name

@@ -8,7 +8,7 @@ from requests import Response
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
 from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpinBox
 
-from app.models import DatabaseHandler
+from app.models import DatabaseHandler, Profile, ProfileEvent
 from app.pages import DataView
 from app.scrape import (
     RequestHandler,
@@ -52,7 +52,7 @@ class ScrapeMenu(QWidget):
 
         self.logger = logging.getLogger(__name__)
 
-        self.profile_id = -1
+        self.profile: Profile = None
         self.scraper: BaseScraper = None
         self.engine_thread: QThread = None
         self.db_handler = db_handler
@@ -241,35 +241,37 @@ class ScrapeMenu(QWidget):
         name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
 
         now = datetime.now()
-        new_profile = {
-            "name": name,
-            "description": "None",
-            "make": make,
-            "model": model,
-            "start_year": start_year,
-            "end_year": end_year,
-            "primary_dmg": p_dmg,
-            "secondary_dmg": self.ui.sDmgCombo.currentText().upper(),
-            "min_dv": self.ui.dvMinSpin.value(),
-            "max_dv": self.ui.dvMaxSpin.value(),
-            "max_cases": 999999,
-            "created": int(now.timestamp()),
-            "modified": int(now.timestamp()),
-        }
+        self.profile = Profile(
+            name=name,
+            make=make,
+            model=model,
+            start_year=start_year,
+            end_year=end_year,
+            primary_dmg=p_dmg,
+            secondary_dmg=self.ui.sDmgCombo.currentText().upper(),
+            min_dv=self.ui.dvMinSpin.value(),
+            max_dv=self.ui.dvMaxSpin.value(),
+            created=int(now.timestamp()),
+            modified=int(now.timestamp()),
+        )
 
-        self.profile_id = self.db_handler.add_profile(new_profile)
-        if self.profile_id < 0:
-            self.logger.error("Scrape aborted: No profile to add data to.")
+        self.db_handler.add_profile(self.profile)
+        if self.profile.id < 0:
+            self.logger.error(
+                f"Scrape aborted: No profile to add data to. profile.id={self.profile.id}"
+            )
             return
 
-        self.logger.info(f"Created new profile with ID {self.profile_id}.")
-        self.data_viewer = DataView(self.db_handler, self.profile_id, new_profile=True)
+        self.logger.info(f"Created new profile with ID {self.profile.id}.")
+        self.data_viewer = DataView(self.db_handler, self.profile.id, new_profile=True)
         self.data_viewer.show()
 
         # Get the active database based on the radio button
         nhtsa_model = next(
-            model for model in self.nhtsa_models if model.radio_button.isChecked()
+            (model for model in self.nhtsa_models if model.radio_button.isChecked()),
+            None,
         )
+
         if not nhtsa_model:
             self.logger.error("Scrape aborted: No database selected.")
             return
@@ -296,9 +298,9 @@ class ScrapeMenu(QWidget):
         self.engine_thread.started.connect(self.scraper.start)
         self.engine_thread.start()
 
-    @pyqtSlot(dict, Response)
-    def add_event(self, event, response):
-        if not self.db_handler.get_profile(self.profile_id):
+    @pyqtSlot(ProfileEvent, Response)
+    def add_event(self, event: ProfileEvent, response: Response):
+        if not self.db_handler.get_profile(self.profile.id):
             if self.data_viewer:
                 self.data_viewer.close()
 
@@ -307,13 +309,13 @@ class ScrapeMenu(QWidget):
                 self.logger.error("Scrape aborted: No profile to add data to.")
             return
 
-        self.db_handler.add_event(event, self.profile_id)
+        self.db_handler.add_event(event, self.profile)
         if self.data_viewer:
-            self.data_viewer.events_tab.cache_response(int(event["case_id"]), response)
+            self.data_viewer.events_tab.cache_response(event.case_id, response)
             self.data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):
-        self.profile_id = -1
+        self.profile = None
 
         self.scraper = None
         self.engine_thread.quit()
