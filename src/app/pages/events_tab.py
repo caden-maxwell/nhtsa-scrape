@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.pages import BaseTab
-from app.models import DatabaseHandler, EventList
+from app.models import DatabaseHandler, EventList, Event
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScraperNASS
 from app.ui import Ui_EventsTab
 
@@ -129,28 +129,28 @@ class EventsTab(BaseTab):
             self.ui.ignoreBtn.setText("Ignore Event")
             return
 
-        event_data = self.model.data(index, Qt.ItemDataRole.UserRole)
-        self.update_buttons(event_data)
-        case_id = int(event_data["case_id"])
-        vehicle_num = int(event_data["vehicle_num"])
+        event: Event = self.model.data(index, Qt.ItemDataRole.UserRole).event
+        self.update_buttons(event)
+        case_id = event.case_id
+        vehicle_num = event.vehicle_num
 
         # We need to get the unique values for this index so we can find it later
         # if another event is inserted before it in the list
-        self.current_index_vals = (case_id, vehicle_num, event_data["event_num"])
+        self.current_index_vals = (case_id, vehicle_num, event.event_num)
 
         # Left side of event view data
-        self.ui.makeLineEdit.setText(event_data["make"])
-        self.ui.modelLineEdit.setText(event_data["model"])
-        self.ui.yearLineEdit.setText(str(event_data["model_year"]))
-        self.ui.curbWeightLineEdit.setText(f"{event_data['curb_weight'] * 2.20462:.4f}")
-        self.ui.dmgLocLineEdit.setText(event_data["dmg_loc"])
-        self.ui.underrideLineEdit.setText(event_data["underride"])
+        self.ui.makeLineEdit.setText(event.make)
+        self.ui.modelLineEdit.setText(event.model)
+        self.ui.yearLineEdit.setText(str(event.model_year))
+        self.ui.curbWeightLineEdit.setText(f"{event.curb_weight * 2.20462:.4f}")
+        self.ui.dmgLocLineEdit.setText(event.dmg_loc)
+        self.ui.underrideLineEdit.setText(event.underride)
 
         # Right side of event view data
-        self.ui.cBarLineEdit.setText(f"{event_data['c_bar']:.4f}")
-        self.ui.nassDVLineEdit.setText(f"{event_data['NASS_dv']:.4f}")
-        self.ui.nassVCLineEdit.setText(f"{event_data['NASS_vc']:.4f}")
-        self.ui.totDVLineEdit.setText(f"{event_data['TOT_dv']:.4f}")
+        self.ui.cBarLineEdit.setText(f"{event.c_bar:.4f}")
+        self.ui.nassDVLineEdit.setText(f"{event.NASS_dv:.4f}")
+        self.ui.nassVCLineEdit.setText(f"{event.NASS_vc:.4f}")
+        self.ui.totDVLineEdit.setText(f"{event.TOT_dv:.4f}")
 
         # Clear and repopulate image thumbnails
         img_ids = self.case_veh_img_ids.get((case_id, vehicle_num), {})
@@ -160,7 +160,7 @@ class EventsTab(BaseTab):
         self.__clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.images_dir, event_data)
+            thumbnail = ImageThumbnail(img_id, img, self.images_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
@@ -174,11 +174,9 @@ class EventsTab(BaseTab):
             self.ui.thumbnailsLayout.removeWidget(widget)
             widget.setParent(None)
 
-    def update_buttons(self, event_data):
-        case_id = int(event_data["case_id"])
-        vehicle_num = int(event_data["vehicle_num"])
-        img_extra_data = {"case_id": case_id, "vehicle_num": vehicle_num}
-        case_extra_data = {"case_id": case_id}
+    def update_buttons(self, event: Event):
+        img_extra_data = {"case_id": event.case_id, "vehicle_num": event.vehicle_num}
+        case_extra_data = {"case_id": event.case_id}
         if self.req_handler.contains(
             Priority.IMAGE.value, img_extra_data
         ) or self.req_handler.contains(Priority.CASE_FOR_IMAGE.value, case_extra_data):
@@ -193,39 +191,36 @@ class EventsTab(BaseTab):
         self.ui.stopBtn.repaint()
 
     def scrape_btn_clicked(self):
-        event_data = self.model.data(
+        event: Event = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         )
 
-        case_id = int(event_data["case_id"])
-        vehicle_num = int(event_data["vehicle_num"])
-
-        self.case_veh_img_ids[(case_id, vehicle_num)] = self.case_veh_img_ids.get(
-            (case_id, vehicle_num), {}
+        self.case_veh_img_ids[(event.case_id, event.vehicle_num)] = (
+            self.case_veh_img_ids.get((event.case_id, event.vehicle_num), {})
         )
 
         # TODO: Add a check to see which scraper to use
 
-        cached_case = self.response_cache.get(case_id)
+        cached_case = self.response_cache.get(event.case_id)
         if (  # Make sure cached case is valid
             cached_case
             and (datetime.now() - cached_case["created"]).total_seconds()
             < self.COOKIE_EXPIRED_SECS
         ):
-            self.logger.debug(f"Using cached case ({case_id})")
+            self.logger.debug(f"Using cached case ({event.case_id})")
             self.parse_case(None, cached_case["response"])
         else:
             request = RequestQueueItem(
-                f"{ScraperNASS.case_url}{case_id}{ScraperNASS.case_url_ending}",
+                f"{ScraperNASS.case_url}{event.case_id}{ScraperNASS.case_url_ending}",
                 priority=Priority.CASE_FOR_IMAGE.value,
-                extra_data={"case_id": case_id},
+                extra_data={"case_id": event.case_id},
                 callback=self.parse_case,
             )
             self.req_handler.enqueue_request(request)
 
         # TODO: Add a check to see which scraper URL to use
 
-        self.update_buttons(event_data)
+        self.update_buttons(event)
 
     def stop_btn_clicked(self):
         event_data = self.model.data(
@@ -286,10 +281,10 @@ class EventsTab(BaseTab):
             request.callback(request, response)
 
             if self.ui.eventsList.currentIndex().isValid():
-                event_data = self.model.data(
+                event: Event = self.model.data(
                     self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
                 )
-                self.update_buttons(event_data)
+                self.update_buttons(event)
 
     def parse_case(self, request: RequestQueueItem, response: Response):
         soup = BeautifulSoup(response.content, "xml")

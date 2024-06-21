@@ -42,7 +42,7 @@ class ProfileMenu(QWidget):
     def handle_open(self):
         selected = self.ui.listView.selectedIndexes()
         for idx in selected:
-            profile_id = idx.data(role=Qt.ItemDataRole.UserRole)[0]
+            profile_id = idx.data(role=Qt.ItemDataRole.UserRole).id
             self.logger.debug(f"Opening profile {profile_id}")
             new_viewer = DataView(self.db_handler, profile_id)
             self.data_viewers.append(new_viewer)

@@ -2,6 +2,7 @@
 __pycache__
 .vscode
 *.sqlite3
+*.db
 .venv
 build
 dist

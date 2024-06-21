@@ -20,7 +20,7 @@ class MainWindow(QWidget):
         self.ui.setupUi(self)
 
         self.req_handler = RequestHandler()
-        path = Path(__file__).parent.parent / "db.sqlite3"
+        path = Path(__file__).parent.parent / "app.db"
         self.db_handler = DatabaseHandler(path)
 
         self.req_thread = QThread()

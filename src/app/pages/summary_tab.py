@@ -2,40 +2,25 @@ import logging
 
 from app.ui import Ui_SummaryTab
 from app.pages import BaseTab
+from app.models import Profile
 
 
 class SummaryTab(BaseTab):
-    def __init__(self, profile: tuple):
+    def __init__(self, profile: Profile):
         super().__init__()
         self.ui = Ui_SummaryTab()
         self.ui.setupUi(self)
 
         self.logger = logging.getLogger(__name__)
 
-        # profile_id INTEGER PRIMARY KEY,
-        # name TEXT,
-        # description TEXT,
-        # make TEXT,
-        # model TEXT,
-        # start_year INTEGER,
-        # end_year INTEGER,
-        # primary_dmg TEXT,
-        # secondary_dmg TEXT,
-        # min_dv INTEGER,
-        # max_dv INTEGER,
-        # max_cases INTEGER,
-        # created INTEGER,
-        # modified INTEGER
-
-        self.ui.makeEdit.setText(profile[3])
-        self.ui.modelEdit.setText(profile[4])
-        self.ui.startYearEdit.setText(str(profile[5]))
-        self.ui.endYearEdit.setText(str(profile[6]))
-        self.ui.pDmgEdit.setText(profile[7])
-        self.ui.sDmgEdit.setText(profile[8])
-        self.ui.minDVEdit.setText(str(profile[9]))
-        self.ui.maxDVEdit.setText(str(profile[10]))
-        self.ui.maxCasesEdit.setText(str(profile[11]))
+        self.ui.makeEdit.setText(profile.make)
+        self.ui.modelEdit.setText(profile.model)
+        self.ui.startYearEdit.setText(str(profile.start_year))
+        self.ui.endYearEdit.setText(str(profile.end_year))
+        self.ui.pDmgEdit.setText(profile.primary_dmg)
+        self.ui.sDmgEdit.setText(profile.secondary_dmg)
+        self.ui.minDVEdit.setText(str(profile.min_dv))
+        self.ui.maxDVEdit.setText(str(profile.max_dv))
 
     def refresh_tab(self):
         pass
