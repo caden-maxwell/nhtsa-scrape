@@ -1,8 +1,8 @@
 import logging
 from pathlib import Path
-import sqlite3
 from sqlalchemy import create_engine, select, inspect
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
 from app.models import Profile, ProfileEvent, Base, Event
 
@@ -11,7 +11,7 @@ class DatabaseHandler:
     def __init__(self, db_path: Path):
         self.logger = logging.getLogger(__name__)
 
-        self.engine = create_engine(f"sqlite:///{db_path}", echo=True)
+        self.engine = create_engine(f"sqlite:///{db_path}")
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)
         try:
@@ -29,17 +29,6 @@ class DatabaseHandler:
         except Exception as e:
             self.logger.error(f"Error closing database connection: {e}")
 
-    def get_profile(self, profile_id: int):
-        """Get a profile by its ID. Returns a tuple of the profile's attributes."""
-        try:
-            stmt = select(Profile).where(Profile.id == profile_id)
-            return self.session.execute(stmt).scalar()
-        except Exception as e:
-            self.logger.error(
-                f"Error getting profile with profile_id={profile_id}: {e}"
-            )
-            return None
-
     def get_profiles(self):
         """Get all profiles. Returns a list of tuples, each containing a profile's attributes."""
         try:
@@ -49,10 +38,10 @@ class DatabaseHandler:
             self.logger.error(f"Error getting profiles: {e}")
             return []
 
-    def get_events(self, profile_id: int, include_ignored: bool = True):
+    def get_events(self, profile: Profile, include_ignored: bool = True):
         """Get events belonging to a specific profile, optionally including ignored events."""
         try:
-            profile_events: list[ProfileEvent] = self.get_profile_events(profile_id)
+            profile_events: list[ProfileEvent] = self.get_profile_events(profile)
             if not profile_events:
                 return []
             events = []
@@ -69,26 +58,38 @@ class DatabaseHandler:
             return events
 
         except Exception as e:
-            self.logger.error(f"Error getting events for profile {profile_id}: {e}")
+            self.logger.error(f"Error getting events for profile {profile.id}: {e}")
             return []
 
-    def get_profile_events(self, profile_id: int):
+    def get_profile_events(self, profile: Profile):
         """Get all profile_events for a profile. Returns a list of tuples, each containing an event's attributes."""
         try:
-            stmt = select(ProfileEvent).where(ProfileEvent.profile_id == profile_id)
+            stmt = select(ProfileEvent).where(ProfileEvent.profile == profile)
             return self.session.execute(stmt).scalars().all()
         except Exception as e:
             self.logger.error(
-                f"Error getting profile events for profile {profile_id}: {e}"
+                f"Error getting profile events for profile {profile.id}: {e}"
             )
             return []
 
-    def add_event(self, event: ProfileEvent, profile: Profile):
+    def add_event(self, event: Event, profile: Profile):
         """Add an event to a specified profile."""
         try:
+            # Check if the event already exists in the database, and use the existing event if it does
+            stmt = select(Event).where(
+                Event.case_id == event.case_id,
+                Event.vehicle_num == event.vehicle_num,
+                Event.event_num == event.event_num,
+            )
+
+            if existing_event := self.session.execute(stmt).scalar_one_or_none():
+                event = existing_event
+            else:
+                self.session.add(event)
+
             profile.events.append(event)
-            self.session.add(event)
             self.session.commit()
+
         except Exception as e:
             self.logger.error(f"Error adding event: {e}")
             self.session.rollback()
@@ -102,145 +103,67 @@ class DatabaseHandler:
         try:
             self.session.add(profile)
             self.session.commit()
-            print(f"-------'{profile.id}'------")
             return profile.id
         except Exception as e:
             self.logger.error(f"Error adding profile: {e}")
             self.session.rollback()
             return -1
 
-    def delete_event(self, event: tuple, profile_id: int):
-        cursor = self.connection.cursor()
+    def del_profile_event(self, profile_event: ProfileEvent):
+        """Deletes a ProfileEvent and its corresponding Event, but only if the Event is not used by any other Profile."""
         try:
-            cursor.execute(
-                """
-                DELETE FROM profile_events
-                WHERE case_id = ? AND vehicle_num = ? AND event_num = ? AND profile_id = ?
-                """,
-                (event[0], event[1], event[2], profile_id),
-            )
-            cursor.execute(
-                """
-                SELECT * FROM profile_events
-                WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
-                """,
-                (event[0], event[1], event[2]),
-            )
-            if not cursor.fetchall():
-                cursor.execute(
-                    """
-                    DELETE FROM events
-                    WHERE case_id = ? AND vehicle_num = ? AND event_num = ?
-                    """,
-                    (event[0], event[1], event[2]),
-                )
-            self.connection.commit()
-        except sqlite3.Error as e:
-            self.logger.error(f"Error deleting event: {e}")
+            event = profile_event.event
+            self.session.delete(profile_event)
+
+            if not event.profiles:
+                self.session.delete(event)
+
+            self.session.commit()
+        except Exception as e:
+            self.logger.error(f"Error deleting profile event: {e}")
+            self.session.rollback()
             return
-        finally:
-            cursor.close()
-        self.logger.debug(
-            f"Deleted event: Case {event[0]} Vehicle {event[1]} Event {event[2]}"
+
+        self.logger.info(
+            f"Deleted event: Case {event.case_id} Vehicle {event.vehicle_num} Event {event.event_num}"
         )
 
-    def delete_profile(self, profile_id: int):
-        cursor = self.connection.cursor()
+    def delete_profile(self, profile: Profile):
         try:
-            # Delete all events that belong to this profile
-            # and are not referred to by another profile
-            cursor.execute(
-                """
-                SELECT case_id, vehicle_num, event_num FROM profile_events
-                WHERE profile_id = ?;
-                """,
-                (profile_id,),
-            )
-            events = cursor.fetchall()
-            for event in events:
-                case_id, vehicle_num, event_num = event
-                cursor.execute(
-                    """
-                    SELECT COUNT(*) FROM profile_events
-                    WHERE case_id = ?
-                        AND vehicle_num = ?
-                        AND event_num = ?
-                        AND profile_id != ?;
-                    """,
-                    (case_id, vehicle_num, event_num, profile_id),
-                )
-                count = cursor.fetchone()[0]
-                cursor.execute(
-                    """
-                    DELETE FROM profile_events
-                    WHERE case_id = ?
-                        AND vehicle_num = ?
-                        AND event_num = ?
-                        AND profile_id = ?;
-                    """,
-                    (case_id, vehicle_num, event_num, profile_id),
-                )
-                if count < 1:
-                    cursor.execute(
-                        """
-                        DELETE FROM events
-                        WHERE case_id = ?
-                            AND vehicle_num = ?
-                            AND event_num = ?;
-                        """,
-                        (case_id, vehicle_num, event_num),
-                    )
-            cursor.execute(
-                """
-                DELETE FROM profiles
-                WHERE profile_id = ?
-                """,
-                (profile_id,),
-            )
-            self.connection.commit()
-        except sqlite3.Error as e:
-            self.logger.error(f"Error deleting profile: {e}")
-            return
-        finally:
-            cursor.close()
+            self.session.delete(profile)
+            for event in profile.events:
+                if not event.profiles:
+                    self.session.delete(event)
+            self.session.commit()
 
-    def rename_profile(self, profile_id: int, new_name: str):
-        cursor = self.connection.cursor()
+        except Exception as e:
+            self.logger.error(f"Error deleting profile {profile.id}: {e}")
+            self.session.rollback()
+            return
+
+        self.logger.info(f"Deleted profile {profile.id}.")
+        return
+
+    def rename_profile(self, profile: Profile, new_name: str):
         try:
-            cursor.execute(
-                """
-                UPDATE profiles
-                SET name = ?
-                WHERE profile_id = ?
-                """,
-                (new_name, profile_id),
-            )
-            self.connection.commit()
-        except sqlite3.Error as e:
+            profile.name = new_name
+            self.session.commit()
+        except Exception as e:
             self.logger.error(f"Error renaming profile: {e}")
             return
-        finally:
-            cursor.close()
+        self.logger.info(f"Renamed profile {profile.id} to {new_name}")
 
-    def toggle_ignored(self, event: tuple, profile_id: int):
-        cursor = self.connection.cursor()
+    def toggle_ignored(self, profile_event: ProfileEvent):
         try:
-            cursor.execute(
-                """
-                UPDATE profile_events
-                SET ignored = NOT ignored
-                WHERE case_id = ? AND vehicle_num = ? AND event_num = ? AND profile_id = ?
-                """,
-                (event[0], event[1], event[2], profile_id),
-            )
-            self.connection.commit()
-        except sqlite3.Error as e:
+            profile_event.ignored = not profile_event.ignored
+            self.session.commit()
+        except Exception as e:
             self.logger.error(f"Error toggling ignored: {e}")
+            self.session.rollback()
             return
-        finally:
-            cursor.close()
-        self.logger.debug(
-            f"Toggled ignored for event: Case {event[0]} Vehicle {event[1]} Event {event[2]}"
+        event = profile_event.event
+        self.logger.info(
+            f"Toggled ignored for event: Case {event.case_id} Vehicle {event.vehicle_num} Event {event.event_num}"
         )
 
     def get_headers(self, table: Base):

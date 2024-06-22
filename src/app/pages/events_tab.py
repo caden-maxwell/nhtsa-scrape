@@ -20,7 +20,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.pages import BaseTab
-from app.models import DatabaseHandler, EventList, Event
+from app.models import DatabaseHandler, EventList, Event, Profile
 from app.scrape import RequestHandler, Priority, RequestQueueItem, ScraperNASS
 from app.ui import Ui_EventsTab
 
@@ -28,13 +28,13 @@ from app.ui import Ui_EventsTab
 class EventsTab(BaseTab):
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
-    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = EventList(db_handler, profile_id)
+        self.model = EventList(db_handler, profile)
         self.current_index_vals = None
         self.images_dir = data_dir / "images"
 
@@ -193,7 +193,7 @@ class EventsTab(BaseTab):
     def scrape_btn_clicked(self):
         event: Event = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        )
+        ).event
 
         self.case_veh_img_ids[(event.case_id, event.vehicle_num)] = (
             self.case_veh_img_ids.get((event.case_id, event.vehicle_num), {})
@@ -283,7 +283,7 @@ class EventsTab(BaseTab):
             if self.ui.eventsList.currentIndex().isValid():
                 event: Event = self.model.data(
                     self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-                )
+                ).event
                 self.update_buttons(event)
 
     def parse_case(self, request: RequestQueueItem, response: Response):
@@ -352,30 +352,28 @@ class EventsTab(BaseTab):
     def parse_image(self, request: RequestQueueItem, response: Response):
         vals = self.case_veh_img_ids.values()
         img_id = int(request.url.split("&")[1].split("=")[1])
-        event_data = self.model.data(
+        event: Event = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        )
+        ).event
         for img_id_dict in vals:
             if img_id not in img_id_dict.keys():
                 continue
             img = Image.open(BytesIO(response.content))
             img_id_dict[img_id] = img
-            case_match = int(event_data["case_id"]) == request.extra_data["case_id"]
-            veh_match = (
-                int(event_data["vehicle_num"]) == request.extra_data["vehicle_num"]
-            )
+            case_match = event.case_id == request.extra_data["case_id"]
+            veh_match = event.vehicle_num == request.extra_data["vehicle_num"]
             if case_match and veh_match:
-                self.__add_thumbnail(img_id, img, event_data)
+                self.__add_thumbnail(img_id, img, event)
             break
 
-    def __add_thumbnail(self, img_id: int, image: Image.Image, data: dict):
+    def __add_thumbnail(self, img_id: int, image: Image.Image, event: Event):
         self.no_images_label.setVisible(False)
-        thumbnail = ImageThumbnail(img_id, image, self.images_dir, data)
+        thumbnail = ImageThumbnail(img_id, image, self.images_dir, event)
         self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
 class ImageThumbnail(QWidget):
-    def __init__(self, img_id: int, image: Image.Image, images_dir: Path, data: dict):
+    def __init__(self, img_id: int, image: Image.Image, images_dir: Path, event: Event):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
@@ -384,9 +382,9 @@ class ImageThumbnail(QWidget):
         self.image = image
         self.images_dir = images_dir
 
-        self.case_id = data["case_id"]
-        self.nass_dv = data["NASS_dv"]
-        self.tot_dv = data["TOT_dv"]
+        self.case_id = event.case_id
+        self.nass_dv = event.NASS_dv
+        self.tot_dv = event.TOT_dv
 
         layout = QGridLayout()
         self.thumbnail_label = QLabel()

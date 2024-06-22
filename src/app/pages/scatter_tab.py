@@ -11,7 +11,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
 from app.pages import BaseTab
-from app.models import DatabaseHandler, ScatterPlotModel
+from app.models import DatabaseHandler, ScatterPlotModel, Profile
 from app.ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
@@ -19,13 +19,13 @@ sns.set_style("ticks")
 
 
 class ScatterTab(BaseTab):
-    def __init__(self, db_handler: DatabaseHandler, profile_id, data_dir: Path):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
         super().__init__()
         self.ui = Ui_ScatterTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = ScatterPlotModel(db_handler, profile_id)
+        self.model = ScatterPlotModel(db_handler, profile)
         self.data_dir = data_dir
 
         self.ui.nassDataBtn.clicked.connect(

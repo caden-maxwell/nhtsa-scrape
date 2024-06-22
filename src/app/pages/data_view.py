@@ -7,14 +7,14 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget
 
 from app.pages import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
-from app.models import DatabaseHandler
+from app.models import DatabaseHandler, Profile
 from app.ui import Ui_DataView
 
 
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler, profile_id, new_profile=False):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile, new_profile=False):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class DataView(QWidget):
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
-        self.profile = db_handler.get_profile(profile_id)
+        self.profile = profile
 
         # Get a filename-safe string for the new directory
         created = datetime.fromtimestamp(float(self.profile.created)).strftime(
@@ -38,9 +38,9 @@ class DataView(QWidget):
         self.data_dir = (Path(__file__).parent.parent / "data" / dir_name).resolve()
 
         self.summary_tab = SummaryTab(self.profile)
-        self.events_tab = EventsTab(db_handler, profile_id, self.data_dir)
-        self.scatter_tab = ScatterTab(db_handler, profile_id, self.data_dir)
-        self.csv_tab = CSVTab(db_handler, profile_id, self.data_dir)
+        self.events_tab = EventsTab(db_handler, profile, self.data_dir)
+        self.scatter_tab = ScatterTab(db_handler, profile, self.data_dir)
+        self.csv_tab = CSVTab(db_handler, profile, self.data_dir)
 
         self.ui.tabWidget.addTab(self.summary_tab, "Summary")
         self.ui.tabWidget.addTab(self.events_tab, "Events")

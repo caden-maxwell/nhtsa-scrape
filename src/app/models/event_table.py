@@ -2,25 +2,24 @@ import logging
 
 from PyQt6.QtCore import QAbstractTableModel, QModelIndex, Qt, QVariant
 
-from app.models import DatabaseHandler, Event
+from app.models import DatabaseHandler, Event, Profile
 
 
 class EventTable(QAbstractTableModel):
-    def __init__(self, db_handler: DatabaseHandler, profile_id: int):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
         self.db_handler = db_handler
         self._data: list[tuple] = []
 
-        self.profile = self.db_handler.get_profile(profile_id)
+        self.profile = profile
         if not self.profile:
-            self.logger.error(f"Profile ID {profile_id} not found.")
+            self.logger.error("Profile is nonexistent.")
             return
 
         self._headers = self.db_handler.get_headers(Event)
         self.refresh_data()
-        print("--------------------DATA:", self._data)
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
         return len(self._data)
@@ -52,7 +51,7 @@ class EventTable(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def refresh_data(self):
-        self._data: list[Event] = self.db_handler.get_events(self.profile.id, include_ignored=False)
+        self._data: list[Event] = self.db_handler.get_events(self.profile, include_ignored=False)
         self._data = [event.to_tuple() for event in self._data]
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")
