@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 from sqlalchemy import create_engine, select, inspect
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.exc import IntegrityError
 
 from app.models import Profile, ProfileEvent, Base, Event
 
