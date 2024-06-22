@@ -27,7 +27,7 @@ class ScraperCISS(BaseScraper):
     def __init__(self, params: ScrapeParams[int]):
         super().__init__()
 
-        self._payload = payload_CISS
+        self._payload = payload_CISS.copy()
         self._payload.update(self._convert_params_to_payload(params))
 
     def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
