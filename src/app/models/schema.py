@@ -30,7 +30,7 @@ class Profile(Base):
     modified: Mapped[int] = mapped_column()
 
     profile_event_associations: Mapped[List["ProfileEvent"]] = relationship(
-        back_populates="profile"
+        back_populates="profile", cascade="all, delete-orphan"
     )
 
     events: AssociationProxy[List["Event"]] = association_proxy(
@@ -101,9 +101,5 @@ class ProfileEvent(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("event.id"), primary_key=True)
     ignored: Mapped[bool] = mapped_column(default=False)
 
-    profile: Mapped[Profile] = relationship(
-        back_populates="profile_event_associations",
-    )
-    event: Mapped[Event] = relationship(
-        back_populates="event_profile_associations",
-    )
+    profile: Mapped[Profile] = relationship(back_populates="profile_event_associations")
+    event: Mapped[Event] = relationship(back_populates="event_profile_associations")

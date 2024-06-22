@@ -4,18 +4,18 @@ import os
 from pathlib import Path
 
 from app.pages import BaseTab
-from app.models import EventTable
+from app.models import EventTable, Profile
 from app.ui import Ui_CSVTab
 
 
 class CSVTab(BaseTab):
-    def __init__(self, db_handler, profile_id, data_dir: Path):
+    def __init__(self, db_handler, profile: Profile, data_dir: Path):
         super().__init__()
         self.ui = Ui_CSVTab()
         self.ui.setupUi(self)
         self.logger = logging.getLogger(__name__)
 
-        self.model = EventTable(db_handler, profile_id)
+        self.model = EventTable(db_handler, profile)
         self.ui.tableView.setModel(self.model)
         self.ui.saveBtn.clicked.connect(self.save_csv)
 
@@ -23,6 +23,7 @@ class CSVTab(BaseTab):
 
     def refresh_tab(self):
         self.model.refresh_data()
+        self.ui.tableView.hideColumn(0)
 
     def save_csv(self):
         self.ui.saveBtn.setEnabled(False)

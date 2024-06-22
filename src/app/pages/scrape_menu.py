@@ -8,7 +8,7 @@ from requests import Response
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
 from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpinBox
 
-from app.models import DatabaseHandler, Profile, ProfileEvent
+from app.models import DatabaseHandler, Profile, Event
 from app.pages import DataView
 from app.scrape import (
     RequestHandler,
@@ -263,7 +263,7 @@ class ScrapeMenu(QWidget):
             return
 
         self.logger.info(f"Created new profile with ID {self.profile.id}.")
-        self.data_viewer = DataView(self.db_handler, self.profile.id, new_profile=True)
+        self.data_viewer = DataView(self.db_handler, self.profile, new_profile=True)
         self.data_viewer.show()
 
         # Get the active database based on the radio button
@@ -298,9 +298,9 @@ class ScrapeMenu(QWidget):
         self.engine_thread.started.connect(self.scraper.start)
         self.engine_thread.start()
 
-    @pyqtSlot(ProfileEvent, Response)
-    def add_event(self, event: ProfileEvent, response: Response):
-        if not self.db_handler.get_profile(self.profile.id):
+    @pyqtSlot(Event, Response)
+    def add_event(self, event: Event, response: Response):
+        if not self.profile:
             if self.data_viewer:
                 self.data_viewer.close()
 

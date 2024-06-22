@@ -2,21 +2,20 @@ import logging
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
 
-from app.models import DatabaseHandler, ProfileEvent
+from app.models import DatabaseHandler, ProfileEvent, Profile
 
 
 class EventList(QAbstractListModel):
-    def __init__(self, db_handler: DatabaseHandler, profile_id):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile):
         super().__init__()
         self.logger = logging.getLogger(__name__)
 
         self.db_handler = db_handler
         self._data: list[ProfileEvent] = []
 
-        self.profile = self.db_handler.get_profile(profile_id)
+        self.profile = profile
         if not self.profile:
-            self.logger.error(f"Profile ID {profile_id} not found.")
-            print(f"Profile ID {profile_id} not found.")
+            self.logger.error(f"Profile is nonexistent.")
             return
         self.refresh_data()
 
@@ -73,19 +72,19 @@ class EventList(QAbstractListModel):
     def delete_event(self, index: QModelIndex):
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
             return
-        event = self._data[index.row()].event
-        self.db_handler.delete_event(event, self.profile.id)
+        profile_event = self._data[index.row()]
+        self.db_handler.del_profile_event(profile_event)
         self.refresh_data()
 
     def toggle_ignored(self, index: QModelIndex):
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
             return
-        event = self._data[index.row()].event
-        self.db_handler.toggle_ignored(event, self.profile)
+        profile_event = self._data[index.row()]
+        self.db_handler.toggle_ignored(profile_event)
         self.refresh_data()
 
     def refresh_data(self):
-        self._data = self.db_handler.get_profile_events(self.profile.id)
+        self._data = self.db_handler.get_profile_events(self.profile)
         # TODO: Implement sorting in ProfileEvent
         # self._data.sort()
 

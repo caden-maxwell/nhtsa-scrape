@@ -4,7 +4,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection
 from PyQt6.QtWidgets import QWidget, QMessageBox, QLineEdit, QInputDialog
 
 from app.ui import Ui_ProfileMenu
-from app.models import ProfileList, DatabaseHandler
+from app.models import ProfileList, DatabaseHandler, Profile
 from app.pages import DataView
 
 
@@ -42,9 +42,9 @@ class ProfileMenu(QWidget):
     def handle_open(self):
         selected = self.ui.listView.selectedIndexes()
         for idx in selected:
-            profile_id = idx.data(role=Qt.ItemDataRole.UserRole).id
-            self.logger.debug(f"Opening profile {profile_id}")
-            new_viewer = DataView(self.db_handler, profile_id)
+            profile: Profile = idx.data(role=Qt.ItemDataRole.UserRole)
+            self.logger.debug(f"Opening profile {profile}")
+            new_viewer = DataView(self.db_handler, profile)
             self.data_viewers.append(new_viewer)
             new_viewer.exited.connect(
                 lambda viewer=new_viewer: self.data_viewers.remove(viewer)
@@ -69,7 +69,7 @@ class ProfileMenu(QWidget):
 
     def handle_rename(self):
         selected = self.ui.listView.selectedIndexes().pop()
-        profile_id = selected.data(role=Qt.ItemDataRole.UserRole)[0]
+        profile: Profile = selected.data(role=Qt.ItemDataRole.UserRole)
         profile_name = selected.data(role=Qt.ItemDataRole.DisplayRole)
         new_name, ok = QInputDialog.getText(
             self,
@@ -80,7 +80,7 @@ class ProfileMenu(QWidget):
         )
         if not ok or not new_name:
             return
-        self.db_handler.rename_profile(profile_id, new_name)
+        self.db_handler.rename_profile(profile, new_name)
         self.model.refresh_data()
         self.ui.listView.clearSelection()
 

@@ -1,15 +1,15 @@
 import logging
 
-from app.models import DatabaseHandler, Event
+from app.models import DatabaseHandler, Event, Profile
 
 
 class ScatterPlotModel:
-    def __init__(self, db_handler: DatabaseHandler, profile_id: int):
+    def __init__(self, db_handler: DatabaseHandler, profile: Profile):
         self.logger = logging.getLogger(__name__)
 
         self.db_handler = db_handler
-        self.profile_id = profile_id
-
+        self.profile = profile
+        
         self._case_ids = []
         self._x_data = []
         self._y1_data = []
@@ -25,7 +25,7 @@ class ScatterPlotModel:
         self._y1_data = []
         self._y2_data = []
         events: list[Event] = self.db_handler.get_events(
-            self.profile_id, include_ignored=False
+            self.profile, include_ignored=False
         )
 
         for event in events:

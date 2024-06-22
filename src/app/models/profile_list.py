@@ -35,7 +35,7 @@ class ProfileList(QAbstractListModel):
             if not index.isValid() or not (0 <= index.row() < self.rowCount()):
                 continue
             profile = self._data[index.row()]
-            self.db_handler.delete_profile(profile.id)
+            self.db_handler.delete_profile(profile)
         self.refresh_data()
 
     def refresh_data(self):
