@@ -28,7 +28,9 @@ session.add(new_profile)
 session.commit()
 
 new_event = Event(
+    summary="This is a test event.",
     case_id=0,
+    case_num="123-dsf-123",
     vehicle_num=0,
     event_num=1,
     make="Ford",

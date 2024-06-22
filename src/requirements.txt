@@ -6,3 +6,5 @@ lxml
 numpy
 matplotlib
 seaborn
+sqlalchemy
+jsonschema

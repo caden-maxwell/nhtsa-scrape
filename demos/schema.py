@@ -24,23 +24,15 @@ class Profile(Base):
     created: Mapped[int] = mapped_column()
     modified: Mapped[int] = mapped_column()
 
-    profile_event_associations: Mapped[List["ProfileEventAssociation"]] = relationship(
+    profile_event_associations: Mapped[List["ProfileEvent"]] = relationship(
         back_populates="profile"
     )
 
     events: AssociationProxy[List["Event"]] = association_proxy(
         "profile_event_associations",
         "event",
-        creator=lambda event_obj: ProfileEventAssociation(event=event_obj),
+        creator=lambda event_obj: ProfileEvent(event=event_obj),
     )
-
-
-class Case(Base):
-    __tablename__ = "case"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    case_num: Mapped[str] = mapped_column()
-    summary: Mapped[str] = mapped_column()
 
 
 class Event(Base):
@@ -48,7 +40,9 @@ class Event(Base):
     __table_args__ = (UniqueConstraint("case_id", "vehicle_num", "event_num"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    case_id: Mapped[int] = mapped_column(ForeignKey("case.id"))
+    summary: Mapped[str] = mapped_column()
+    case_num: Mapped[str] = mapped_column()
+    case_id: Mapped[int] = mapped_column()
     vehicle_num: Mapped[int] = mapped_column()
     event_num: Mapped[int] = mapped_column()
     make: Mapped[str] = mapped_column()
@@ -80,18 +74,18 @@ class Event(Base):
     e: Mapped[int] = mapped_column()
     TOT_dv: Mapped[int] = mapped_column()
 
-    event_profile_associations: Mapped[List["ProfileEventAssociation"]] = relationship(
+    event_profile_associations: Mapped[List["ProfileEvent"]] = relationship(
         back_populates="event"
     )
 
     profiles: AssociationProxy[List["Profile"]] = association_proxy(
         "event_profile_associations",
         "profile",
-        creator=lambda profile_obj: ProfileEventAssociation(profile=profile_obj),
+        creator=lambda profile_obj: ProfileEvent(profile=profile_obj),
     )
 
 
-class ProfileEventAssociation(Base):
+class ProfileEvent(Base):
     __tablename__ = "profile_event"
 
     profile_id: Mapped[int] = mapped_column(ForeignKey("profile.id"), primary_key=True)

@@ -1,6 +1,11 @@
 from typing import List
-from sqlalchemy import ForeignKey, UniqueConstraint
-from sqlalchemy.orm import relationship, DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import ForeignKey, UniqueConstraint, inspect
+from sqlalchemy.orm import (
+    relationship,
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+)
 from sqlalchemy.ext.associationproxy import AssociationProxy, association_proxy
 
 
@@ -83,6 +88,10 @@ class Event(Base):
         "profile",
         creator=lambda profile_obj: ProfileEvent(profile=profile_obj),
     )
+
+    def to_tuple(model):
+        mapper = inspect(model).mapper
+        return tuple(getattr(model, column.key) for column in mapper.columns)
 
 
 class ProfileEvent(Base):
