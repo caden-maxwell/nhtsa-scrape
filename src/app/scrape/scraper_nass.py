@@ -31,7 +31,7 @@ class ScraperNASS(BaseScraper):
     def __init__(self, params: ScrapeParams[int]):
         super().__init__()
 
-        self._payload = payload_NASS
+        self._payload = payload_NASS.copy()
         self._payload.update(self._convert_params_to_payload(params))
 
     def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
@@ -91,7 +91,6 @@ class ScraperNASS(BaseScraper):
             self._logger.error(
                 f"Received empty response from {request.url}. Ending scrape..."
             )
-            self.complete()
             return
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -108,7 +107,6 @@ class ScraperNASS(BaseScraper):
             self._logger.debug(
                 f"No cases found on page {self._payload['currentPage']}. Scrape complete."
             )
-            self.complete()
             return
 
         self._logger.info(
