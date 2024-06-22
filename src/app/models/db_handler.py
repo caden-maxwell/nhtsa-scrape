@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 import sqlite3
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, inspect
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Profile, ProfileEvent, Base, Event
@@ -55,15 +55,18 @@ class DatabaseHandler:
             profile_events: list[ProfileEvent] = self.get_profile_events(profile_id)
             if not profile_events:
                 return []
+            events = []
 
             if not include_ignored:
-                return [
+                events = [
                     profile_event.event
                     for profile_event in profile_events
                     if not profile_event.ignored
                 ]
+            else:
+                events = [profile_event.event for profile_event in profile_events]
 
-            return [profile_event.event for profile_event in profile_events]
+            return events
 
         except Exception as e:
             self.logger.error(f"Error getting events for profile {profile_id}: {e}")
@@ -240,13 +243,12 @@ class DatabaseHandler:
             f"Toggled ignored for event: Case {event[0]} Vehicle {event[1]} Event {event[2]}"
         )
 
-    def get_headers(self, table_name: str):
+    def get_headers(self, table: Base):
         """Get the column names of a table."""
         try:
-            stmt = select(table_name)
-            return self.session.execute(stmt).keys()
+            return inspect(table).columns.keys()
         except Exception as e:
-            self.logger.error(f"Error getting headers for table {table_name}: {e}")
+            self.logger.error(f"Error getting headers for table {table}: {e}")
             return []
 
     def __del__(self):
