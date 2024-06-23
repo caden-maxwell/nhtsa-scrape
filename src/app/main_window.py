@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from datetime import datetime
 
 from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
 from PyQt6.QtCore import QThread
@@ -35,8 +36,15 @@ class MainWindow(QWidget):
         )
         self.log_handler.setLevel(logging.DEBUG)
         self.log_handler.log_message.connect(self.logs_window.handle_logger_message)
-        logging.basicConfig(level=logging.DEBUG, handlers=[self.log_handler])
+        logging.basicConfig(
+            level=logging.DEBUG,
+            handlers=[self.log_handler, logging.FileHandler("app.log")],
+        )
         self.logger = logging.getLogger(__name__)
+        # Clear the logs file
+        open("app.log", "w").close()
+        self.logger.info("This logs file serves to record all logs from the most recent application run.")
+        self.logger.info(f"Application started at {datetime.now()}")
 
         # Setup menus
         self.mainMenuPage = MainMenu()

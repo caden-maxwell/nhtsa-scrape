@@ -45,6 +45,7 @@ class Event(Base):
     __table_args__ = (UniqueConstraint("case_id", "vehicle_num", "event_num"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    scraper_type: Mapped[str] = mapped_column()
     summary: Mapped[str] = mapped_column()
     case_num: Mapped[str] = mapped_column()
     case_id: Mapped[int] = mapped_column()

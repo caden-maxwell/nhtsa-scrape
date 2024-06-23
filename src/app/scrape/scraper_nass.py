@@ -12,9 +12,14 @@ from app.models import Event
 
 class ScraperNASS(BaseScraper):
 
-    case_url = "https://crashviewer.nhtsa.dot.gov/nass-cds/CaseForm.aspx?GetXML&caseid="
-    case_list_url = "https://crashviewer.nhtsa.dot.gov/LegacyCDS"
-    case_url_ending = "&docinfo=0"
+    search_url = "/LegacyCDS/Search"
+    models_url = "/LegacyCDS/GetVehicleModels/"
+    case_url = "/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID={case_id}"
+    case_url_raw = (
+        "/nass-cds/CaseForm.aspx?GetXML&caseid={case_id}&year=&transform=0&docinfo=0"
+    )
+    case_list_url = "/LegacyCDS"
+    img_url = "/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={version}"
 
     # NASS-specific dropdown field ids
     field_names = ScrapeParams[str](
@@ -65,15 +70,18 @@ class ScraperNASS(BaseScraper):
             )
         )
 
-        request = RequestQueueItem(
-            self.case_list_url,
-            method="GET",
-            params=self._payload,
-            priority=Priority.CASE_LIST.value,
-            callback=self._parse_case_list,
-            extra_data={"database": "NASS"},
+        self._req_case_list()
+
+    def _req_case_list(self):
+        self._req_handler.enqueue_request(
+            RequestQueueItem(
+                self.ROOT + self.case_list_url,
+                params=self._payload,
+                priority=Priority.CASE_LIST.value,
+                callback=self._parse_case_list,
+                extra_data={"database": "NASS"},
+            )
         )
-        self._req_handler.enqueue_request(request)
 
     @pyqtSlot(RequestQueueItem, Response)
     def _handle_response(self, request: RequestQueueItem, response: Response):
@@ -96,12 +104,14 @@ class ScraperNASS(BaseScraper):
         soup = BeautifulSoup(response.content, "html.parser")
 
         # Get all caseIDs on the current page
+        table = soup.find(
+            "table",
+            {"class": "display table table-condensed table-striped table-hover"},
+        )
         case_ids = []
-        tables = soup.find_all("table")
-        if len(tables) > 1:
-            table = tables[1]  # The second table should have all the case links
-            case_urls = [a["href"] for a in table.find_all("a")]
-            case_ids = [url.split("=")[2] for url in case_urls]
+        if table:
+            urls = [a["href"] for a in table.find_all("a")]
+            case_ids = [url.split("=")[-1] for url in urls]
 
         if not case_ids:
             self._logger.debug(
@@ -115,9 +125,9 @@ class ScraperNASS(BaseScraper):
         for case_id in case_ids:
             self._req_handler.enqueue_request(
                 RequestQueueItem(
-                    f"{self.case_url}{case_id}{self.case_url_ending}",
+                    self.ROOT + self.case_url_raw.format(case_id=case_id),
                     priority=Priority.CASE.value,
-                    callback=self.__parse_case,
+                    callback=self._parse_case,
                     extra_data={"database": "NASS"},
                 )
             )
@@ -126,18 +136,9 @@ class ScraperNASS(BaseScraper):
         self._payload["currentPage"] = self.current_page
         self._logger.debug(f"Queueing page {self.current_page}...")
 
-        self._req_handler.enqueue_request(
-            RequestQueueItem(
-                self.case_list_url,
-                method="POST",
-                params=self._payload,
-                priority=Priority.CASE_LIST.value,
-                callback=self._parse_case_list,
-                extra_data={"database": "NASS"},
-            )
-        )
+        self._req_case_list()
 
-    def __parse_case(self, request: RequestQueueItem, response: Response):
+    def _parse_case(self, request: RequestQueueItem, response: Response):
         if not self.running:
             return
 
@@ -349,6 +350,7 @@ class ScraperNASS(BaseScraper):
             self.event_parsed.emit(
                 Event(
                     summary=summary,
+                    scraper_type="NASS",
                     case_num=case_xml.find("Case")["CaseStr"],
                     case_id=case_id,
                     vehicle_num=veh_ext_form["VehicleNumber"],

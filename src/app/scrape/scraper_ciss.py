@@ -1,5 +1,6 @@
 from datetime import datetime
 import textwrap
+from bs4 import BeautifulSoup
 from requests import Response
 
 from app.scrape import BaseScraper, RequestQueueItem, Priority, ScrapeParams
@@ -8,9 +9,12 @@ from app.resources import payload_CISS
 
 class ScraperCISS(BaseScraper):
 
-    case_url = "https://crashviewer.nhtsa.dot.gov/CISS/CISSCrashData/?crashId="
-    case_list_url = "https://crashviewer.nhtsa.dot.gov/CISS/Index"
-    case_url_ending = ""
+    search_url = "/CISS/SearchFilter"
+    models_url = "/SCI/GetvPICVehicleModelbyMake/"
+    case_url = "/CISS/Details?Study=CISS&CaseId={case_id}"
+    case_url_raw = "/CISS/CISSCrashData?crashId={case_id}"
+    case_list_url = "/CISS/Index"
+    img_url = "/cases/photo/?photoid={img_id}"
 
     # CISS-specific dropdown field ids
     field_names = ScrapeParams[str](
@@ -58,9 +62,8 @@ class ScraperCISS(BaseScraper):
                 "A model range of over 50 years will result in an error on the CISS website. The range has been limited to 50 years."
             )
 
-        return {
+        payload = {
             self.field_names.make: [params.make],
-            self.field_names.model: [params.model],
             self.field_names.start_model_year: list(range(start_year, end_year + 1)),
             self.field_names.primary_damage: (
                 params.primary_damage if params.primary_damage != -1 else ""
@@ -72,13 +75,18 @@ class ScraperCISS(BaseScraper):
             self.field_names.max_dv: params.max_dv if params.max_dv != 0 else "",
         }
 
+        if params.model != -1:
+            payload[self.field_names.model] = [params.model]
+
+        return payload
+
     def _scrape(self):
         self._logger.debug(
             textwrap.dedent(
                 f"""{self.__class__.__name__} started with these params:
                 {{
                     Make: {self._payload[self.field_names.make]},
-                    Model: {self._payload[self.field_names.model]},
+                    Model: {self._payload.get(self.field_names.model, "ALL")},
                     Model Years: {self._payload[self.field_names.start_model_year]},
                     Min Delta V: {self._payload[self.field_names.min_dv]},
                     Max Delta V: {self._payload[self.field_names.max_dv]},
@@ -88,15 +96,20 @@ class ScraperCISS(BaseScraper):
             )
         )
 
-        request = RequestQueueItem(
-            self.case_list_url,
-            method="GET",
-            params=self._payload,
-            priority=Priority.CASE_LIST.value,
-            callback=self._parse_case_list,
-            extra_data={"database": "CISS"},
+        self._req_case_list()
+
+    def _req_case_list(self):
+        self._req_handler.enqueue_request(
+            RequestQueueItem(
+                self.ROOT + self.case_list_url,
+                method="GET",
+                params=self._payload,
+                priority=Priority.CASE_LIST.value,
+                callback=self._parse_case_list,
+                extra_data={"database": "CISS"},
+            )
         )
-        self._req_handler.enqueue_request(request)
+
 
     def _handle_response(self, request: RequestQueueItem, response: Response):
         if (
@@ -106,5 +119,51 @@ class ScraperCISS(BaseScraper):
             request.callback(request, response)
 
     def _parse_case_list(self, request: RequestQueueItem, response: Response):
-        print("CISS Scraper not yet implemented.")
-        self.complete()
+        if not self.running:
+            return
+
+        if not response.content:
+            self._logger.error(
+                f"Received empty response from {request.url}. Ending scrape..."
+            )
+            return
+
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        table = soup.find(
+            "table",
+            {"class": "display table table-condensed table-striped table-hover"},
+        )
+        case_ids = []
+        if table:
+            urls = [a["href"] for a in table.find_all("a")]
+            case_ids = [int(url.split("=")[-1]) for url in urls]
+
+        if not case_ids:
+            self._logger.debug(
+                f"No cases found on page {self._payload['currentPage']}. Scrape complete."
+            )
+            return
+
+        self._logger.info(
+            f"Requesting {len(case_ids)} case{'s'[:len(case_ids)^1]} from page {self.current_page}..."
+        )
+
+        for case_id in case_ids:
+            self._req_handler.enqueue_request(
+                RequestQueueItem(
+                    self.ROOT + self.case_url_raw.format(case_id=case_id),
+                    priority=Priority.CASE.value,
+                    callback=self.__parse_case,
+                    extra_data={"database": "CISS"},
+                )
+            )
+
+        self.current_page += 1
+        self._payload["currentPage"] = self.current_page
+        self._logger.debug(f"Queueing page {self.current_page}...")
+
+        self._req_case_list()
+
+    def __parse_case(self, request: RequestQueueItem, response: Response):
+        print("NOT IMPLEMENTED YET")

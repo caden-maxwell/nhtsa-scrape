@@ -108,7 +108,7 @@ class DatabaseHandler:
             self.session.rollback()
             return -1
 
-    def del_profile_event(self, profile_event: ProfileEvent):
+    def delete_profile_event(self, profile_event: ProfileEvent):
         """Deletes a ProfileEvent and its corresponding Event, but only if the Event is not used by any other Profile."""
         try:
             event = profile_event.event
@@ -152,18 +152,20 @@ class DatabaseHandler:
             return
         self.logger.info(f"Renamed profile {profile.id} to {new_name}")
 
-    def toggle_ignored(self, profile_event: ProfileEvent):
+    def set_ignored(self, profile_event: ProfileEvent, ignored: bool):
+        """Set the ignored status of a ProfileEvent. Returns True if successful, False otherwise."""
         try:
-            profile_event.ignored = not profile_event.ignored
+            profile_event.ignored = ignored
             self.session.commit()
+            event = profile_event.event
+            self.logger.info(
+                f"Toggled ignored for event: Case {event.case_id} Vehicle {event.vehicle_num} Event {event.event_num}"
+            )
+            return True
         except Exception as e:
             self.logger.error(f"Error toggling ignored: {e}")
             self.session.rollback()
-            return
-        event = profile_event.event
-        self.logger.info(
-            f"Toggled ignored for event: Case {event.case_id} Vehicle {event.vehicle_num} Event {event.event_num}"
-        )
+            return False
 
     def get_headers(self, table: Base):
         """Get the column names of a table."""
