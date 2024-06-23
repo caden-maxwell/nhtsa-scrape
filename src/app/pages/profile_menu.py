@@ -44,12 +44,12 @@ class ProfileMenu(QWidget):
         for idx in selected:
             profile: Profile = idx.data(role=Qt.ItemDataRole.UserRole)
             self.logger.debug(f"Opening profile {profile}")
-            new_viewer = DataView(self.db_handler, profile)
-            self.data_viewers.append(new_viewer)
-            new_viewer.exited.connect(
-                lambda viewer=new_viewer: self.data_viewers.remove(viewer)
+            data_viewer = DataView(self.db_handler, profile)
+            self.data_viewers.append(data_viewer)
+            data_viewer.exited.connect(
+                lambda viewer=data_viewer: self.data_viewers.remove(viewer)
             )
-            new_viewer.show()
+            data_viewer.show()
 
     def handle_delete(self):
         selected = self.ui.listView.selectedIndexes()

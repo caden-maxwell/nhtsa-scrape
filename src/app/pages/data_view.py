@@ -22,14 +22,12 @@ class DataView(QWidget):
         self.ui = Ui_DataView()
         self.ui.setupUi(self)
 
-        self.profile = profile
-
         # Get a filename-safe string for the new directory
-        created = datetime.fromtimestamp(float(self.profile.created)).strftime(
+        created = datetime.fromtimestamp(float(profile.created)).strftime(
             "%Y-%m-%d %H-%M-%S"
         )
 
-        dir_name = f"{self.profile.name}_{created}".replace(" ", "_")
+        dir_name = f"{profile.name}_{created}".replace(" ", "_")
         filename_safe = ["_", "-", "(", ")"]
         dir_name = "".join(
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
@@ -37,7 +35,7 @@ class DataView(QWidget):
         dir_name = re.sub(r"[_-]{2,}", "_", dir_name)
         self.data_dir = (Path(__file__).parent.parent / "data" / dir_name).resolve()
 
-        self.summary_tab = SummaryTab(self.profile)
+        self.summary_tab = SummaryTab(profile)
         self.events_tab = EventsTab(db_handler, profile, self.data_dir)
         self.scatter_tab = ScatterTab(db_handler, profile, self.data_dir)
         self.csv_tab = CSVTab(db_handler, profile, self.data_dir)
@@ -54,6 +52,7 @@ class DataView(QWidget):
         self.ui.tabWidget.currentChanged.connect(self.update_current_tab)
 
     def update_current_tab(self):
+        """Refresh the current tab when it is switched to."""
         widget: BaseTab = self.ui.tabWidget.currentWidget()
         widget.refresh_tab()
 

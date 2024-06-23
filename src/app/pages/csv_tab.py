@@ -24,6 +24,7 @@ class CSVTab(BaseTab):
     def refresh_tab(self):
         self.model.refresh_data()
         self.ui.tableView.hideColumn(0)
+        self.ui.tableView.hideColumn(1)
 
     def save_csv(self):
         self.ui.saveBtn.setEnabled(False)

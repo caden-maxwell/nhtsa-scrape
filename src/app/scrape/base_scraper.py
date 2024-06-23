@@ -36,21 +36,37 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
     event_parsed = pyqtSignal(Event, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
+    ROOT = "https://crashviewer.nhtsa.dot.gov/"
 
     @property
     @abstractmethod
-    def case_url(self) -> str:
-        """Returns the URL for a specific case."""
+    def search_url(self) -> str:
+        """The URL for the search filters (dropdowns) page."""
+
+    @property
+    @abstractmethod
+    def models_url(self) -> str:
+        """The URL for vehicle models."""
+
+    @property
+    @abstractmethod
+    def case_url(self, case_id) -> str:
+        """The URL for a specific case."""
+
+    @property
+    @abstractmethod
+    def case_url_raw(self, case_id) -> str:
+        """The URL for a specific case which returns data in parseable format."""
 
     @property
     @abstractmethod
     def case_list_url(self) -> str:
-        """Returns the URL for a list of cases."""
+        """The URL for a list of cases."""
 
     @property
     @abstractmethod
-    def case_url_ending(self) -> str:
-        """Returns the ending of the URL for a specific case."""
+    def img_url(self) -> str:
+        """The URL for an image."""
 
     @property
     @abstractmethod

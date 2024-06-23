@@ -25,8 +25,6 @@ from app.ui import Ui_ScrapeMenu
 @dataclass
 class _SearchModel:
     scraper: BaseScraper  # The scraper to use
-    dropdowns_url: str  # The URL to fetch the dropdown options from
-    models_url: str  # The URL to fetch the models from
     html_options_name: str  # The name of the HTML tag containing the dropdown options
     html_options_id: str  # The ID of the HTML tag containing the dropdown options
     make_combo: QComboBox  # The make dropdown
@@ -65,8 +63,6 @@ class ScrapeMenu(QWidget):
 
         nass_model = _SearchModel(
             scraper=ScraperNASS,
-            dropdowns_url="https://crashviewer.nhtsa.dot.gov/LegacyCDS/Search",
-            models_url="https://crashviewer.nhtsa.dot.gov/LegacyCDS/GetVehicleModels/",
             html_options_name="table",
             html_options_id="searchTable",
             make_combo=self.ui.makeCombo,
@@ -82,8 +78,6 @@ class ScrapeMenu(QWidget):
 
         ciss_model = _SearchModel(
             scraper=ScraperCISS,
-            dropdowns_url="https://crashviewer.nhtsa.dot.gov/CISS/SearchFilter",
-            models_url="https://crashviewer.nhtsa.dot.gov/SCI/GetvPICVehicleModelbyMake/",
             html_options_name="div",
             html_options_id="panel-options",
             make_combo=self.ui.makeCombo_2,
@@ -109,13 +103,14 @@ class ScrapeMenu(QWidget):
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
         for nhtsa_model in self.nhtsa_models:
-            request_NASS = RequestQueueItem(
-                nhtsa_model.dropdowns_url,
-                priority=Priority.ALL_COMBOS.value,
-                callback=self.update_dropdowns,
-                extra_data={"search_model": nhtsa_model},
+            self.req_handler.enqueue_request(
+                RequestQueueItem(
+                    BaseScraper.ROOT + nhtsa_model.scraper.search_url,
+                    priority=Priority.ALL_COMBOS.value,
+                    callback=self.update_dropdowns,
+                    extra_data={"search_model": nhtsa_model},
+                )
             )
-            self.req_handler.enqueue_request(request_NASS)
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
@@ -173,20 +168,22 @@ class ScrapeMenu(QWidget):
     def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"search_model": search_model}
+        self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
+
         params = (
             {"make": search_model.make_combo.currentText()}
             if search_model.scraper == ScraperNASS
             else {"makeIds": search_model.make_combo.currentData()}
         )
-        request = RequestQueueItem(
-            search_model.models_url,
-            params=params,
-            priority=Priority.MODEL_COMBO.value,
-            extra_data=extra_data,
-            callback=self.update_model_dropdown,
+        self.req_handler.enqueue_request(
+            RequestQueueItem(
+                BaseScraper.ROOT + search_model.scraper.models_url,
+                params=params,
+                priority=Priority.MODEL_COMBO.value,
+                extra_data=extra_data,
+                callback=self.update_model_dropdown,
+            )
         )
-        self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
-        self.req_handler.enqueue_request(request)
 
     def update_model_dropdown(self, request: RequestQueueItem, response: Response):
         """Populates the model dropdown with models from the response."""

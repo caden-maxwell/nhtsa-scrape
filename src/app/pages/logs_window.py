@@ -3,16 +3,13 @@ import logging
 import os
 from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtCore import pyqtSlot
 from PyQt6.QtWidgets import QWidget
 
 from app.ui import Ui_LogsWindow
 
 
 class LogsWindow(QWidget):
-    clear_logs = pyqtSignal()
-    save_logs = pyqtSignal()
-
     def __init__(self):
         super().__init__()
 

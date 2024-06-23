@@ -15,7 +15,7 @@ class EventList(QAbstractListModel):
 
         self.profile = profile
         if not self.profile:
-            self.logger.error(f"Profile is nonexistent.")
+            self.logger.error("Profile is nonexistent.")
             return
         self.refresh_data()
 
@@ -38,6 +38,18 @@ class EventList(QAbstractListModel):
             return self._data[index.row()].ignored
 
         return QVariant()
+
+    def setData(self, index: QModelIndex, value: QVariant, role: Qt.ItemDataRole):
+        if not index.isValid() or not (0 <= index.row() < self.rowCount()):
+            return False
+
+        if role == Qt.ItemDataRole.FontRole:
+            profile_event = self._data[index.row()]
+            if self.db_handler.set_ignored(profile_event, value):
+                self.refresh_data()
+                return True
+
+        return False
 
     def get_scatter_data(self):
         case_ids = []
@@ -73,14 +85,7 @@ class EventList(QAbstractListModel):
         if not index.isValid() or not (0 <= index.row() < self.rowCount()):
             return
         profile_event = self._data[index.row()]
-        self.db_handler.del_profile_event(profile_event)
-        self.refresh_data()
-
-    def toggle_ignored(self, index: QModelIndex):
-        if not index.isValid() or not (0 <= index.row() < self.rowCount()):
-            return
-        profile_event = self._data[index.row()]
-        self.db_handler.toggle_ignored(profile_event)
+        self.db_handler.delete_profile_event(profile_event)
         self.refresh_data()
 
     def refresh_data(self):
