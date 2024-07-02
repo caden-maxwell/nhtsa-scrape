@@ -39,5 +39,6 @@ payload_CISS = {
     "AirBagLocation": "",
     "ChildSeatUsed": -1,
     "legacyCriteria": "",
+    "currentPage": 1,
     "SearchStr": "",
 }
