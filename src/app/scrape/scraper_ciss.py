@@ -2,8 +2,10 @@ from datetime import datetime
 import textwrap
 from bs4 import BeautifulSoup
 from requests import Response
+import json
+from collections import namedtuple
 
-from app.scrape import BaseScraper, RequestQueueItem, Priority, ScrapeParams
+from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames
 from app.resources import payload_CISS
 
 
@@ -17,7 +19,7 @@ class ScraperCISS(BaseScraper):
     img_url = "/cases/photo/?photoid={img_id}"
 
     # CISS-specific dropdown field ids
-    field_names = ScrapeParams[str](
+    field_names = FieldNames(
         make="vPICVehicleMakes",
         model="vPICVehicleModels",
         start_model_year="VehicleModelYears",
@@ -28,13 +30,33 @@ class ScraperCISS(BaseScraper):
         max_dv="VehicleDamageDeltaVTo",
     )
 
-    def __init__(self, params: ScrapeParams[int]):
+    def __init__(
+        self,
+        make,
+        model,
+        start_model_year,
+        end_model_year,
+        primary_damage,
+        secondary_damage,
+        min_dv,
+        max_dv,
+    ):
         super().__init__()
 
         self._payload = payload_CISS.copy()
-        self._payload.update(self._convert_params_to_payload(params))
 
-    def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
+        # Named tuple to store the text and value of a dropdown option
+        Option = namedtuple("Param", ["text", "value"])
+
+        self._make = Option(*make)
+        self._model = Option(*model)
+        self._start_model_year = Option(*start_model_year)
+        self._end_model_year = Option(*end_model_year)
+        self._primary_damage = Option(*primary_damage)
+        self._secondary_damage = Option(*secondary_damage)
+        self._min_dv = min_dv
+        self._max_dv = max_dv
+
         # The CISS payload requires a list of years as opposed to a range between two years,
         # so we need to convert the range to a list, but only if the years are valid.
         # Some of the possible year options are 9999, 9998, and -1, which are not valid years.
@@ -42,13 +64,13 @@ class ScraperCISS(BaseScraper):
         min_year = 1920  # The earliest year available in the dropdown # TODO: Kinda a magic number
         max_year = datetime.now().year
         start_year = (
-            params.start_model_year
-            if min_year <= params.start_model_year <= max_year
+            self._start_model_year.value
+            if min_year <= self._start_model_year.value <= max_year
             else min_year
         )
         end_year = (
-            params.end_model_year
-            if min_year <= params.end_model_year <= max_year
+            self._end_model_year.value
+            if min_year <= self._end_model_year.value <= max_year
             else max_year
         )
 
@@ -63,35 +85,35 @@ class ScraperCISS(BaseScraper):
             )
 
         payload = {
-            self.field_names.make: [params.make],
+            self.field_names.make: [self._make.value],
             self.field_names.start_model_year: list(range(start_year, end_year + 1)),
             self.field_names.primary_damage: (
-                params.primary_damage if params.primary_damage != -1 else ""
+                self._primary_damage.value if self._primary_damage.value != -1 else ""
             ),
             self.field_names.secondary_damage: (
-                params.secondary_damage if params.secondary_damage != -1 else ""
+                self._secondary_damage if self._secondary_damage.value != -1 else ""
             ),
-            self.field_names.min_dv: params.min_dv if params.min_dv != 0 else "",
-            self.field_names.max_dv: params.max_dv if params.max_dv != 0 else "",
+            self.field_names.min_dv: self._min_dv if self._min_dv != 0 else "",
+            self.field_names.max_dv: self._max_dv if self._max_dv != 0 else "",
         }
 
-        if params.model != -1:
-            payload[self.field_names.model] = [params.model]
+        if self._model.value != -1:
+            payload[self.field_names.model] = [self._model.value]
 
-        return payload
+        self._payload.update(payload)
 
     def _scrape(self):
         self._logger.debug(
             textwrap.dedent(
                 f"""{self.__class__.__name__} started with these params:
                 {{
-                    Make: {self._payload[self.field_names.make]},
-                    Model: {self._payload.get(self.field_names.model, "ALL")},
-                    Model Years: {self._payload[self.field_names.start_model_year]},
-                    Min Delta V: {self._payload[self.field_names.min_dv]},
-                    Max Delta V: {self._payload[self.field_names.max_dv]},
-                    Primary Damage: {self._payload[self.field_names.primary_damage]},
-                    Secondary Damage: {self._payload[self.field_names.secondary_damage]},
+                    Make: {self._make.text},
+                    Model: {self._model.text},
+                    Model Years: {self._start_model_year.value} - {self._end_model_year.value},
+                    Min Delta V: {self._min_dv},
+                    Max Delta V: {self._max_dv},
+                    Primary Damage: {self._primary_damage.text},
+                    Secondary Damage: {self._secondary_damage.text},
                 }}"""
             )
         )
@@ -109,7 +131,6 @@ class ScraperCISS(BaseScraper):
                 extra_data={"database": "CISS"},
             )
         )
-
 
     def _handle_response(self, request: RequestQueueItem, response: Response):
         if (
@@ -166,4 +187,34 @@ class ScraperCISS(BaseScraper):
         self._req_case_list()
 
     def __parse_case(self, request: RequestQueueItem, response: Response):
-        print("NOT IMPLEMENTED YET")
+        if not self.running:
+            return
+
+        if not response.content:
+            self._logger.error(f"Received empty response from {request.url}.")
+            self.failed_cases += 1
+            return
+
+        case_dict: dict = json.loads(response.content)
+
+        case_id = case_dict.get("CaseId", -1)
+        vPICDecodeData: list[dict] = case_dict.get("VehvPICDecodeData", [])
+
+        vehicle_nums = []
+        for vehicle in vPICDecodeData:
+            # TODO: Implement more robust checks.
+            print(vehicle.get("Make"))
+            print(vehicle.get("Model"))
+            print(vehicle.get("ModelYear"))
+            if (
+                vehicle.get("Make").lower() == self._make.text.lower()
+                and vehicle.get("Model").lower() == self._model.text.lower()
+                and self._start_model_year.value
+                <= int(vehicle.get("ModelYear"))
+                <= self._end_model_year.value
+            ):
+                vehicle_nums.append(vehicle["VEHNO"])
+
+        print(vehicle_nums)
+
+        print("NOT IMPLEMENTED YET!")
