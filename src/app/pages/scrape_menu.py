@@ -17,7 +17,6 @@ from app.scrape import (
     ScraperCISS,
     RequestQueueItem,
     Priority,
-    ScrapeParams,
 )
 from app.ui import Ui_ScrapeMenu
 
@@ -221,16 +220,22 @@ class ScrapeMenu(QWidget):
             )
             return
 
-        make = self.ui.makeCombo.currentText().upper()
+        # Get the active database based on the radio button
+        nhtsa_model = next(
+            (model for model in self.nhtsa_models if model.radio_button.isChecked()),
+            None,
+        )
+
+        make = nhtsa_model.make_combo.currentText().upper()
         make_txt = make if make != "ALL" else "ANY MAKE"
 
-        model = self.ui.modelCombo.currentText().upper()
+        model = nhtsa_model.model_combo.currentText().upper()
         model_txt = model if model != "ALL" else "ANY MODEL"
 
-        start_year = self.ui.startYearCombo.currentText().upper()
-        end_year = self.ui.endYearCombo.currentText().upper()
+        start_year = nhtsa_model.start_year_combo.currentText().upper()
+        end_year = nhtsa_model.end_year_combo.currentText().upper()
 
-        p_dmg = self.ui.pDmgCombo.currentText().upper()
+        p_dmg = nhtsa_model.p_dmg_combo.currentText().upper()
         p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
 
         name = f"{make_txt} {model_txt} ({start_year}-{end_year}) {p_dmg_txt}"
@@ -245,9 +250,9 @@ class ScrapeMenu(QWidget):
             start_year=start_year,
             end_year=end_year,
             primary_dmg=p_dmg,
-            secondary_dmg=self.ui.sDmgCombo.currentText().upper(),
-            min_dv=self.ui.dvMinSpin.value(),
-            max_dv=self.ui.dvMaxSpin.value(),
+            secondary_dmg=nhtsa_model.s_dmg_combo.currentText().upper(),
+            min_dv=nhtsa_model.min_dv_spinbox.value(),
+            max_dv=nhtsa_model.min_dv_spinbox.value(),
             created=int(now.timestamp()),
             modified=int(now.timestamp()),
         )
@@ -263,27 +268,38 @@ class ScrapeMenu(QWidget):
         self.data_viewer = DataView(self.db_handler, self.profile, new_profile=True)
         self.data_viewer.show()
 
-        # Get the active database based on the radio button
-        nhtsa_model = next(
-            (model for model in self.nhtsa_models if model.radio_button.isChecked()),
-            None,
-        )
-
         if not nhtsa_model:
             self.logger.error("Scrape aborted: No database selected.")
             return
 
-        params = ScrapeParams[int](
-            make=int(nhtsa_model.make_combo.currentData()),
-            model=int(nhtsa_model.model_combo.currentData()),
-            start_model_year=int(nhtsa_model.start_year_combo.currentData()),
-            end_model_year=int(nhtsa_model.end_year_combo.currentData()),
-            primary_damage=int(nhtsa_model.p_dmg_combo.currentData() or -1),
-            secondary_damage=int(nhtsa_model.s_dmg_combo.currentData() or -1),
+        self.scraper = nhtsa_model.scraper(
+            make=(
+                nhtsa_model.make_combo.currentText(),
+                int(nhtsa_model.make_combo.currentData()),
+            ),
+            model=(
+                nhtsa_model.model_combo.currentText(),
+                int(nhtsa_model.model_combo.currentData()),
+            ),
+            start_model_year=(
+                nhtsa_model.start_year_combo.currentText(),
+                int(nhtsa_model.start_year_combo.currentData()),
+            ),
+            end_model_year=(
+                nhtsa_model.end_year_combo.currentText(),
+                int(nhtsa_model.end_year_combo.currentData()),
+            ),
+            primary_damage=(
+                nhtsa_model.p_dmg_combo.currentText(),
+                int(nhtsa_model.p_dmg_combo.currentData() or -1),
+            ),
+            secondary_damage=(
+                nhtsa_model.s_dmg_combo.currentText(),
+                int(nhtsa_model.s_dmg_combo.currentData() or -1),
+            ),
             min_dv=nhtsa_model.min_dv_spinbox.value(),
             max_dv=nhtsa_model.max_dv_spinbox.value(),
         )
-        self.scraper = nhtsa_model.scraper(params)
 
         # Set up and connect scrapers
         self.engine_thread = QThread()

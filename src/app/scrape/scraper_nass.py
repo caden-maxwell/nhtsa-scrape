@@ -5,7 +5,7 @@ from requests import Response
 
 from PyQt6.QtCore import pyqtSlot
 
-from app.scrape import RequestQueueItem, BaseScraper, Priority, ScrapeParams
+from app.scrape import RequestQueueItem, BaseScraper, Priority, FieldNames
 from app.resources import payload_NASS
 from app.models import Event
 
@@ -22,7 +22,7 @@ class ScraperNASS(BaseScraper):
     img_url = "/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={version}"
 
     # NASS-specific dropdown field ids
-    field_names = ScrapeParams[str](
+    field_names = FieldNames(
         make="ddlMake",
         model="ddlModel",
         start_model_year="ddlStartModelYear",
@@ -33,25 +33,44 @@ class ScraperNASS(BaseScraper):
         max_dv="tDeltaVTo",
     )
 
-    def __init__(self, params: ScrapeParams[int]):
+    def __init__(
+        self,
+        make,
+        model,
+        start_model_year,
+        end_model_year,
+        primary_damage,
+        secondary_damage,
+        min_dv,
+        max_dv,
+    ):
         super().__init__()
 
         self._payload = payload_NASS.copy()
-        self._payload.update(self._convert_params_to_payload(params))
 
-    def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
-        return {
-            self.field_names.make: params.make,
-            self.field_names.model: params.model,
-            self.field_names.start_model_year: params.start_model_year,
-            self.field_names.end_model_year: params.end_model_year,
-            self.field_names.primary_damage: params.primary_damage,
+        _, self._make = make
+        _, self._model = model
+        _, self._start_model_year = start_model_year
+        _, self._end_model_year = end_model_year
+        _, self._primary_damage = primary_damage
+        _, self._secondary_damage = secondary_damage
+        self._min_dv = min_dv
+        self._max_dv = max_dv
+
+        payload = {
+            self.field_names.make: self._make,
+            self.field_names.model: self._model,
+            self.field_names.start_model_year: self._start_model_year,
+            self.field_names.end_model_year: self._end_model_year,
+            self.field_names.primary_damage: self._primary_damage,
             self.field_names.secondary_damage: (
-                params.secondary_damage if params.secondary_damage != -1 else None
+                self._secondary_damage if self._secondary_damage != -1 else None
             ),
-            self.field_names.min_dv: params.min_dv,
-            self.field_names.max_dv: params.max_dv,
+            self.field_names.min_dv: self._min_dv,
+            self.field_names.max_dv: self._max_dv,
         }
+
+        self._payload.update(payload)
 
     def _scrape(self):
         self._logger.debug(
@@ -148,40 +167,39 @@ class ScraperNASS(BaseScraper):
             return
 
         case_xml = BeautifulSoup(response.content, "xml")
-
         case_id = case_xml.find("CaseForm").get("caseID")
-        summary = case_xml.find("Summary").text
 
-        make = int(self._payload["ddlMake"])
-        model = int(self._payload["ddlModel"])
-        start_year = int(self._payload["ddlStartModelYear"])
-        end_year = (
-            year if (year := int(self._payload["ddlEndModelYear"])) != -1 else 9999
-        )
+        def make_match(veh_sum: BeautifulSoup):
+            return (
+                self._make == int(veh_sum.find("Make").get("value")) or self._make == -1
+            )
 
-        def make_match(veh_sum):
-            return make == int(veh_sum.find("Make").get("value")) or make == -1
+        def model_match(veh_sum: BeautifulSoup):
+            return (
+                self._model == int(veh_sum.find("Model").get("value"))
+                or self._model == -1
+            )
 
-        def model_match(veh_sum):
-            return model == int(veh_sum.find("Model").get("value")) or model == -1
-
-        def year_match(veh_sum: BeautifulSoup, start_year, end_year):
+        def year_match(veh_sum: BeautifulSoup):
+            end_year = self._end_model_year if (self._end_model_year) != -1 else 9999
             year = veh_sum.find("Year").text
             if year == "Unknown":
-                if start_year == -1 and end_year == 9999:
+                if self._start_model_year == -1 and end_year == 9999:
                     return True
                 return False
             elif not year.isnumeric():
                 return False
-            return start_year <= int(year) <= end_year
+            return self._start_model_year <= int(year) <= end_year
 
-        vehicle_nums = [
-            int(veh_summary.get("VehicleNumber"))
-            for veh_summary in case_xml.find_all("VehicleSum")
-            if make_match(veh_summary)
-            and model_match(veh_summary)
-            and year_match(veh_summary, start_year, end_year)
-        ]
+        # Get the vehicles in the case that match the search criteria
+        vehicle_nums = []
+        for veh_summary in case_xml.find_all("VehicleSum"):
+            if (
+                make_match(veh_summary)
+                and model_match(veh_summary)
+                and year_match(veh_summary)
+            ):
+                vehicle_nums.append(int(veh_summary.get("VehicleNumber")))
 
         if not vehicle_nums:
             self._logger.warning(f"No matching vehicles found in case {case_id}.")
@@ -349,7 +367,7 @@ class ScraperNASS(BaseScraper):
 
             self.event_parsed.emit(
                 Event(
-                    summary=summary,
+                    summary=case_xml.find("Summary").text,
                     scraper_type="NASS",
                     case_num=case_xml.find("Case")["CaseStr"],
                     case_id=case_id,

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 import textwrap
-from typing import Generic, TypeVar
 from requests import Response
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
@@ -11,21 +10,19 @@ from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
 from app.scrape import RequestHandler, RequestQueueItem, Priority
 from app.models import Event
 
-T = TypeVar("T", str, int)
-
 
 @dataclass
-class ScrapeParams(Generic[T]):
-    """Dataclass for dropdown field names (str) or values (int) for each parameter of the scraper."""
+class FieldNames:
+    """Dataclass for dropdown field names for each parameter of the scraper."""
 
-    make: T
-    model: T
-    start_model_year: T
-    end_model_year: T
-    primary_damage: T
-    secondary_damage: T
-    min_dv: T
-    max_dv: T
+    make: str
+    model: str
+    start_model_year: str
+    end_model_year: str
+    primary_damage: str
+    secondary_damage: str
+    min_dv: str
+    max_dv: str
 
 
 class _Meta(type(ABC), type(QObject)):
@@ -70,7 +67,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
 
     @property
     @abstractmethod
-    def field_names(self) -> ScrapeParams[str]:
+    def field_names(self) -> FieldNames:
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 
     @abstractmethod
@@ -109,10 +106,6 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         self.started.emit()
 
         self._scrape()
-
-    @abstractmethod
-    def _convert_params_to_payload(self, params: ScrapeParams[int]) -> dict:
-        """Converts the user's search parameters to the payload format of the scraper."""
 
     @abstractmethod
     def _scrape(self):
