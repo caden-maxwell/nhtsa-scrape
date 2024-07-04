@@ -260,7 +260,7 @@ class ScraperNASS(BaseScraper):
 
             if total_dv is None or lat_dv is None or long_dv is None:
                 self._logger.warning(
-                    f"Delta-V not found for event {event['en']} in case {case_id}."
+                    f"One or more of Delta-V values not found for event {event['en']} in case {case_id}."
                 )
                 failed_events += 1
                 continue
