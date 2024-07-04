@@ -3,7 +3,8 @@ import textwrap
 from bs4 import BeautifulSoup
 from requests import Response
 import json
-from collections import namedtuple
+from collections import defaultdict, namedtuple
+from fuzzywuzzy import fuzz
 
 from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames
 from app.resources import payload_CISS
@@ -17,6 +18,7 @@ class ScraperCISS(BaseScraper):
     case_url_raw = "/CISS/CISSCrashData?crashId={case_id}"
     case_list_url = "/CISS/Index"
     img_url = "/cases/photo/?photoid={img_id}"
+    _fuzz_threshold = 90
 
     # CISS-specific dropdown field ids
     field_names = FieldNames(
@@ -195,26 +197,140 @@ class ScraperCISS(BaseScraper):
             self.failed_cases += 1
             return
 
-        case_dict: dict = json.loads(response.content)
+        case_json: dict = json.loads(response.content)
 
-        case_id = case_dict.get("CaseId", -1)
-        vPICDecodeData: list[dict] = case_dict.get("VehvPICDecodeData", [])
+        # TODO: Implement more robust checks for matching vehicle numbers
 
-        vehicle_nums = []
+        def make_match(make: str):
+            """Check if the make of the scraped vehicle matches the "make" scrape parameter."""
+            return fuzz.partial_ratio(make.lower(), self._make.text.lower()) >= 90
+
+        def model_match(model: str):
+            """
+            Check if the model of the scraped vehicle matches the "model" scrape parameter.
+            Make an exception if the model is not specified in the scrape parameters
+            """
+            return (
+                fuzz.partial_ratio(model.lower(), self._model.text.lower()) >= 90
+                or self._model.value == -1
+            )
+
+        def year_match(year: int):
+            """
+            Check if the year of the scraped vehicle falls within the range specified in the "model year" scrape parameters.
+            """
+            return self._start_model_year.value <= year <= self._end_model_year.value
+
+        vehicle_nums = (
+            []
+        )  # Getting multiple matching vehicles in the same case is seemingly very rare, but possible
+        vPICDecodeData: list[dict] = case_json.get("VehvPICDecodeData", [])
         for vehicle in vPICDecodeData:
-            # TODO: Implement more robust checks.
-            print(vehicle.get("Make"))
-            print(vehicle.get("Model"))
-            print(vehicle.get("ModelYear"))
+            # TODO: Implement more robust checks for matching vehicle numbers
+            # For example, if the VIN decode failed, we may need to get vehicle
+            # info from the MakeDesc, ModelDesc, etc from the "Vehicles" list
             if (
-                vehicle.get("Make").lower() == self._make.text.lower()
-                and vehicle.get("Model").lower() == self._model.text.lower()
-                and self._start_model_year.value
-                <= int(vehicle.get("ModelYear"))
-                <= self._end_model_year.value
+                make_match(vehicle.get("Make", ""))
+                and model_match(vehicle.get("Model", ""))
+                and year_match(int(vehicle.get("ModelYear", -1)))
             ):
                 vehicle_nums.append(vehicle["VEHNO"])
 
+        case_id = case_json.get("CaseId", -1)
+
+        if not vehicle_nums:
+            self._logger.warning(f"No matching vehicles found in case {case_id}.")
+            self.failed_cases += 1
+            return
+
+        self._logger.debug(f"Vehicle numbers: {vehicle_nums}")
         print(vehicle_nums)
+
+        key_events = []
+        for event in case_json.get("Events", []):
+            primary_veh_num = event["VehNum"]
+            alt_veh_num = -1
+            alt_veh_desc = event["ObjectContactDesc"]
+            if event["ObjectContactClassDesc"] == "Vehicle":
+                alt_veh_num = int(alt_veh_desc[-1])
+
+            primary_veh_dmg = event["AreaDamageDesc"]
+            alt_veh_dmg = event["VehContactDamageDesc"]
+
+            # JSON does not carry the damage IDs, so we need to match the damage planes
+            # The strings may not be exactly the same, so we use fuzzy matching here
+            primary_dmg_match = (
+                fuzz.partial_ratio(self._primary_damage.text, primary_veh_dmg)
+                >= self._fuzz_threshold
+            ) or self._primary_damage.value == -1
+
+            contacted_dmg_match = (
+                fuzz.partial_ratio(self._primary_damage.text, alt_veh_dmg)
+                >= self._fuzz_threshold
+            ) or self._primary_damage.value == -1
+
+            # voi = vehicle of interest
+            for voi in vehicle_nums:
+                formatted_event = {
+                    "event_num": event["SeqNum"],
+                    "voi": voi,
+                    "alt_veh_num": alt_veh_num,
+                    "alt_veh_desc": alt_veh_desc,
+                }
+
+                if voi != primary_veh_num and voi != alt_veh_num:
+                    continue
+                elif voi == primary_veh_num and primary_dmg_match:
+                    key_events.append(formatted_event)
+
+                # If the vehicle of interest is the alternate vehicle and the damage matches, make it
+                # so the alternate vehicle for the voi is the primary vehicle
+                elif voi == alt_veh_num and contacted_dmg_match:
+                    formatted_event["alt_veh_num"] = primary_veh_num
+                    formatted_event["alt_veh_desc"] = "Vehicle #" + str(primary_veh_num)
+                    key_events.append(formatted_event)
+
+        self._logger.debug(f"Key events: {key_events}")
+
+        # go through vehicles and add CDCs and crush profiles (if available)
+        ext_veh_forms = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        for cdc in case_json["CDCs"]:
+            veh_num = cdc["VehNum"]
+            event_num = cdc["SeqNum"]
+            ext_veh_forms[veh_num]["CDCs"][event_num] = cdc
+
+        for crush_profile in case_json["CrushProfiles"]:
+            veh_num = crush_profile["VehNum"]
+            event_num = crush_profile["SeqNum"]
+            ext_veh_forms[veh_num]["CrushProfiles"][event_num] = crush_profile
+
+        failed_events = 0
+        for event in key_events:
+            self._logger.debug(f"Event: {event}")
+
+            cdc_event = ext_veh_forms[event["voi"]]["CDCs"].get(event["event_num"])
+            if not cdc_event:
+                self._logger.warning(
+                    f"Vehicle {event['voi']} does not have a CDC for event {event['event_num']}."
+                )
+                failed_events += 1
+                continue
+
+            def check_dv(dv: str):
+                """Check if the delta-v value is numeric and return it as an int, or None if it isn't."""
+                dv = dv.split(" ")[0]
+                if dv.lstrip("-").isnumeric():
+                    return int(dv)
+
+            total_dv = check_dv(cdc_event["DVTotal"])
+            lat_dv = check_dv(cdc_event["DVLat"])
+            long_dv = check_dv(cdc_event["DVLong"])
+
+            self._logger.debug(f"Delta-V: {total_dv}, {lat_dv}, {long_dv}")
+
+            print("-" * 50)
+            print("EVENT:")
+            print(event["voi"], event["event_num"])
+            print(cdc_event)
 
         print("NOT IMPLEMENTED YET!")
