@@ -244,7 +244,6 @@ class ScraperCISS(BaseScraper):
             return
 
         self._logger.debug(f"Vehicle numbers: {vehicle_nums}")
-        print(vehicle_nums)
 
         key_events = []
         for event in case_json.get("Events", []):
