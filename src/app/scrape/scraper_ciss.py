@@ -328,9 +328,12 @@ class ScraperCISS(BaseScraper):
 
             self._logger.debug(f"Delta-V: {total_dv}, {lat_dv}, {long_dv}")
 
-            print("-" * 50)
-            print("EVENT:")
-            print(event["voi"], event["event_num"])
-            print(cdc_event)
+            # if any of the delta-v values are missing, skip this event
+            if any(dv is None for dv in (total_dv, lat_dv, long_dv)):
+                self._logger.warning(
+                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}."
+                )
+                failed_events += 1
+                continue
 
         print("NOT IMPLEMENTED YET!")
