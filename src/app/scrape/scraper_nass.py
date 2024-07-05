@@ -209,21 +209,80 @@ class ScraperNASS(BaseScraper):
 
         veh_amount = int(case_xml.find("NumberVehicles").text)
 
+        def __get_an(voi: int, event: BeautifulSoup, num_vehicles: int):
+            area_of_dmg = int(event.find("AreaOfDamage")["value"]) - 1
+            contacted_dmg = int(event.find("ContactedAreaOfDamage")["value"]) - 1
+
+            primary_veh_num = int(event["VehicleNumber"])
+
+            # contacted.value = contacted vehicle number (int)
+            # contacted.text = contacted object description (str)
+            contacted = event.find("Contacted")
+
+            primary_dmg = int(self._payload["ddlPrimaryDamage"])
+            self._logger.debug(f"Primary Damage: {primary_dmg}")
+
+            primary_dmg_match = primary_dmg == area_of_dmg or primary_dmg == -1
+            contacted_dmg_match = primary_dmg == contacted_dmg or primary_dmg == -1
+
+            # If the voi is the primary vehicle, return the contacted vehicle/object as the an
+            if voi == primary_veh_num and primary_dmg_match:
+                if int(contacted["value"]) > num_vehicles:
+                    return contacted.text
+                else:
+                    return int(contacted["value"])
+            # If the voi is the contacted vehicle, return the primary vehicle as the an
+            elif voi == int(contacted["value"]) and contacted_dmg_match:
+                return primary_veh_num
+
+            return 0  # voi not involved in this event
+
         key_events = []
-        for voi in vehicle_nums:
-            for event in case_xml.find_all("EventSum"):
-                if an := self.__get_an(voi, event, veh_amount):
-                    key_events.append(
-                        {
-                            "en": int(event["EventNumber"]),
-                            "voi": voi,
-                            "an": an,  # Alternate vehicle num
-                        }
-                    )
+        for event in case_xml.find_all("EventSum"):
+            event: BeautifulSoup
+
+            primary_veh_num = int(event["VehicleNumber"])
+            alt_veh_num = -1
+            contacted = event.find("Contacted")
+            alt_veh_desc = contacted.text
+            if int(contacted["value"]) <= veh_amount:
+                alt_veh_num = int(contacted["value"])
+
+            # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
+            primary_veh_dmg = int(event.find("AreaOfDamage")["value"]) - 1
+            alt_veh_dmg = int(event.find("ContactedAreaOfDamage")["value"]) - 1
+
+            primary_dmg = int(self._payload["ddlPrimaryDamage"])
+            primary_dmg_match = primary_dmg == primary_veh_dmg or primary_dmg == -1
+            contacted_dmg_match = primary_dmg == alt_veh_dmg or primary_dmg == -1
+
+            for voi in vehicle_nums:
+                formatted_event = {
+                    "event_num": int(event["EventNumber"]),
+                    "voi": voi,
+                    "alt_veh_num": alt_veh_num,
+                    "alt_veh_desc": alt_veh_desc,
+                }
+
+                if voi != primary_veh_num and voi != alt_veh_num:
+                    continue
+                elif voi == primary_veh_num and primary_dmg_match:
+                    key_events.append(formatted_event)
+
+                elif voi == alt_veh_num and contacted_dmg_match:
+                    formatted_event["alt_veh_num"] = primary_veh_num
+                    formatted_event["alt_veh_desc"] = "Vehicle#" + str(primary_veh_num)
+                    key_events.append(formatted_event)
+
         self._logger.debug(f"Key events: {key_events}")
 
         veh_ext_forms = case_xml.find("VehicleExteriorForms")
         gen_veh_forms = case_xml.find("GeneralVehicleForms")
+
+        def check_dv(dv: str):
+            """Check if the delta-v value is numeric and return it as an int, or None if it isn't."""
+            if dv.lstrip("-").isnumeric():
+                return int(dv)
 
         failed_events = 0
         for event in key_events:
@@ -239,18 +298,15 @@ class ScraperNASS(BaseScraper):
                 failed_events += 1
                 continue
 
-            cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event["en"]})
+            cdc_event = veh_ext_form.find(
+                "CDCevent", {"eventNumber": event["event_num"]}
+            )
             if not cdc_event:
                 self._logger.warning(
-                    f"No CDCevent found for event {event['en']} in case {case_id}."
+                    f"No CDCevent found for event {event['event_num']} in case {case_id}."
                 )
                 failed_events += 1
                 continue
-
-            def check_dv(dv: str):
-                """Check if the delta-v value is numeric and return it as an int, or None if it isn't."""
-                if dv.lstrip("-").isnumeric():
-                    return int(dv)
 
             total_dv = check_dv(cdc_event.find("Total").text)
             lat_dv = check_dv(cdc_event.find("Lateral").text)
@@ -258,9 +314,9 @@ class ScraperNASS(BaseScraper):
 
             self._logger.debug(f"Delta-V: {total_dv}, {lat_dv}, {long_dv}")
 
-            if total_dv is None or lat_dv is None or long_dv is None:
+            if any(dv is None for dv in (total_dv, lat_dv, long_dv)):
                 self._logger.warning(
-                    f"One or more of Delta-V values not found for event {event['en']} in case {case_id}."
+                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}."
                 )
                 failed_events += 1
                 continue
@@ -268,13 +324,13 @@ class ScraperNASS(BaseScraper):
             crush_object = None
             for obj in veh_ext_form.find_all("CrushObject"):
                 obj: BeautifulSoup
-                if event["en"] == int(obj.find("EventNumber").text):
+                if event["event_num"] == int(obj.find("EventNumber").text):
                     crush_object = obj
                     break
 
             if not crush_object:
                 self._logger.warning(
-                    f"No CrushObject found for event {event['en']} in case {case_id}."
+                    f"No crush profile for event {event['event_num']} in case {case_id}."
                 )
                 failed_events += 1
                 continue
@@ -294,36 +350,41 @@ class ScraperNASS(BaseScraper):
                 smashl = crush_object.find("SMASHL")["value"]
             else:
                 self._logger.warning(
-                    f"No crush in file for event {event['en']} in case {case_id}."
+                    f"No crush in file for event {event['event_num']} in case {case_id}."
                 )
                 failed_events += 1
                 continue
 
             # Alternate Vehicle Info
             alt_ext_form = veh_ext_forms.find(
-                "VehicleExteriorForm", {"VehicleNumber": event["an"]}
+                "VehicleExteriorForm", {"VehicleNumber": event["alt_veh_num"]}
             )
             alt_ext_form = (
                 alt_ext_form
                 if alt_ext_form
                 else gen_veh_forms.find(
-                    "GeneralVehicleForm", {"VehicleNumber": event["an"]}
+                    "GeneralVehicleForm", {"VehicleNumber": event["alt_veh_num"]}
                 )
             )
 
-            voi_curb_weight = float(veh_ext_form.find("CurbWeight").text)
+            CM_TO_IN = 0.393701
+            KMPH_TO_MPH = 0.621371
+            KG_TO_LBS = 2.20462
+
+            voi_curb_wgt = int(veh_ext_form.find("CurbWeight").text)
             if alt_ext_form:
+                a_curb_wgt = alt_ext_form.find("CurbWeight").text
+                if a_curb_wgt.isnumeric():
+                    a_curb_wgt = int(a_curb_wgt)
+                else:
+                    a_curb_wgt = voi_curb_wgt
+                a_curb_wgt *= KG_TO_LBS  # Convert to lbs
+
                 alt_data = {
                     "a_make": alt_ext_form.find("Make").text,
                     "a_model": alt_ext_form.find("Model").text,
                     "a_year": alt_ext_form.find("ModelYear").text,
-                    "a_curb_weight": (
-                        float(voi_curb_weight)
-                        if (
-                            voi_curb_weight := alt_ext_form.find("CurbWeight").text
-                        ).isnumeric()
-                        else voi_curb_weight
-                    ),
+                    "a_curb_wgt": a_curb_wgt,
                     "a_dmg_loc": (
                         dmg_loc.text
                         if (dmg_loc := alt_ext_form.find("DeformationLocation"))
@@ -335,23 +396,20 @@ class ScraperNASS(BaseScraper):
                     "a_year": "--",
                     "a_make": "--",
                     "a_model": "--",
-                    "a_curb_weight": 99999.0,
+                    "a_curb_wgt": 99999.0,
                     "a_dmg_loc": "--",
                 }
 
-            # Avg crush (inches)
-            c_bar = 0.393701 * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
+            # Avg crush (converted to inches)
+            c_bar = CM_TO_IN * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
 
-            # NASS DV in MPH
-            NASS_dv = float(total_dv) * 0.621371
+            # NASS DV
+            NASS_dv = float(total_dv) * KMPH_TO_MPH  # Convert to mph
 
-            # Vehicle Weights in LBS
-            voi_wt = float(voi_curb_weight) * 2.20462
-            a_wt = alt_data["a_curb_weight"] * 2.20462
+            voi_curb_wgt *= KG_TO_LBS  # Convert to lbs
+            a_curb_wgt = alt_data["a_curb_wgt"]
+            NASS_vc = NASS_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
 
-            NASS_vc = NASS_dv / (a_wt / (voi_wt + a_wt))
-
-            # Restitution...?
             e = 0.5992 * np.exp(
                 -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
             )
@@ -363,15 +421,15 @@ class ScraperNASS(BaseScraper):
                     scraper_type="NASS",
                     case_num=case_xml.find("Case")["CaseStr"],
                     case_id=case_id,
-                    vehicle_num=veh_ext_form["VehicleNumber"],
-                    event_num=event["en"],
+                    vehicle_num=event["voi"],
+                    event_num=event["event_num"],
                     make=veh_ext_form.find("Make").text,
                     model=veh_ext_form.find("Model").text,
                     model_year=veh_ext_form.find("ModelYear").text,
-                    curb_weight=float(veh_ext_form.find("CurbWeight").text),
+                    curb_wgt=round(voi_curb_wgt, 2),
                     dmg_loc=cdc_event.find("DeformationLocation").text,
                     underride=cdc_event.find("OverUnderride").text,
-                    edr=veh_ext_form.find("EDR").text,
+                    edr=veh_ext_form.find("EDR").find("Obtained").text,
                     total_dv=total_dv,
                     long_dv=long_dv,
                     lat_dv=lat_dv,
@@ -382,18 +440,18 @@ class ScraperNASS(BaseScraper):
                     crush4=crush[3],
                     crush5=crush[4],
                     crush6=crush[5],
-                    a_veh_num=event["an"],
-                    a_veh_desc="",  # TODO: Implement this
+                    a_veh_num=event["alt_veh_num"],
+                    a_veh_desc=event["alt_veh_desc"],
                     a_make=alt_data["a_make"],
                     a_model=alt_data["a_model"],
                     a_year=alt_data["a_year"],
-                    a_curb_weight=alt_data["a_curb_weight"],
+                    a_curb_wgt=round(a_curb_wgt, 2),
                     a_dmg_loc=alt_data["a_dmg_loc"],
-                    c_bar=c_bar,
-                    NASS_dv=NASS_dv,
-                    NASS_vc=NASS_vc,
-                    e=e,
-                    TOT_dv=TOT_dv,
+                    c_bar=round(c_bar, 6),
+                    NASS_dv=round(NASS_dv, 6),
+                    NASS_vc=round(NASS_vc, 6),
+                    e=round(e, 6),
+                    TOT_dv=round(TOT_dv, 6),
                 ),
                 response,
             )
@@ -407,36 +465,3 @@ class ScraperNASS(BaseScraper):
             return
 
         self.success_cases += 1
-
-    def __get_an(self, voi: int, event: BeautifulSoup, num_vehicles: int):
-        # For whatever reason, the area of damage and contacted area of damage values are off by 1 in the XML viewer
-        area_of_dmg = int(event.find("AreaOfDamage")["value"]) - 1
-        contacted_aod = int(event.find("ContactedAreaOfDamage")["value"]) - 1
-        self._logger.debug(f"AODs: {area_of_dmg}, {contacted_aod}")
-
-        # contacted.value = contacted vehicle number (int)
-        # contacted.text = contacted object description (str)
-        primary_veh_num = int(event["VehicleNumber"])
-        contacted = event.find("Contacted")
-        self._logger.debug(f"Vehicle {primary_veh_num}, Contacted {contacted['value']}")
-
-        primary_damage = int(self._payload["ddlPrimaryDamage"])
-        self._logger.debug(f"Primary Damage: {primary_damage}")
-
-        primary_dmg_match = primary_damage == area_of_dmg or primary_damage == -1
-        contacted_dmg_match = primary_damage == contacted_aod or primary_damage == -1
-        self._logger.debug(
-            f"Matches: primary-{primary_dmg_match}, contacted-{contacted_dmg_match}"
-        )
-
-        # If the voi is the primary vehicle, return the contacted vehicle/object as the an
-        if voi == primary_veh_num and primary_dmg_match:
-            if int(contacted["value"]) > num_vehicles:
-                return contacted.text
-            else:
-                return int(contacted["value"])
-        # If the voi is the contacted vehicle, return the primary vehicle as the an
-        elif voi == int(contacted["value"]) and contacted_dmg_match:
-            return primary_veh_num
-
-        return 0  # voi not involved in this event

@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
-from sqlalchemy import create_engine, select, inspect
+from sqlalchemy import create_engine, select, inspect, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Profile, ProfileEvent, Base, Event
@@ -72,7 +73,7 @@ class DatabaseHandler:
             return []
 
     def add_event(self, event: Event, profile: Profile):
-        """Add an event to a specified profile."""
+        """Add (or update on conflict) an event in a specified profile."""
         try:
             # Check if the event already exists in the database, and use the existing event if it does
             stmt = select(Event).where(
@@ -82,9 +83,8 @@ class DatabaseHandler:
             )
 
             if existing_event := self.session.execute(stmt).scalar_one_or_none():
+                existing_event.update(event)
                 event = existing_event
-            else:
-                self.session.add(event)
 
             profile.events.append(event)
             self.session.commit()

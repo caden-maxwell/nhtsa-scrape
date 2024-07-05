@@ -148,7 +148,7 @@ class EventsTab(BaseTab):
         self.ui.makeLineEdit.setText(event.make)
         self.ui.modelLineEdit.setText(event.model)
         self.ui.yearLineEdit.setText(str(event.model_year))
-        self.ui.curbWeightLineEdit.setText(f"{event.curb_weight * 2.20462:.4f}")
+        self.ui.curbWeightLineEdit.setText(f"{event.curb_wgt * 2.20462:.4f}")
         self.ui.dmgLocLineEdit.setText(event.dmg_loc)
         self.ui.underrideLineEdit.setText(event.underride)
 

@@ -54,7 +54,7 @@ class Event(Base):
     make: Mapped[str] = mapped_column()
     model: Mapped[str] = mapped_column()
     model_year: Mapped[int] = mapped_column()
-    curb_weight: Mapped[int] = mapped_column()
+    curb_wgt: Mapped[int] = mapped_column()
     dmg_loc: Mapped[str] = mapped_column()
     underride: Mapped[str] = mapped_column()
     edr: Mapped[str] = mapped_column()
@@ -73,7 +73,7 @@ class Event(Base):
     a_make: Mapped[str] = mapped_column()
     a_model: Mapped[str] = mapped_column()
     a_year: Mapped[str] = mapped_column()
-    a_curb_weight: Mapped[int] = mapped_column()
+    a_curb_wgt: Mapped[int] = mapped_column()
     a_dmg_loc: Mapped[str] = mapped_column()
     c_bar: Mapped[int] = mapped_column()
     NASS_dv: Mapped[int] = mapped_column()
@@ -91,9 +91,18 @@ class Event(Base):
         creator=lambda profile_obj: ProfileEvent(profile=profile_obj),
     )
 
-    def to_tuple(model):
-        mapper = inspect(model).mapper
-        return tuple(getattr(model, column.key) for column in mapper.columns)
+    def __iter__(self):
+        for column in inspect(self).mapper.columns:
+            yield (column.key, getattr(self, column.key))
+
+    def to_tuple(self):
+        """Get tuple of all values of attributes"""
+        return tuple(value for key, value in self)
+
+    def update(self, event: "Event"):
+        for key, value in event:
+            if key != "id":
+                setattr(self, key, value)
 
 
 class ProfileEvent(Base):
