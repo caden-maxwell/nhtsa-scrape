@@ -1,6 +1,7 @@
 from datetime import datetime
 import textwrap
 from bs4 import BeautifulSoup
+import numpy as np
 from requests import Response
 import json
 from collections import defaultdict, namedtuple
@@ -8,6 +9,7 @@ from fuzzywuzzy import fuzz
 
 from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames
 from app.resources import payload_CISS
+from app.models import Event
 
 
 class ScraperCISS(BaseScraper):
@@ -201,40 +203,40 @@ class ScraperCISS(BaseScraper):
 
         # TODO: Implement more robust checks for matching vehicle numbers
 
-        def make_match(make: str):
+        def make_match(vehicle: dict):
             """Check if the make of the scraped vehicle matches the "make" scrape parameter."""
-            return fuzz.partial_ratio(make.lower(), self._make.text.lower()) >= 90
+            make = vehicle.get("VPICMakeDesc", "") or vehicle.get("MakeDesc", "")
+            return (
+                fuzz.partial_ratio(make.lower(), self._make.text.lower())
+                >= self._fuzz_threshold
+            )
 
-        def model_match(model: str):
+        def model_match(vehicle: dict):
             """
             Check if the model of the scraped vehicle matches the "model" scrape parameter.
             Make an exception if the model is not specified in the scrape parameters
             """
+            model = vehicle.get("VPICModelDesc", "") or vehicle.get("ModelDesc", "")
             return (
-                fuzz.partial_ratio(model.lower(), self._model.text.lower()) >= 90
+                fuzz.partial_ratio(model.lower(), self._model.text.lower())
+                >= self._fuzz_threshold
                 or self._model.value == -1
             )
 
-        def year_match(year: int):
+        def year_match(vehicle: dict):
             """
             Check if the year of the scraped vehicle falls within the range specified in the "model year" scrape parameters.
             """
+            year = int(vehicle.get("ModelYear", -1))
             return self._start_model_year.value <= year <= self._end_model_year.value
 
         vehicle_nums = (
             []
         )  # Getting multiple matching vehicles in the same case is seemingly very rare, but possible
-        vPICDecodeData: list[dict] = case_json.get("VehvPICDecodeData", [])
-        for vehicle in vPICDecodeData:
-            # TODO: Implement more robust checks for matching vehicle numbers
-            # For example, if the VIN decode failed, we may need to get vehicle
-            # info from the MakeDesc, ModelDesc, etc from the "Vehicles" list
-            if (
-                make_match(vehicle.get("Make", ""))
-                and model_match(vehicle.get("Model", ""))
-                and year_match(int(vehicle.get("ModelYear", -1)))
-            ):
-                vehicle_nums.append(vehicle["VEHNO"])
+        vehicles: list[dict] = case_json.get("Vehicles", [])
+        for vehicle in vehicles:
+            if make_match(vehicle) and model_match(vehicle) and year_match(vehicle):
+                vehicle_nums.append(vehicle["VEHNUM"])
 
         case_id = case_json.get("CaseId", -1)
 
@@ -292,34 +294,38 @@ class ScraperCISS(BaseScraper):
         self._logger.debug(f"Key events: {key_events}")
 
         # go through vehicles and add CDCs and crush profiles (if available)
-        ext_veh_forms = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
+        veh_forms = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
         for cdc in case_json["CDCs"]:
             veh_num = cdc["VehNum"]
             event_num = cdc["SeqNum"]
-            ext_veh_forms[veh_num]["CDCs"][event_num] = cdc
+            veh_forms[veh_num]["CDCs"][event_num] = cdc
 
         for crush_profile in case_json["CrushProfiles"]:
             veh_num = crush_profile["VehNum"]
             event_num = crush_profile["SeqNum"]
-            ext_veh_forms[veh_num]["CrushProfiles"][event_num] = crush_profile
+            veh_forms[veh_num]["CrushProfiles"][event_num] = crush_profile
+
+        for vehicle in case_json["Vehicles"]:
+            veh_num = vehicle["VEHNUM"]
+            veh_forms[veh_num]["Vehicle"] = vehicle
+
+        def check_dv(dv: str):
+            """Check if the delta-v value is numeric and return it as an int, or None if it isn't."""
+            dv = dv.split(" ")[0]
+            if dv.lstrip("-").isnumeric():
+                return int(dv)
 
         failed_events = 0
         for event in key_events:
             self._logger.debug(f"Event: {event}")
 
-            cdc_event = ext_veh_forms[event["voi"]]["CDCs"].get(event["event_num"])
+            cdc_event = veh_forms[event["voi"]]["CDCs"].get(event["event_num"])
             if not cdc_event:
                 self._logger.warning(
                     f"Vehicle {event['voi']} does not have a CDC for event {event['event_num']}."
                 )
                 failed_events += 1
                 continue
-
-            def check_dv(dv: str):
-                """Check if the delta-v value is numeric and return it as an int, or None if it isn't."""
-                dv = dv.split(" ")[0]
-                if dv.lstrip("-").isnumeric():
-                    return int(dv)
 
             total_dv = check_dv(cdc_event["DVTotal"])
             lat_dv = check_dv(cdc_event["DVLat"])
@@ -335,4 +341,131 @@ class ScraperCISS(BaseScraper):
                 failed_events += 1
                 continue
 
-        print("NOT IMPLEMENTED YET!")
+            crush_profile = veh_forms[event["voi"]]["CrushProfiles"].get(
+                event["event_num"]
+            )
+
+            if not crush_profile:
+                self._logger.warning(
+                    f"No crush profile found for event {event['event_num']} in case {case_id}."
+                )
+                failed_events += 1
+                continue
+
+            avg_c1 = crush_profile["AvgC1"]
+            if avg_c1.lstrip("-").isnumeric():
+                crush = [  # in cm
+                    int(avg_c1),
+                    int(crush_profile["AvgC2"]),
+                    int(crush_profile["AvgC3"]),
+                    int(crush_profile["AvgC4"]),
+                    int(crush_profile["AvgC5"]),
+                    int(crush_profile["AvgC6"]),
+                ]
+                smashl = crush_profile["SmashL"]  # in cm
+                if smashl.split(" ")[0].isnumeric():
+                    smashl = int(smashl.split(" ")[0])
+            else:
+                self._logger.warning(
+                    f" No crush in file for event {event['event_num']} in case {case_id}."
+                )
+                failed_events += 1
+                continue
+
+            CM_TO_IN = 0.393701
+            KMPH_TO_MPH = 0.621371
+            KG_TO_LBS = 2.20462
+
+            voi_curb_wgt = int(
+                veh_forms[event["voi"]]["Vehicle"]["CurbWt"].split(" ")[0]
+            )  # in kgs
+            if alt_veh := veh_forms[event["alt_veh_num"]]["Vehicle"]:
+                a_curb_wgt = alt_veh["CurbWt"]
+                if a_curb_wgt.isnumeric():
+                    a_curb_wgt = int(a_curb_wgt)
+                else:
+                    a_curb_wgt = voi_curb_wgt
+                a_curb_wgt *= KG_TO_LBS  # in lbs
+
+                alt_data = {
+                    "a_make": alt_veh["MakeDesc"],
+                    "a_model": alt_veh["ModelDesc"],
+                    "a_year": alt_veh["ModelYear"],
+                    "a_curb_wgt": a_curb_wgt,
+                    "a_dmg_loc": alt_veh["DamagePlaneDesc"],
+                }
+            else:
+                alt_data = {
+                    "a_make": "--",
+                    "a_model": "--",
+                    "a_year": "--",
+                    "a_curb_wgt": 99999.0,
+                    "a_dmg_loc": "--",
+                }
+
+            c_bar = CM_TO_IN * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
+
+            NASS_dv = total_dv * KMPH_TO_MPH
+
+            voi_curb_wgt = voi_curb_wgt * KG_TO_LBS
+            a_curb_wgt = alt_data["a_curb_wgt"]
+            NASS_vc = NASS_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
+
+            # 0.5992 * e^( -0.1125 * NASS_vc + 0.003889 * NASS_vc^2 - 0.0001153 * NASS_vc^3 )
+            e = 0.5992 * np.exp(
+                -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
+            )
+            TOT_dv = NASS_dv * (1.0 + e)
+
+            vehicle
+            voi_form = veh_forms[event["voi"]]["Vehicle"]
+            self.event_parsed.emit(
+                Event(
+                    summary=case_json["Summary"],
+                    scraper_type="CISS",
+                    case_num=case_json["CaseNum"],
+                    case_id=case_id,
+                    vehicle_num=event["voi"],
+                    event_num=event["event_num"],
+                    make=voi_form["VPICMakeDesc"] or voi_form["MakeDesc"],
+                    model=voi_form["VPICModelDesc"] or voi_form["ModelDesc"],
+                    model_year=voi_form["ModelYear"],
+                    curb_wgt=round(voi_curb_wgt, 2),
+                    dmg_loc=cdc_event["AreaDamageDesc"],
+                    underride=cdc_event["OverUnderDesc"],
+                    edr=voi_form["EDRReadDesc"],
+                    total_dv=total_dv,
+                    long_dv=long_dv,
+                    lat_dv=lat_dv,
+                    smashl=smashl,
+                    crush1=crush[0],
+                    crush2=crush[1],
+                    crush3=crush[2],
+                    crush4=crush[3],
+                    crush5=crush[4],
+                    crush6=crush[5],
+                    a_veh_num=event["alt_veh_num"],
+                    a_veh_desc=event["alt_veh_desc"],
+                    a_make=alt_data["a_make"],
+                    a_model=alt_data["a_model"],
+                    a_year=alt_data["a_year"],
+                    a_curb_wgt=round(alt_data["a_curb_wgt"], 2),
+                    a_dmg_loc=alt_data["a_dmg_loc"],
+                    c_bar=round(c_bar, 6),
+                    NASS_dv=round(NASS_dv, 6),
+                    NASS_vc=round(NASS_vc, 6),
+                    e=round(e, 6),
+                    TOT_dv=round(TOT_dv, 6),
+                ),
+                response,
+            )
+            self.total_events += 1
+
+        if failed_events >= len(key_events):
+            self._logger.warning(
+                f"Insufficient data for caseID {case_id}. Excluding from results."
+            )
+            self.failed_cases += 1
+            return
+
+        self.success_cases += 1
