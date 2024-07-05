@@ -261,7 +261,11 @@ class EventsTab(BaseTab):
 
     def _ignore_event(self):
         index = self.ui.eventsList.currentIndex()
-        self.model.setData(index, False, Qt.ItemDataRole.FontRole)
+        self.model.setData(
+            index,
+            not self.model.data(index, Qt.ItemDataRole.FontRole),
+            Qt.ItemDataRole.FontRole,
+        )
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
             self.ui.ignoreBtn.setText("Unignore Event")
