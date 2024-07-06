@@ -288,6 +288,13 @@ class EventsTab(BaseTab):
 
     def _parse_case(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
+        scraper_type = event.scraper_type
+        if scraper_type == "NASS":
+            self._parse_case_nass(event, response)
+        elif scraper_type == "CISS":
+            self._parse_case_ciss(event, response)
+
+    def _parse_case_nass(self, event: Event, response: Response):
         soup = BeautifulSoup(response.content, "xml")
         img_form = soup.find("IMGForm")
 
@@ -338,6 +345,36 @@ class EventsTab(BaseTab):
             )
             event_imgs.update({img_id: None})
         self.img_cache[event] = event_imgs
+
+    def _parse_case_ciss(self, event: Event, response: Response):
+        json_data: dict = response.json()
+        photos = json_data.get("Photos")
+
+        self.cache_response(event.case_id, response)
+
+        if not photos:
+            self.logger.debug("No photos found.")
+            return
+
+        veh_photos = []
+        for photo in photos:
+            if int(photo.get("VehNum")) == event.vehicle_num:
+                veh_photos.append(photo)
+
+        if not veh_photos:
+            self.logger.warning(
+                f"No photos found for vehicle '{event.vehicle_num}' of case '{event.case_id}'."
+            )
+            return
+
+        sorted_photos = defaultdict(list)
+        for photo in veh_photos:
+            dmg_text = photo.get("SubTypeText", "")
+            dmg_text = dmg_text.lower().replace(" ", "").replace("plane", "")
+            sorted_photos[dmg_text].append(photo)
+
+        img_set = self.ui.imgSetCombo.currentData()
+        filtered_photos = sorted_photos.get(img_set.lower(), [])
 
     def get_scraper_type(self, event: Event) -> BaseScraper:
         if event.scraper_type == "NASS":
