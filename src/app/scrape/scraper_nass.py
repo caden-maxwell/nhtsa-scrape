@@ -209,34 +209,6 @@ class ScraperNASS(BaseScraper):
 
         veh_amount = int(case_xml.find("NumberVehicles").text)
 
-        def __get_an(voi: int, event: BeautifulSoup, num_vehicles: int):
-            area_of_dmg = int(event.find("AreaOfDamage")["value"]) - 1
-            contacted_dmg = int(event.find("ContactedAreaOfDamage")["value"]) - 1
-
-            primary_veh_num = int(event["VehicleNumber"])
-
-            # contacted.value = contacted vehicle number (int)
-            # contacted.text = contacted object description (str)
-            contacted = event.find("Contacted")
-
-            primary_dmg = int(self._payload["ddlPrimaryDamage"])
-            self._logger.debug(f"Primary Damage: {primary_dmg}")
-
-            primary_dmg_match = primary_dmg == area_of_dmg or primary_dmg == -1
-            contacted_dmg_match = primary_dmg == contacted_dmg or primary_dmg == -1
-
-            # If the voi is the primary vehicle, return the contacted vehicle/object as the an
-            if voi == primary_veh_num and primary_dmg_match:
-                if int(contacted["value"]) > num_vehicles:
-                    return contacted.text
-                else:
-                    return int(contacted["value"])
-            # If the voi is the contacted vehicle, return the primary vehicle as the an
-            elif voi == int(contacted["value"]) and contacted_dmg_match:
-                return primary_veh_num
-
-            return 0  # voi not involved in this event
-
         key_events = []
         for event in case_xml.find_all("EventSum"):
             event: BeautifulSoup
