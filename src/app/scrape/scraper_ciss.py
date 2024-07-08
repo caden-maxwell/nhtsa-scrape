@@ -19,7 +19,7 @@ class ScraperCISS(BaseScraper):
     case_url = "/CISS/Details?Study=CISS&CaseId={case_id}"
     case_url_raw = "/CISS/CISSCrashData?crashId={case_id}"
     case_list_url = "/CISS/Index"
-    img_url = "/cases/photo/?photoid={img_id}"
+    img_url = "/photos/{obj_id}/Image"
     _fuzz_threshold = 90
 
     # CISS-specific dropdown field ids

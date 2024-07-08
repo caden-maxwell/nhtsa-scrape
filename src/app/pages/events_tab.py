@@ -290,11 +290,13 @@ class EventsTab(BaseTab):
         event: Event = request.extra_data.get("event")
         scraper_type = event.scraper_type
         if scraper_type == "NASS":
-            self._parse_case_nass(event, response)
+            self._parse_case_nass(event, request, response)
         elif scraper_type == "CISS":
-            self._parse_case_ciss(event, response)
+            self._parse_case_ciss(event, request, response)
 
-    def _parse_case_nass(self, event: Event, response: Response):
+    def _parse_case_nass(
+        self, event: Event, request: RequestQueueItem, response: Response
+    ):
         soup = BeautifulSoup(response.content, "xml")
         img_form = soup.find("IMGForm")
 
@@ -346,7 +348,9 @@ class EventsTab(BaseTab):
             event_imgs.update({img_id: None})
         self.img_cache[event] = event_imgs
 
-    def _parse_case_ciss(self, event: Event, response: Response):
+    def _parse_case_ciss(
+        self, event: Event, request: RequestQueueItem, response: Response
+    ):
         json_data: dict = response.json()
         photos = json_data.get("Photos")
 
@@ -374,7 +378,30 @@ class EventsTab(BaseTab):
             sorted_photos[dmg_text].append(photo)
 
         img_set = self.ui.imgSetCombo.currentData()
+        if not img_set:
+            self.logger.error("No image set selected.")
+            return
+
         filtered_photos = sorted_photos.get(img_set.lower(), [])
+
+        event_imgs = self.img_cache[event]
+        for photo in filtered_photos:
+            obj_id = photo.get("ObjectId")
+
+            if event_imgs.get(obj_id):
+                continue
+
+            scraper: BaseScraper = self.get_scraper_type(event)
+            self.req_handler.enqueue_request(
+                RequestQueueItem(
+                    BaseScraper.ROOT + str(scraper.img_url).format(obj_id=obj_id),
+                    priority=Priority.IMAGE.value,
+                    extra_data={"event": event},
+                    callback=self.parse_image,
+                )
+            )
+            event_imgs.update({obj_id: None})
+        self.img_cache[event] = event_imgs
 
     def get_scraper_type(self, event: Event) -> BaseScraper:
         if event.scraper_type == "NASS":
@@ -385,12 +412,17 @@ class EventsTab(BaseTab):
         self.logger.error(f"Unknown scraper type: {event.scraper_type}")
 
     def parse_image(self, request: RequestQueueItem, response: Response):
-        event = request.extra_data.get("event")
-        img_dict = self.img_cache[event]
-        img_id = int(request.url.split("&")[1].split("=")[1])
+        event: Event = request.extra_data.get("event")
+        event_imgs = self.img_cache[event]
+
+        img_key = ""
+        if event.scraper_type == "NASS":
+            img_key = int(request.url.split("&")[1].split("=")[1])
+        elif event.scraper_type == "CISS":
+            img_key = request.url.split("/")[5]
 
         image = Image.open(BytesIO(response.content))
-        img_dict[img_id] = image
+        event_imgs[img_key] = image
 
         selected_event: Event = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
@@ -399,7 +431,7 @@ class EventsTab(BaseTab):
         # If the event is the same as the one currently selected, update the thumbnails
         if event == selected_event:
             self.no_images_label.setVisible(False)
-            thumbnail = ImageThumbnail(img_id, image, self.images_dir, event)
+            thumbnail = ImageThumbnail(img_key, image, self.images_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
@@ -443,13 +475,26 @@ class ImageThumbnail(QWidget):
         self.setLayout(layout)
 
     def img_to_pixmap(self, img: Image.Image):
-        qimg = QImage(
-            img.tobytes("raw", "RGB"),
-            img.size[0],
-            img.size[1],
-            QImage.Format.Format_RGB888,
-        )
-        return QPixmap.fromImage(qimg)
+        pixmap = QPixmap()
+
+        # If img.size is not on a byte boundary, .fromImage will crash without throwing an error
+        # We have a problematic image that is 1919 x 1079, for example. We need to resize it to 1920 x 1080
+        if img.size[0] % 8 != 0 or img.size[1] % 8 != 0:
+            img = img.resize(((img.size[0] + 7) // 8 * 8, (img.size[1] + 7) // 8 * 8))
+
+        try:
+            qimg = QImage(
+                img.tobytes("raw", "RGB"),
+                img.size[0],
+                img.size[1],
+                QImage.Format.Format_RGB888,
+            )
+            pixmap = QPixmap.fromImage(qimg)
+        except Exception as e:
+            self.logger.error(f"Error converting image to pixmap: {e}")
+            pixmap = QPixmap()
+
+        return pixmap
 
     def save_image(self):
         self.save_button.setEnabled(False)
