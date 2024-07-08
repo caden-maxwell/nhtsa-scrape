@@ -154,6 +154,12 @@
          </item>
          <item row="0" column="1">
           <widget class="QLineEdit" name="makeLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -168,6 +174,12 @@
          </item>
          <item row="1" column="1">
           <widget class="QLineEdit" name="modelLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -182,6 +194,12 @@
          </item>
          <item row="2" column="1">
           <widget class="QLineEdit" name="yearLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -196,6 +214,12 @@
          </item>
          <item row="3" column="1">
           <widget class="QLineEdit" name="curbWeightLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -210,6 +234,12 @@
          </item>
          <item row="4" column="1">
           <widget class="QLineEdit" name="dmgLocLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -224,6 +254,12 @@
          </item>
          <item row="5" column="1">
           <widget class="QLineEdit" name="underrideLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -247,6 +283,12 @@
          </item>
          <item row="0" column="1">
           <widget class="QLineEdit" name="cBarLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -261,6 +303,12 @@
          </item>
          <item row="1" column="1">
           <widget class="QLineEdit" name="nassDVLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -275,6 +323,12 @@
          </item>
          <item row="2" column="1">
           <widget class="QLineEdit" name="nassVCLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -289,6 +343,12 @@
          </item>
          <item row="3" column="1">
           <widget class="QLineEdit" name="totDVLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="readOnly">
             <bool>true</bool>
            </property>

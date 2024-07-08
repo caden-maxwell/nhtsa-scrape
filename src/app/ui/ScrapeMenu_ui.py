@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_ScrapeMenu(object):
     def setupUi(self, ScrapeMenu):
         ScrapeMenu.setObjectName("ScrapeMenu")
-        ScrapeMenu.resize(499, 375)
+        ScrapeMenu.resize(499, 391)
         self.verticalLayout = QtWidgets.QVBoxLayout(ScrapeMenu)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -317,6 +317,11 @@ class Ui_ScrapeMenu(object):
         self.cissRadioBtn.setObjectName("cissRadioBtn")
         self.databaseBtnGroup.addButton(self.cissRadioBtn)
         self.horizontalLayout_2.addWidget(self.cissRadioBtn)
+        self.stopBtn = QtWidgets.QPushButton(parent=self.bottomHLayout)
+        self.stopBtn.setEnabled(True)
+        self.stopBtn.setDefault(False)
+        self.stopBtn.setObjectName("stopBtn")
+        self.horizontalLayout_2.addWidget(self.stopBtn)
         self.submitBtn = QtWidgets.QPushButton(parent=self.bottomHLayout)
         self.submitBtn.setEnabled(False)
         self.submitBtn.setCheckable(False)
@@ -363,4 +368,5 @@ class Ui_ScrapeMenu(object):
         self.label_3.setText(_translate("ScrapeMenu", "Scrape from: "))
         self.nassRadioBtn.setText(_translate("ScrapeMenu", "NASS"))
         self.cissRadioBtn.setText(_translate("ScrapeMenu", "CISS"))
+        self.stopBtn.setText(_translate("ScrapeMenu", " Stop Scrape "))
         self.submitBtn.setText(_translate("ScrapeMenu", "Scrape"))
