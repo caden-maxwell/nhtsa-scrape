@@ -59,6 +59,8 @@ class ScrapeMenu(QWidget):
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
+        self.ui.stopBtn.clicked.connect(self.end_scrape.emit)
+        self.ui.stopBtn.setVisible(False)
 
         nass_model = _SearchModel(
             scraper=ScraperNASS,
@@ -214,6 +216,8 @@ class ScrapeMenu(QWidget):
         """Starts the scrape engine with the given parameters."""
         self.ui.submitBtn.setEnabled(False)
         self.ui.submitBtn.setText("Scraping...")
+        self.ui.stopBtn.setVisible(True)
+
         if self.scraper and self.scraper.running:
             self.logger.warning(
                 "Scrape engine is already running. Ignoring submission."
@@ -344,6 +348,7 @@ class ScrapeMenu(QWidget):
 
         self.ui.submitBtn.setEnabled(True)
         self.ui.submitBtn.setText("Scrape")
+        self.ui.stopBtn.setVisible(False)
 
     def cleanup(self):
         if self.scraper and self.scraper.running:
