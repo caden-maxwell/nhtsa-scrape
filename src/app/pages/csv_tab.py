@@ -17,7 +17,7 @@ class CSVTab(BaseTab):
 
         self.model = EventTable(db_handler, profile)
         self.ui.tableView.setModel(self.model)
-        self.ui.saveBtn.clicked.connect(self.save_csv)
+        self.ui.saveBtn.clicked.connect(self._save_csv)
 
         self.data_dir = data_dir
 
@@ -26,10 +26,10 @@ class CSVTab(BaseTab):
         self.ui.tableView.hideColumn(0)
         self.ui.tableView.hideColumn(1)
 
-    def save_csv(self):
+    def _save_csv(self):
         self.ui.saveBtn.setEnabled(False)
         self.ui.saveBtn.setText("Saving...")
-        self.ui.saveBtn.repaint()
+        self.ui.saveBtn.update()
         os.makedirs(self.data_dir, exist_ok=True)
         csv_path = self.data_dir / "scrape_data.csv"
         i = 1

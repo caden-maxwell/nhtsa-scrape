@@ -8,9 +8,10 @@ Sorted from highest (top) to lowest priority:
 
 - ENHANCE: Option to download PDF or CDRX file
     - Optionally, include EDR information in separate tab, based on event clicked
-- ENHANCE: Option to save retrieved json file
 - ENHANCE: Multi-analysis
 - ENHANCE: Include link for each case
+- FIX: All button logic (setText, enable/disable, etc.) in events tab, as it's very messy at the moment
+- FIX: Sometimes duplicate images are shown in the image viewer
 - FIX: Error that results from scraping images without a case selected
     - Could be fixed by:
         - Autoselect first case in list if nothing is selected

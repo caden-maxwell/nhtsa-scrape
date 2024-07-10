@@ -1,6 +1,8 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from io import BytesIO
+import json
 import logging
 import os
 from pathlib import Path
@@ -33,18 +35,29 @@ from app.scrape import (
 from app.ui import Ui_EventsTab
 
 
-class EventsTab(BaseTab):
+@dataclass
+class _CachedCase:
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
+    response: Response
+    created: datetime = datetime.now()
+
+    def expired(self):
+        return (
+            datetime.now() - self.created
+        ).total_seconds() > self.COOKIE_EXPIRED_SECS
+
+
+class EventsTab(BaseTab):
     def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
         self.model = EventList(db_handler, profile)
         self.current_index_vals = None
-        self.images_dir = data_dir / "images"
+        self.data_dir = data_dir
 
         self.ui.eventsList.setModel(self.model)
         delegate = CustomItemDelegate()
@@ -55,6 +68,8 @@ class EventsTab(BaseTab):
         self.ui.stopBtn.clicked.connect(self._stop_btn_clicked)
         self.ui.ignoreBtn.clicked.connect(self._ignore_event)
         self.ui.discardBtn.clicked.connect(self._delete_event)
+        self.ui.saveCaseBtn.clicked.connect(self._fetch_case_data)
+
         self.ui.imgSetCombo.addItem("Front", "Front")
         self.ui.imgSetCombo.addItem("Back", "Back")
         self.ui.imgSetCombo.addItem("Left", "Left")
@@ -75,7 +90,9 @@ class EventsTab(BaseTab):
         self.req_handler = RequestHandler()
         self.req_handler.response_received.connect(self.handle_response)
 
-        self.response_cache = {}
+        self.response_cache: dict[int, _CachedCase] = (
+            dict()
+        )  # key: case_id, value: _CachedCase
         self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
 
         if self.model.index(0, 0).isValid():
@@ -106,11 +123,8 @@ class EventsTab(BaseTab):
             index = self.model.index_from_vals(*self.current_index_vals)
             self.ui.eventsList.setCurrentIndex(index)
 
-    def cache_response(self, case_id, response):
-        self.response_cache[case_id] = {
-            "response": response,
-            "created": datetime.now(),
-        }
+    def cache_response(self, case_id, response: Response):
+        self.response_cache[case_id] = _CachedCase(response)
 
     def open_event_details(self, index: QModelIndex):
         if not index or not index.isValid():
@@ -128,8 +142,8 @@ class EventsTab(BaseTab):
 
             self.ui.scrapeBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(False)
-            self.ui.scrapeBtn.repaint()
-            self.ui.stopBtn.repaint()
+            self.ui.scrapeBtn.update()
+            self.ui.stopBtn.update()
 
             self.no_images_label.setVisible(True)
             self.__clear_thumbnails()
@@ -166,7 +180,7 @@ class EventsTab(BaseTab):
         self.__clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.images_dir, event)
+            thumbnail = ImageThumbnail(img_id, img, self.data_dir / "images", event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
@@ -184,7 +198,7 @@ class EventsTab(BaseTab):
         extra_data = {"event": event}
         if self.req_handler.contains(
             Priority.IMAGE.value, extra_data
-        ) or self.req_handler.contains(Priority.CASE_FOR_IMAGE.value, extra_data):
+        ) or self.req_handler.contains(Priority.CASE_FOR_IMAGES.value, extra_data):
             self.ui.scrapeBtn.setText("Scraping...")
             self.ui.scrapeBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -192,29 +206,32 @@ class EventsTab(BaseTab):
             self.ui.scrapeBtn.setText("Scrape Images")
             self.ui.scrapeBtn.setEnabled(True)
             self.ui.stopBtn.setVisible(False)
-        self.ui.scrapeBtn.repaint()
-        self.ui.stopBtn.repaint()
+        self.ui.scrapeBtn.update()
+        self.ui.stopBtn.update()
 
     def _scrape_btn_clicked(self):
         event: Event = self.model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
 
-        scraper: BaseScraper = self.get_scraper_type(event)
+        scraper: BaseScraper = None
+        if event.scraper_type == "NASS":
+            scraper = ScraperNASS
+        elif event.scraper_type == "CISS":
+            scraper = ScraperCISS
+        else:
+            self._logger.error(f"Unknown scraper type: {event.scraper_type}")
+
         request = RequestQueueItem(
             BaseScraper.ROOT + str(scraper.case_url_raw).format(case_id=event.case_id),
-            priority=Priority.CASE_FOR_IMAGE.value,
+            priority=Priority.CASE_FOR_IMAGES.value,
             extra_data={"event": event},
             callback=self._parse_case,
         )
         cached_case = self.response_cache.get(event.case_id)
-        if (  # Make sure cached case is valid
-            cached_case
-            and (datetime.now() - cached_case["created"]).total_seconds()
-            < self.COOKIE_EXPIRED_SECS
-        ):
-            self.logger.debug(f"Using cached case ({event.case_id})")
-            self._parse_case(request, cached_case["response"])
+        if cached_case and not cached_case.expired():
+            self._logger.debug(f"Using cached case ({event.case_id})")
+            self._parse_case(request, cached_case.response)
         else:
             self.req_handler.enqueue_request(request)
 
@@ -226,12 +243,25 @@ class EventsTab(BaseTab):
         ).event
 
         extra_data = {"event": event}
-        self.req_handler.clear_queue(Priority.CASE_FOR_IMAGE.value, extra_data)
+        self.req_handler.clear_queue(Priority.CASE_FOR_IMAGES.value, extra_data)
         self.req_handler.clear_queue(Priority.IMAGE.value, extra_data)
 
         self.ui.scrapeBtn.setText("Scrape Images")
         self.ui.scrapeBtn.setEnabled(True)
         self.ui.stopBtn.setVisible(False)
+
+    def _ignore_event(self):
+        index = self.ui.eventsList.currentIndex()
+        self.model.setData(
+            index,
+            not self.model.data(index, Qt.ItemDataRole.FontRole),
+            Qt.ItemDataRole.FontRole,
+        )
+
+        if self.model.data(index, Qt.ItemDataRole.FontRole):
+            self.ui.ignoreBtn.setText("Unignore Event")
+        else:
+            self.ui.ignoreBtn.setText("Ignore Event")
 
     def _delete_event(self):
         msg_box = QMessageBox()
@@ -259,24 +289,101 @@ class EventsTab(BaseTab):
         self.ui.eventsList.setCurrentIndex(index)
         self.open_event_details(index)
 
-    def _ignore_event(self):
-        index = self.ui.eventsList.currentIndex()
-        self.model.setData(
-            index,
-            not self.model.data(index, Qt.ItemDataRole.FontRole),
-            Qt.ItemDataRole.FontRole,
+    def _fetch_case_data(self):
+        self.ui.saveCaseBtn.setEnabled(False)
+        self.ui.saveCaseBtn.setText("Saving...")
+        self.ui.saveCaseBtn.update()
+
+        event: Event = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        ).event
+
+        scraper: BaseScraper = None
+        if event.scraper_type == "NASS":
+            scraper = ScraperNASS
+        elif event.scraper_type == "CISS":
+            scraper = ScraperCISS
+        else:
+            self._logger.error(f"Unknown scraper type: {event.scraper_type}")
+            return
+
+        request = RequestQueueItem(
+            BaseScraper.ROOT + str(scraper.case_url_raw).format(case_id=event.case_id),
+            priority=Priority.CASE_RAW_SAVE.value,
+            callback=self._save_case_data,
+            extra_data={"event": event},
         )
 
-        if self.model.data(index, Qt.ItemDataRole.FontRole):
-            self.ui.ignoreBtn.setText("Unignore Event")
+        # If the case is already cached, use the cached response
+        cached_case = self.response_cache.get(event.case_id)
+        if cached_case and not cached_case.expired():
+            self._logger.debug(f"Using cached case ({event.case_id})")
+            self._save_case_data(request, cached_case.response)
         else:
-            self.ui.ignoreBtn.setText("Ignore Event")
+            self.req_handler.enqueue_request(request)
+
+    def _save_case_data(self, request: RequestQueueItem, response: Response):
+        event: Event = request.extra_data.get("event")
+
+        raw_data_dir = self.data_dir / "raw_case_data"
+        os.makedirs(raw_data_dir, exist_ok=True)
+        self._logger.debug(response.text)
+
+        # Check whether data is json or xml
+        if "application/json" in response.headers.get("Content-Type", ""):
+            self._save_json_data(event, response, raw_data_dir)
+        elif "text/xml" in response.headers.get("Content-Type", ""):
+            self._save_xml_data(event, response, raw_data_dir)
+        else:
+            self._logger.error(
+                f"Returned case has unknown content type: {response.headers.get('Content-Type')}"
+            )
+
+        self.ui.saveCaseBtn.setEnabled(True)
+        self.ui.saveCaseBtn.setText("Save Raw Case Data")
+        self.ui.saveCaseBtn.update()
+
+    def _save_json_data(self, event: Event, response: Response, raw_data_dir: Path):
+        # Create a unique file name
+        raw_data_path = raw_data_dir / f"case_{event.case_id}.json"
+        i = 1
+        while raw_data_path.exists():
+            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).json"
+            i += 1
+
+        # Pretty print the JSON data to the file
+        with open(raw_data_path, "w") as f:
+            data = json.loads(response.text)
+            data = json.dumps(data, indent=4)
+            f.write(data)
+
+        self._logger.info(
+            f"Saved JSON case data for case {event.case_id} to {raw_data_path}"
+        )
+
+    def _save_xml_data(self, event: Event, response: Response, raw_data_dir: Path):
+        # Create a unique file name
+        raw_data_path = raw_data_dir / f"case_{event.case_id}.xml"
+        i = 1
+        while raw_data_path.exists():
+            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).xml"
+            i += 1
+
+        # Write pretty printed XML data to the file
+        with open(raw_data_path, "wb") as f:
+            soup = BeautifulSoup(response.content, "xml")
+            f.write(soup.prettify("utf-8"))
+
+        self._logger.info(
+            f"Saved XML case data for case {event.case_id} to {raw_data_path}"
+        )
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
         if (
-            request.priority == Priority.CASE_FOR_IMAGE.value
+            request.priority == Priority.CASE_FOR_IMAGES.value
             or request.priority == Priority.IMAGE.value
+            or request.priority == Priority.CASE_RAW_SAVE.value
         ):
             request.callback(request, response)
 
@@ -304,12 +411,12 @@ class EventsTab(BaseTab):
         self.cache_response(event.case_id, response)
 
         if not img_form:
-            self.logger.debug("No ImgForm found.")
+            self._logger.debug("No ImgForm found.")
             return
 
         veh_img_form = img_form.find("Vehicle", {"VehicleNumber": {event.vehicle_num}})
         if not veh_img_form:
-            self.logger.warning(
+            self._logger.warning(
                 f"Image form for vehicle '{event.vehicle_num}' of case '{event.case_id}' not found."
             )
             return
@@ -317,7 +424,7 @@ class EventsTab(BaseTab):
         form_id = self.ui.imgSetCombo.currentData()
         img_area_form = veh_img_form.find(form_id)
         if not img_area_form:
-            self.logger.warning(f"Image area form '{form_id}' not found.")
+            self._logger.warning(f"Image area form '{form_id}' not found.")
             return
 
         image_elements = img_area_form.find_all("image")
@@ -330,11 +437,10 @@ class EventsTab(BaseTab):
             if event_imgs.get(img_id):
                 continue
 
-            scraper: BaseScraper = self.get_scraper_type(event)
             self.req_handler.enqueue_request(
                 RequestQueueItem(
                     BaseScraper.ROOT
-                    + str(scraper.img_url).format(
+                    + str(ScraperNASS.img_url).format(
                         img_id=img_id,
                         case_id=event.case_id,
                         version=img_element["version"],
@@ -357,7 +463,7 @@ class EventsTab(BaseTab):
         self.cache_response(event.case_id, response)
 
         if not photos:
-            self.logger.debug("No photos found.")
+            self._logger.debug("No photos found.")
             return
 
         veh_photos = []
@@ -366,7 +472,7 @@ class EventsTab(BaseTab):
                 veh_photos.append(photo)
 
         if not veh_photos:
-            self.logger.warning(
+            self._logger.warning(
                 f"No photos found for vehicle '{event.vehicle_num}' of case '{event.case_id}'."
             )
             return
@@ -379,7 +485,7 @@ class EventsTab(BaseTab):
 
         img_set = self.ui.imgSetCombo.currentData()
         if not img_set:
-            self.logger.error("No image set selected.")
+            self._logger.error("No image set selected.")
             return
 
         filtered_photos = sorted_photos.get(img_set.lower(), [])
@@ -391,10 +497,9 @@ class EventsTab(BaseTab):
             if event_imgs.get(obj_id):
                 continue
 
-            scraper: BaseScraper = self.get_scraper_type(event)
             self.req_handler.enqueue_request(
                 RequestQueueItem(
-                    BaseScraper.ROOT + str(scraper.img_url).format(obj_id=obj_id),
+                    BaseScraper.ROOT + str(ScraperCISS.img_url).format(obj_id=obj_id),
                     priority=Priority.IMAGE.value,
                     extra_data={"event": event},
                     callback=self.parse_image,
@@ -402,14 +507,6 @@ class EventsTab(BaseTab):
             )
             event_imgs.update({obj_id: None})
         self.img_cache[event] = event_imgs
-
-    def get_scraper_type(self, event: Event) -> BaseScraper:
-        if event.scraper_type == "NASS":
-            return ScraperNASS
-        elif event.scraper_type == "CISS":
-            return ScraperCISS
-
-        self.logger.error(f"Unknown scraper type: {event.scraper_type}")
 
     def parse_image(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -431,7 +528,7 @@ class EventsTab(BaseTab):
         # If the event is the same as the one currently selected, update the thumbnails
         if event == selected_event:
             self.no_images_label.setVisible(False)
-            thumbnail = ImageThumbnail(img_key, image, self.images_dir, event)
+            thumbnail = ImageThumbnail(img_key, image, self.data_dir / "images", event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
 
