@@ -2,4 +2,4 @@
 
 ---
 
-# User Documentation
+# Software Documentation
