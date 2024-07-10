@@ -519,16 +519,15 @@ class EventsTab(BaseTab):
 
         image = Image.open(BytesIO(response.content))
 
-        longest_side_len = 1920
         w, h = image.size
         aspect_ratio = w / h
         if aspect_ratio < 1:
-            # image is portrait, make height at least 1920
-            h = longest_side_len
-            w = round(h * aspect_ratio)
+            # image is portrait, make width at least 1080
+            w = 1080
+            h = round(w / aspect_ratio)
         else:
             # image is landscape, make width at least 1920
-            w = longest_side_len
+            w = 1920
             h = round(w / aspect_ratio)
 
         image = image.resize((w, h))
