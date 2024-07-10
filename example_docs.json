@@ -1,0 +1,28 @@
+[
+    {
+        "ID": 73573,
+        "CaseID": 26875,
+        "ObjectID": "CISS$2022$510cb447-8098-4db2-8ade-3d429d07c226",
+        "FileName": "20221013092_V1_ACM.pdf",
+        "DocTypeId": 102,
+        "DocTypeDesc": "EDR",
+        "FileTypeId": 1,
+        "FileTypeExt": "pdf",
+        "VehNum": 1,
+        "CDC": null,
+        "ScenePDF": 0
+    },
+    {
+        "ID": 73572,
+        "CaseID": 26875,
+        "ObjectID": "CISS$2022$33dcef26-4031-4cb6-8913-97b54df99155",
+        "FileName": "20221013092_V1_ACM.cdrx",
+        "DocTypeId": 102,
+        "DocTypeDesc": "EDR",
+        "FileTypeId": 7,
+        "FileTypeExt": "cdrx",
+        "VehNum": 1,
+        "CDC": null,
+        "ScenePDF": 0
+    }
+]

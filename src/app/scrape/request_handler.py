@@ -88,13 +88,13 @@ class RequestHandler(QObject, metaclass=Singleton):
         requests = self.request_queue.queue
         self.request_queue.queue = []
         for request in requests:
-            if not self.__priority_data_match(request, priority, match_data):
+            if not self._priority_data_match(request, priority, match_data):
                 self.request_queue.put(request)
 
         ongoing_requests = self.ongoing_requests
         self.ongoing_requests = []
         for request in ongoing_requests:
-            if not self.__priority_data_match(request, priority, match_data):
+            if not self._priority_data_match(request, priority, match_data):
                 self.ongoing_requests.append(request)
 
     def contains(self, priority=-1, match_data={}):
@@ -113,7 +113,7 @@ class RequestHandler(QObject, metaclass=Singleton):
 
         queued_requests = []
         for request in self.request_queue.queue:
-            if self.__priority_data_match(request, priority, match_data):
+            if self._priority_data_match(request, priority, match_data):
                 queued_requests.append(request)
         return queued_requests
 
@@ -123,14 +123,17 @@ class RequestHandler(QObject, metaclass=Singleton):
 
         ongoing_requests = []
         for request in self.ongoing_requests:
-            if self.__priority_data_match(request, priority, match_data):
+            if self._priority_data_match(request, priority, match_data):
                 ongoing_requests.append(request)
         return ongoing_requests
 
-    def __priority_data_match(
+    def _priority_data_match(
         self, request: RequestQueueItem, priority: int, match_data: dict
     ):
-        """Return True if the request matches the given priority and match_data, but only if match_data is not empty."""
+        """
+        Return True if the request matches the given priority and match_data.
+        Skip match_data check if not provided.
+        """
         return request.priority == priority and (
             request.extra_data == match_data or not match_data
         )

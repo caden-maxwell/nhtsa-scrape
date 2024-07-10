@@ -89,8 +89,8 @@ class EventsTab(BaseTab):
         self.ui.imgWidgetGrid.addWidget(self.no_images_label, 0, 0)
         self.no_images_label.setVisible(True)
 
-        self.req_handler = RequestHandler()
-        self.req_handler.response_received.connect(self.handle_response)
+        self._req_handler = RequestHandler()
+        self._req_handler.response_received.connect(self.handle_response)
 
         self.response_cache: dict[int, _CachedCase] = dict()
         self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
@@ -152,7 +152,6 @@ class EventsTab(BaseTab):
             return
 
         event: Event = self.model.data(index, Qt.ItemDataRole.UserRole).event
-        self._update_buttons(event)
 
         # We need to get the unique values for this index so we can find it later
         # if another event is inserted before it in the list
@@ -162,15 +161,15 @@ class EventsTab(BaseTab):
         self.ui.makeLineEdit.setText(event.make)
         self.ui.modelLineEdit.setText(event.model)
         self.ui.yearLineEdit.setText(str(event.model_year))
-        self.ui.curbWeightLineEdit.setText(f"{event.curb_wgt * 2.20462:.4f}")
+        self.ui.curbWeightLineEdit.setText(str(event.curb_wgt))
         self.ui.dmgLocLineEdit.setText(event.dmg_loc)
         self.ui.underrideLineEdit.setText(event.underride)
 
         # Right side of event view data
-        self.ui.cBarLineEdit.setText(f"{event.c_bar:.4f}")
-        self.ui.nassDVLineEdit.setText(f"{event.NASS_dv:.4f}")
-        self.ui.nassVCLineEdit.setText(f"{event.NASS_vc:.4f}")
-        self.ui.totDVLineEdit.setText(f"{event.TOT_dv:.4f}")
+        self.ui.cBarLineEdit.setText(str(event.c_bar))
+        self.ui.nassDVLineEdit.setText(str(event.NASS_dv))
+        self.ui.nassVCLineEdit.setText(str(event.NASS_vc))
+        self.ui.totDVLineEdit.setText(str(event.TOT_dv))
 
         # Clear and repopulate image thumbnails
         img_ids = self.img_cache[event]
@@ -188,17 +187,21 @@ class EventsTab(BaseTab):
         else:
             self.ui.ignoreBtn.setText("Ignore Event")
 
+        self._update_buttons(event)
+
     def _clear_thumbnails(self):
         for i in reversed(range(self.ui.thumbnailsLayout.count())):
             widget = self.ui.thumbnailsLayout.itemAt(i).widget()
             self.ui.thumbnailsLayout.removeWidget(widget)
             widget.setParent(None)
 
-    def _update_buttons(self, event: Event):
+    def _update_buttons(self, event: Event, override=False):
+        """
+        Update the scrape images button and stop button based on the current state of the request handler.
+        Set override to True to force the buttons to be set to their scraping state.
+        """
         extra_data = {"event": event}
-        if self.req_handler.contains(
-            Priority.IMAGE.value, extra_data
-        ) or self.req_handler.contains(Priority.EVENT_DATA.value, extra_data):
+        if self._req_handler.contains(Priority.IMAGE.value, extra_data) or override:
             self.ui.scrapeImgsBtn.setText("Scraping...")
             self.ui.scrapeImgsBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -211,6 +214,11 @@ class EventsTab(BaseTab):
         self.ui.stopBtn.update()
 
     def _scrape_btn_clicked(self):
+        event: Event = self.model.data(
+            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+        ).event
+        self._update_buttons(event, True)
+
         self._fetch_case_data(self._fetch_imgs)
 
     def _save_case_btn_clicked(self):
@@ -221,7 +229,11 @@ class EventsTab(BaseTab):
         self._fetch_case_data(self._save_case_data)
 
     def _save_edr_btn_clicked(self):
-        print("HELLO!")
+        self.ui.saveEDRBtn.setEnabled(False)
+        self.ui.saveEDRBtn.setText("Saving...")
+        self.ui.saveEDRBtn.update()
+
+        self._fetch_case_data(self._fetch_edr)
 
     def _fetch_case_data(self, callback: Callable[[RequestQueueItem, Response], None]):
         event: Event = self.model.data(
@@ -247,9 +259,7 @@ class EventsTab(BaseTab):
             self._logger.debug(f"Using cached case ({event.case_id})")
             callback(request, cached_case.response)
         else:
-            self.req_handler.enqueue_request(request)
-
-        self._update_buttons(event)
+            self._req_handler.enqueue_request(request)
 
     def _stop_btn_clicked(self):
         event = self.model.data(
@@ -257,8 +267,8 @@ class EventsTab(BaseTab):
         ).event
 
         extra_data = {"event": event}
-        self.req_handler.clear_queue(Priority.EVENT_DATA.value, extra_data)
-        self.req_handler.clear_queue(Priority.IMAGE.value, extra_data)
+        self._req_handler.clear_queue(Priority.EVENT_DATA.value, extra_data)
+        self._req_handler.clear_queue(Priority.IMAGE.value, extra_data)
 
         self.ui.scrapeImgsBtn.setText("Scrape Images")
         self.ui.scrapeImgsBtn.setEnabled(True)
@@ -278,20 +288,18 @@ class EventsTab(BaseTab):
             self.ui.ignoreBtn.setText("Ignore Event")
 
     def _delete_event(self):
-        msg_box = QMessageBox()
-        msg_box.setText(
-            "Are you sure you want to delete this event?"
-            "\nThis action cannot be undone."
+        button = QMessageBox.warning(
+            self,
+            "Delete Event",
+            "Are you sure you want to delete this event? This action cannot be undone.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
-        msg_box.setStandardButtons(
-            QMessageBox.StandardButton.No | QMessageBox.StandardButton.Yes
-        )
-        msg_box.setDefaultButton(QMessageBox.StandardButton.No)
-        msg_box.setIcon(QMessageBox.Icon.Warning)
-        msg_box.setWindowTitle("Delete Event")
-        msg_box.exec()
 
-        if msg_box.result() == QMessageBox.StandardButton.No:
+        if (
+            button == QMessageBox.StandardButton.No
+            or button == QMessageBox.StandardButton.Escape
+        ):
             return
 
         index = self.ui.eventsList.currentIndex()
@@ -303,62 +311,6 @@ class EventsTab(BaseTab):
         self.ui.eventsList.setCurrentIndex(index)
         self.open_event_details(index)
 
-    def _save_case_data(self, request: RequestQueueItem, response: Response):
-        event: Event = request.extra_data.get("event")
-
-        self.cache_response(event.case_id, response)
-        raw_data_dir = self.data_dir / "raw_case_data"
-        os.makedirs(raw_data_dir, exist_ok=True)
-
-        # Check whether data is json or xml
-        if "application/json" in response.headers.get("Content-Type", ""):
-            self._save_json_data(event, response, raw_data_dir)
-        elif "text/xml" in response.headers.get("Content-Type", ""):
-            self._save_xml_data(event, response, raw_data_dir)
-        else:
-            self._logger.error(
-                f"Returned case has unknown content type: {response.headers.get('Content-Type')}"
-            )
-
-        self.ui.saveCaseBtn.setEnabled(True)
-        self.ui.saveCaseBtn.setText("Save Raw Case Data")
-        self.ui.saveCaseBtn.update()
-
-    def _save_json_data(self, event: Event, response: Response, raw_data_dir: Path):
-        # Create a unique file name
-        raw_data_path = raw_data_dir / f"case_{event.case_id}.json"
-        i = 1
-        while raw_data_path.exists():
-            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).json"
-            i += 1
-
-        # Pretty print the JSON data to the file
-        with open(raw_data_path, "w") as f:
-            data = json.loads(response.text)
-            data = json.dumps(data, indent=4)
-            f.write(data)
-
-        self._logger.info(
-            f"Saved JSON case data for case {event.case_id} to {raw_data_path}"
-        )
-
-    def _save_xml_data(self, event: Event, response: Response, raw_data_dir: Path):
-        # Create a unique file name
-        raw_data_path = raw_data_dir / f"case_{event.case_id}.xml"
-        i = 1
-        while raw_data_path.exists():
-            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).xml"
-            i += 1
-
-        # Write pretty printed XML data to the file
-        with open(raw_data_path, "wb") as f:
-            soup = BeautifulSoup(response.content, "xml")
-            f.write(soup.prettify("utf-8"))
-
-        self._logger.info(
-            f"Saved XML case data for case {event.case_id} to {raw_data_path}"
-        )
-
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
         if (
@@ -367,11 +319,10 @@ class EventsTab(BaseTab):
         ):
             request.callback(request, response)
 
-            if self.ui.eventsList.currentIndex().isValid():
-                event: Event = self.model.data(
-                    self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-                ).event
-                self._update_buttons(event)
+            event: Event = self.model.data(
+                self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
+            ).event
+            self._update_buttons(event)
 
     def _fetch_imgs(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -382,6 +333,8 @@ class EventsTab(BaseTab):
             self._fetch_imgs_nass(event, request, response)
         elif scraper_type == "CISS":
             self._fetch_imgs_ciss(event, request, response)
+
+        self._update_buttons(event)
 
     def _fetch_imgs_nass(
         self, event: Event, request: RequestQueueItem, response: Response
@@ -417,7 +370,7 @@ class EventsTab(BaseTab):
             if event_imgs.get(img_id):
                 continue
 
-            self.req_handler.enqueue_request(
+            self._req_handler.enqueue_request(
                 RequestQueueItem(
                     BaseScraper.ROOT
                     + str(ScraperNASS.img_url).format(
@@ -428,7 +381,7 @@ class EventsTab(BaseTab):
                     headers={"Cookie": cookie},
                     priority=Priority.IMAGE.value,
                     extra_data={"event": event},
-                    callback=self.parse_image,
+                    callback=self._parse_image,
                 )
             )
             event_imgs.update({img_id: None})
@@ -475,18 +428,18 @@ class EventsTab(BaseTab):
             if event_imgs.get(obj_id):
                 continue
 
-            self.req_handler.enqueue_request(
+            self._req_handler.enqueue_request(
                 RequestQueueItem(
                     BaseScraper.ROOT + str(ScraperCISS.img_url).format(obj_id=obj_id),
                     priority=Priority.IMAGE.value,
                     extra_data={"event": event},
-                    callback=self.parse_image,
+                    callback=self._parse_image,
                 )
             )
             event_imgs.update({obj_id: None})
         self.img_cache[event] = event_imgs
 
-    def parse_image(self, request: RequestQueueItem, response: Response):
+    def _parse_image(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
         event_imgs = self.img_cache[event]
 
@@ -523,9 +476,119 @@ class EventsTab(BaseTab):
             thumbnail = ImageThumbnail(img_key, image, self.data_dir / "images", event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
+    def _save_case_data(self, request: RequestQueueItem, response: Response):
+        event: Event = request.extra_data.get("event")
+        self.cache_response(event.case_id, response)
+
+        raw_data_dir = self.data_dir / "raw_case_data"
+        os.makedirs(raw_data_dir, exist_ok=True)
+
+        # Check whether data is json or xml
+        if "application/json" in response.headers.get("Content-Type", ""):
+            self._save_json_data(event, response, raw_data_dir)
+        elif "text/xml" in response.headers.get("Content-Type", ""):
+            self._save_xml_data(event, response, raw_data_dir)
+        else:
+            self._logger.error(
+                f"Returned case has unknown content type: {response.headers.get('Content-Type')}"
+            )
+
+        self.ui.saveCaseBtn.setEnabled(True)
+        self.ui.saveCaseBtn.setText("Save Raw Case Data")
+        self.ui.saveCaseBtn.update()
+
+    def _save_json_data(self, event: Event, response: Response, raw_data_dir: Path):
+        # Create a unique file name
+        raw_data_path = raw_data_dir / f"case_{event.case_id}.json"
+        i = 1
+        while raw_data_path.exists():
+            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).json"
+            i += 1
+
+        # Pretty print the JSON data to the file
+        with open(raw_data_path, "w") as f:
+            data = json.loads(response.text)
+            data = json.dumps(data, indent=4)
+            f.write(data)
+
+        self._logger.info(
+            f"Saved JSON case data for case {event.case_id} to {raw_data_path}"
+        )
+
+    def _save_xml_data(self, event: Event, response: Response, edr_data_dir: Path):
+        # Create a unique file name
+        raw_data_path = edr_data_dir / f"case_{event.case_id}.xml"
+        i = 1
+        while raw_data_path.exists():
+            raw_data_path = edr_data_dir / f"case_{event.case_id}({i}).xml"
+            i += 1
+
+        # Write pretty printed XML data to the file
+        with open(raw_data_path, "wb") as f:
+            soup = BeautifulSoup(response.content, "xml")
+            f.write(soup.prettify("utf-8"))
+
+        self._logger.info(
+            f"Saved XML case data for case {event.case_id} to {raw_data_path}"
+        )
+
+    def _fetch_edr(self, request: RequestQueueItem, response: Response):
+        event: Event = request.extra_data.get("event")
+        self.cache_response(event.case_id, response)
+
+        edr_data_dir = self.data_dir / "edr_data"
+        os.makedirs(edr_data_dir, exist_ok=True)
+
+        if event.scraper_type == "NASS":
+            self._fetch_nass_edr(event, response, edr_data_dir)
+        elif event.scraper_type == "CISS":
+            self._fetch_ciss_edr(event, response, edr_data_dir)
+        else:
+            self._logger.error(f"Unknown scraper type: {event.scraper_type}")
+
+        self.ui.saveEDRBtn.setEnabled(True)
+        self.ui.saveEDRBtn.setText("Save Event EDR")
+        self.ui.saveEDRBtn.update()
+
+    def _fetch_nass_edr(self, event: Event, response: Response, edr_data_dir: Path):
+        self._logger.error("NASS EDR data fetcher not yet implemented.")
+
+    def _fetch_ciss_edr(self, event: Event, response: Response, edr_data_dir: Path):
+        json_data: dict = response.json()
+        docs = json_data.get("Docs")
+
+        edr_docs = []
+        for doc in docs:
+            if (
+                doc.get("DocTypeDesc") == "EDR"
+                and doc.get("VehNum") == event.vehicle_num
+            ):
+                edr_docs.append(doc)
+
+        if not edr_docs:
+            QMessageBox.warning(
+                self,
+                "No EDR Data",
+                "No EDR data found for this event.",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+
+        filenames = []
+        for doc in edr_docs:
+            filenames.append(doc.get("FileName"))
+
+        filenames = "\n ".join(filenames)
+        QMessageBox.question(
+            self,
+            "EDR Data Found",
+            f"EDR files found for this event. Would you like to save it?\n{filenames}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+
     def closeEvent(self, event):
-        self.req_handler.clear_queue(Priority.EVENT_DATA.value)
-        self.req_handler.clear_queue(Priority.IMAGE.value)
+        self._req_handler.clear_queue(Priority.EVENT_DATA.value)
+        self._req_handler.clear_queue(Priority.IMAGE.value)
         self._logger.debug("Cleared image requests.")
 
 
