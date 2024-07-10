@@ -518,6 +518,21 @@ class EventsTab(BaseTab):
             img_key = request.url.split("/")[5]
 
         image = Image.open(BytesIO(response.content))
+
+        longest_side_len = 1920
+        w, h = image.size
+        aspect_ratio = w / h
+        if aspect_ratio < 1:
+            # image is portrait, make height at least 1920
+            h = longest_side_len
+            w = round(h * aspect_ratio)
+        else:
+            # image is landscape, make width at least 1920
+            w = longest_side_len
+            h = round(w / aspect_ratio)
+        
+        image = image.resize((w, h))
+
         event_imgs[img_key] = image
 
         selected_event: Event = self.model.data(
@@ -547,10 +562,6 @@ class ImageThumbnail(QWidget):
         self.image = image
         self.images_dir = images_dir
 
-        self.case_id = event.case_id
-        self.nass_dv = event.NASS_dv
-        self.tot_dv = event.TOT_dv
-
         layout = QGridLayout()
         self.thumbnail_label = QLabel()
         pixmap = self.img_to_pixmap(self.image).scaledToHeight(160)
@@ -569,7 +580,7 @@ class ImageThumbnail(QWidget):
 
         self.save_button = QPushButton("Save")
         self.save_button.setVisible(False)
-        self.save_button.clicked.connect(self.save_image)
+        self.save_button.clicked.connect(lambda: self.save_image(event))
         h_layout.addWidget(self.save_button)
 
         layout.addLayout(h_layout, 0, 0, Qt.AlignmentFlag.AlignBottom)
@@ -598,39 +609,34 @@ class ImageThumbnail(QWidget):
 
         return pixmap
 
-    def save_image(self):
+    def save_image(self, event: Event):
         self.save_button.setEnabled(False)
         self.save_button.setText("Saving...")
 
-        text = f"Case No: {self.case_id} - NASS DV: {self.nass_dv:.4f} - TOT DV: {self.tot_dv:.4f}"
-
+        text = f"Case No: {event.case_id} - NASS DV: {event.NASS_dv:.4f} - TOT DV: {event.TOT_dv:.4f}"
         draw = ImageDraw.Draw(self.image)
 
         width, height = self.image.size
-
         font_size = 100
-        text_size = draw.textbbox(
-            (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
-        )
-        while text_size[2] - text_size[0] > width:
+        font = ImageFont.truetype("segoeui.ttf", font_size)
+        text_length = draw.textlength(text, font)
+
+        # Iteratively make the text size smaller until it fits in the width of the image
+        while text_length > width:
             font_size -= 1
-            text_size = draw.textbbox(
-                (0, 0), text, ImageFont.truetype("segoeui.ttf", font_size)
-            )
+            font = ImageFont.truetype("segoeui.ttf", font_size)
+            text_length = draw.textlength(text, font)
 
-        rect_height = text_size[3] - text_size[1] + int(height * 0.05)
+        x1, y1, x2, y2 = draw.textbbox((0, 0), text, font)
+        _, h = x2 - x1, y2 - y1
+        text_rect_height = h + (y1 * 2)
 
-        new_img = Image.new("RGB", (width, height + rect_height), (255, 255, 255))
-
-        new_img.paste(self.image, (0, rect_height))
+        # Stitch the text block to the top of the image so we dont lose any info
+        new_img = Image.new("RGB", (width, height + text_rect_height), (255, 255, 255))
+        new_img.paste(self.image, (0, text_rect_height))
 
         draw = ImageDraw.Draw(new_img)
-        draw.text(
-            (0, 0),
-            text,
-            (0, 0, 0),
-            ImageFont.truetype("segoeui.ttf", font_size),
-        )
+        draw.text(xy=(0, 0), text=text, fill=(0, 0, 0), font=font)
 
         os.makedirs(self.images_dir, exist_ok=True)
 
@@ -659,5 +665,5 @@ class ImageThumbnail(QWidget):
 class CustomItemDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index):
         ignored = index.data(Qt.ItemDataRole.FontRole)
-        painter.setOpacity(0.5 if ignored else 1.0)
+        painter.setOpacity(0.4 if ignored else 1.0)
         super().paint(painter, option, index)
