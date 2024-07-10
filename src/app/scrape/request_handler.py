@@ -19,7 +19,7 @@ class RequestQueueItem:
     priority: int = 0
     extra_data: dict = field(
         default_factory=dict
-    )  # Additional data used to identify the request (not sent)
+    )  # Additional data used to identify the request (for internal use, not sent to url)
     callback: callable = None
 
     def __lt__(self, other: "RequestQueueItem"):
