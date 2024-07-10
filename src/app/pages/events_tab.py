@@ -530,7 +530,7 @@ class EventsTab(BaseTab):
             # image is landscape, make width at least 1920
             w = longest_side_len
             h = round(w / aspect_ratio)
-        
+
         image = image.resize((w, h))
 
         event_imgs[img_key] = image
@@ -638,12 +638,13 @@ class ImageThumbnail(QWidget):
         draw = ImageDraw.Draw(new_img)
         draw.text(xy=(0, 0), text=text, fill=(0, 0, 0), font=font)
 
-        os.makedirs(self.images_dir, exist_ok=True)
+        case_dir = self.images_dir / f"case_{event.case_id}"
+        os.makedirs(case_dir, exist_ok=True)
 
-        path = self.images_dir / f"{self.img_id}.png"
+        path = case_dir / f"{self.img_id}.png"
         i = 1
         while path.exists():
-            path = self.images_dir / f"{self.img_id}({i}).png"
+            path = case_dir / f"{self.img_id}({i}).png"
             i += 1
 
         new_img.save(path, "PNG")

@@ -16,5 +16,4 @@ Sorted from highest (top) to lowest priority:
         - Autoselect first case in list if nothing is selected
         - Block buttons until case is selected
 - FIX: empty fields in the data viewer summary tab
-- ENHANCE: Images not saved to their own event folder
 - ENHANCE: Add proper app icon
