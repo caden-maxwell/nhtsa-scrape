@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 import re
 
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtWidgets import QWidget
 
 from app.pages import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
@@ -14,8 +14,11 @@ from app.ui import Ui_DataView
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler, profile: Profile, new_profile=False):
+    def __init__(
+        self, db_handler: DatabaseHandler, profile: Profile, new_profile=False
+    ):
         super().__init__()
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         self.logger = logging.getLogger(__name__)
 
@@ -58,4 +61,5 @@ class DataView(QWidget):
 
     def closeEvent(self, event):
         self.exited.emit()
+        self.events_tab.closeEvent(event)
         return super().closeEvent(event)

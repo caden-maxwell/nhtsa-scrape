@@ -530,6 +530,12 @@ class EventsTab(BaseTab):
             thumbnail = ImageThumbnail(img_key, image, self.data_dir / "images", event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
+    def closeEvent(self, event):
+        self.req_handler.clear_queue(Priority.CASE_FOR_IMAGES.value)
+        self.req_handler.clear_queue(Priority.IMAGE.value)
+        self.req_handler.clear_queue(Priority.CASE_RAW_SAVE.value)
+        self._logger.debug("Cleared image requests.")
+
 
 class ImageThumbnail(QWidget):
     def __init__(self, img_id: int, image: Image.Image, images_dir: Path, event: Event):
