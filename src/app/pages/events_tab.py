@@ -327,7 +327,6 @@ class EventsTab(BaseTab):
 
         raw_data_dir = self.data_dir / "raw_case_data"
         os.makedirs(raw_data_dir, exist_ok=True)
-        self._logger.debug(response.text)
 
         # Check whether data is json or xml
         if "application/json" in response.headers.get("Content-Type", ""):
