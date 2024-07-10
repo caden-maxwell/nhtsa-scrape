@@ -8,3 +8,4 @@ matplotlib
 seaborn
 sqlalchemy
 jsonschema
+python-Levenshtein
