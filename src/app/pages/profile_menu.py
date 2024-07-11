@@ -80,7 +80,7 @@ class ProfileMenu(QWidget):
         )
         if not ok or not new_name:
             return
-        self.db_handler.rename_profile(profile, new_name)
+        self.db_handler.update_profile(profile, name=new_name)
         self.model.refresh_data()
         self.ui.listView.clearSelection()
 

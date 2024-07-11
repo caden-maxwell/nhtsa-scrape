@@ -47,15 +47,15 @@ class ScrapeMenu(QWidget):
         self.ui = Ui_ScrapeMenu()
         self.ui.setupUi(self)
 
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
-        self.profile: Profile = None
-        self.scraper: BaseScraper = None
-        self.engine_thread: QThread = None
-        self.db_handler = db_handler
+        self._profile: Profile = None
+        self._scraper: BaseScraper = None
+        self._engine_thread: QThread = None
+        self._db_handler = db_handler
 
-        self.req_handler = RequestHandler()
-        self.req_handler.response_received.connect(self.handle_response)
+        self._req_handler = RequestHandler()
+        self._req_handler.response_received.connect(self.handle_response)
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
@@ -92,19 +92,18 @@ class ScrapeMenu(QWidget):
             radio_button=self.ui.cissRadioBtn,
         )
 
-        self.nhtsa_models = [ciss_model, nass_model]
+        self._nhtsa_models = [ciss_model, nass_model]
 
         self.ui.makeCombo.activated.connect(lambda: self.fetch_models(nass_model))
         self.ui.makeCombo_2.activated.connect(lambda: self.fetch_models(ciss_model))
+        self.ui.databaseBtnGroup.buttonClicked.connect(self.set_submit_btn)
 
-        self.ui.databaseBtnGroup.buttonClicked.connect(self.enable_submit)
-
-        self.data_viewer = None
+        self._data_viewer = None
 
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
-        for nhtsa_model in self.nhtsa_models:
-            self.req_handler.enqueue_request(
+        for nhtsa_model in self._nhtsa_models:
+            self._req_handler.enqueue_request(
                 RequestQueueItem(
                     BaseScraper.ROOT + nhtsa_model.scraper.search_url,
                     priority=Priority.ALL_COMBOS.value,
@@ -163,20 +162,20 @@ class ScrapeMenu(QWidget):
         for data in dropdown_data[nhtsa_model.scraper.field_names.secondary_damage]:
             nhtsa_model.s_dmg_combo.addItem(*data)
 
-        self.logger.info(f"{nhtsa_model.scraper.__name__} search fields populated.")
+        self._logger.info(f"{nhtsa_model.scraper.__name__} search fields populated.")
         nhtsa_model.radio_button.setEnabled(True)
 
     def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"search_model": search_model}
-        self.req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
+        self._req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
 
         params = (
             {"make": search_model.make_combo.currentText()}
             if search_model.scraper == ScraperNASS
             else {"makeIds": search_model.make_combo.currentData()}
         )
-        self.req_handler.enqueue_request(
+        self._req_handler.enqueue_request(
             RequestQueueItem(
                 BaseScraper.ROOT + search_model.scraper.models_url,
                 params=params,
@@ -203,30 +202,28 @@ class ScrapeMenu(QWidget):
         search_model.model_combo.addItem("All", -1)
         for model in models:
             search_model.model_combo.addItem(*model)
-        self.logger.info(f"Updated {search_model.scraper.__name__} model dropdown.")
+        self._logger.info(f"Updated {search_model.scraper.__name__} model dropdown.")
 
-    def enable_submit(self):
+    def set_submit_btn(self):
         """Enables the submit button if at least one database is selected, but not if a scraper is already running."""
         self.ui.submitBtn.setEnabled(
             any(button.isChecked() for button in self.ui.databaseBtnGroup.buttons())
-            and not (self.scraper and self.scraper.running)
         )
 
     def handle_submit(self):
         """Starts the scrape engine with the given parameters."""
-        self.ui.submitBtn.setEnabled(False)
-        self.ui.submitBtn.setText("Scraping...")
+        self.ui.submitBtn.setVisible(False)
         self.ui.stopBtn.setVisible(True)
 
-        if self.scraper and self.scraper.running:
-            self.logger.warning(
+        if self._scraper and self._scraper.running:
+            self._logger.warning(
                 "Scrape engine is already running. Ignoring submission."
             )
             return
 
         # Get the active database based on the radio button
         nhtsa_model = next(
-            (model for model in self.nhtsa_models if model.radio_button.isChecked()),
+            (model for model in self._nhtsa_models if model.radio_button.isChecked()),
             None,
         )
 
@@ -246,37 +243,75 @@ class ScrapeMenu(QWidget):
         name = name.replace("(ALL-ALL)", "(ANY YEAR)")
         name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
 
+        # Only use a new data viewer if there isn't one already open or multi-analysis is disabled
         now = datetime.now()
-        self.profile = Profile(
-            name=name,
-            make=make,
-            model=model,
-            start_year=start_year,
-            end_year=end_year,
-            primary_dmg=p_dmg,
-            secondary_dmg=nhtsa_model.s_dmg_combo.currentText().upper(),
-            min_dv=nhtsa_model.min_dv_spinbox.value(),
-            max_dv=nhtsa_model.min_dv_spinbox.value(),
-            created=int(now.timestamp()),
-            modified=int(now.timestamp()),
-        )
-
-        self.db_handler.add_profile(self.profile)
-        if self.profile.id < 0:
-            self.logger.error(
-                f"Scrape aborted: No profile to add data to. profile.id={self.profile.id}"
+        if (
+            not self._db_handler.profile_exists(self._profile)
+            or not self.ui.multiCheckBox.isChecked()
+        ):
+            self._profile = Profile(
+                name=name,
+                make=make,
+                model=model,
+                start_year=start_year,
+                end_year=end_year,
+                primary_dmg=p_dmg,
+                secondary_dmg=nhtsa_model.s_dmg_combo.currentText().upper(),
+                min_dv=nhtsa_model.min_dv_spinbox.value(),
+                max_dv=nhtsa_model.min_dv_spinbox.value(),
+                created=int(now.timestamp()),
+                modified=int(now.timestamp()),
             )
-            return
+            self._db_handler.add_profile(self._profile)
 
-        self.logger.info(f"Created new profile with ID {self.profile.id}.")
-        self.data_viewer = DataView(self.db_handler, self.profile, new_profile=True)
-        self.data_viewer.show()
+            if self._profile.id < 0:
+                self._logger.error(
+                    f"Scrape aborted: No profile to add data to. profile.id={self._profile.id}"
+                )
+                return
+            self._logger.info(f"Created new profile with ID {self._profile.id}.")
+
+        else:
+            name = f"MULTI-ANALYSIS {now.strftime('%Y-%m-%d %H:%M:%S')}"
+            make = make if make == self._profile.make else "MULTI"
+            model = model if model == self._profile.model else "MULTI"
+            start_year = (
+                start_year if start_year == self._profile.start_year else "MULTI"
+            )
+            end_year = end_year if end_year == self._profile.end_year else "MULTI"
+            p_dmg = p_dmg if p_dmg == self._profile.primary_dmg else "MULTI"
+            s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
+            s_dmg = s_dmg if s_dmg == self._profile.secondary_dmg else "MULTI"
+            min_dv = nhtsa_model.min_dv_spinbox.value()
+            min_dv = min_dv if min_dv == self._profile.min_dv else "MULTI"
+            max_dv = nhtsa_model.max_dv_spinbox.value()
+            max_dv = max_dv if max_dv == self._profile.max_dv else "MULTI"
+
+            self._db_handler.update_profile(
+                self._profile,
+                name=name,
+                make=make,
+                model=model,
+                start_year=start_year,
+                end_year=end_year,
+                p_dmg=p_dmg,
+                s_dmg=s_dmg,
+                min_dv=min_dv,
+                max_dv=max_dv,
+            )
+
+        if not self._data_viewer:
+            self._data_viewer = DataView(
+                self._db_handler, self._profile, new_profile=True
+            )
+            self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
+            self._data_viewer.show()
 
         if not nhtsa_model:
-            self.logger.error("Scrape aborted: No database selected.")
+            self._logger.error("Scrape aborted: No database selected.")
             return
 
-        self.scraper = nhtsa_model.scraper(
+        self._scraper = nhtsa_model.scraper(
             make=(
                 nhtsa_model.make_combo.currentText(),
                 int(nhtsa_model.make_combo.currentData()),
@@ -306,37 +341,35 @@ class ScrapeMenu(QWidget):
         )
 
         # Set up and connect scrapers
-        self.engine_thread = QThread()
-        self.scraper.moveToThread(self.engine_thread)
-        self.scraper.event_parsed.connect(self.add_event)
-        self.end_scrape.connect(self.scraper.complete)
-        self.scraper.completed.connect(self.handle_scrape_complete)
+        self._engine_thread = QThread()
+        self._scraper.moveToThread(self._engine_thread)
+        self._scraper.event_parsed.connect(self.add_event)
+        self.end_scrape.connect(self._scraper.complete)
+        self._scraper.completed.connect(self.handle_scrape_complete)
 
-        self.engine_thread.started.connect(self.scraper.start)
-        self.engine_thread.start()
+        self._engine_thread.started.connect(self._scraper.start)
+        self._engine_thread.start()
 
     @pyqtSlot(Event, Response)
     def add_event(self, event: Event, response: Response):
-        if not self.profile:
-            if self.data_viewer:
-                self.data_viewer.close()
+        if not self._db_handler.profile_exists(self._profile):
+            if self._data_viewer:
+                self._data_viewer.close()
 
-            if self.scraper and self.scraper.running:
+            if self._scraper and self._scraper.running:
                 self.end_scrape.emit()
-                self.logger.error("Scrape aborted: No profile to add data to.")
+                self._logger.error("Scrape aborted: Specified profile does not exist.")
             return
 
-        self.db_handler.add_event(event, self.profile)
-        if self.data_viewer:
-            self.data_viewer.events_tab.cache_response(event.case_id, response)
-            self.data_viewer.update_current_tab()
+        self._db_handler.add_event(event, self._profile)
+        if self._data_viewer:
+            self._data_viewer.events_tab.cache_response(event.case_id, response)
+            self._data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):
-        self.profile = None
-
-        self.scraper = None
-        self.engine_thread.quit()
-        self.engine_thread.wait()
+        self._scraper = None
+        self._engine_thread.quit()
+        self._engine_thread.wait()
 
         dialog = QMessageBox()
         dialog.setText("Scrape complete.")
@@ -346,11 +379,13 @@ class ScrapeMenu(QWidget):
         dialog.setWindowTitle("Scrape Complete")
         dialog.exec()
 
-        self.ui.submitBtn.setEnabled(True)
-        self.ui.submitBtn.setText("Scrape")
         self.ui.stopBtn.setVisible(False)
+        self.ui.submitBtn.setVisible(True)
+
+    def _set_data_viewer_to_none(self):
+        self._data_viewer = None
 
     def cleanup(self):
-        if self.scraper and self.scraper.running:
-            self.logger.warning("Scrape engine is still running. Aborting.")
+        if self._scraper and self._scraper.running:
+            self._logger.warning("Scrape engine is still running. Aborting.")
             self.end_scrape.emit()

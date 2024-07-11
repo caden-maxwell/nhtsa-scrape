@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 from pathlib import Path
 from sqlalchemy import create_engine, select, inspect
@@ -86,6 +87,7 @@ class DatabaseHandler:
                 event = existing_event
 
             profile.events.append(event)
+            profile.modified = datetime.now().timestamp()
             self.session.commit()
 
         except Exception as e:
@@ -112,6 +114,7 @@ class DatabaseHandler:
         try:
             event = profile_event.event
             self.session.delete(profile_event)
+            profile_event.profile.modified = datetime.now().timestamp()
 
             if not event.profiles:
                 self.session.delete(event)
@@ -142,19 +145,11 @@ class DatabaseHandler:
         self.logger.info(f"Deleted profile {profile.id}.")
         return
 
-    def rename_profile(self, profile: Profile, new_name: str):
-        try:
-            profile.name = new_name
-            self.session.commit()
-        except Exception as e:
-            self.logger.error(f"Error renaming profile: {e}")
-            return
-        self.logger.info(f"Renamed profile {profile.id} to {new_name}")
-
     def set_ignored(self, profile_event: ProfileEvent, ignored: bool):
         """Set the ignored status of a ProfileEvent. Returns True if successful, False otherwise."""
         try:
             profile_event.ignored = ignored
+            profile_event.profile.modified = datetime.now().timestamp()
             self.session.commit()
             event = profile_event.event
             self.logger.info(
@@ -173,6 +168,49 @@ class DatabaseHandler:
         except Exception as e:
             self.logger.error(f"Error getting headers for table {table}: {e}")
             return []
+
+    def profile_exists(self, profile: Profile):
+        """Check if a profile exists in the database."""
+        if not profile:
+            return False
+        try:
+            stmt = select(Profile).where(Profile.id == profile.id)
+            return self.session.execute(stmt).scalar_one_or_none() is not None
+        except Exception as e:
+            self.logger.error(f"Error checking if profile exists: {e}")
+            return False
+
+    def update_profile(
+        self,
+        profile: Profile,
+        name: str = None,
+        make: str = None,
+        model: str = None,
+        start_year: str = None,
+        end_year: str = None,
+        p_dmg: str = None,
+        s_dmg: str = None,
+        min_dv: str = None,
+        max_dv: str = None,
+    ):
+        try:
+            profile.name = name if name else profile.name
+            profile.make = make if make else profile.make
+            profile.model = model if model else profile.model
+            profile.start_year = start_year if start_year else profile.start_year
+            profile.end_year = end_year if end_year else profile.end_year
+            profile.primary_dmg = p_dmg if p_dmg else profile.primary_dmg
+            profile.secondary_dmg = s_dmg if s_dmg else profile.secondary_dmg
+            profile.min_dv = min_dv if min_dv else profile.min_dv
+            profile.max_dv = max_dv if max_dv else profile.max_dv
+            profile.modified = datetime.now().timestamp()
+
+            self.session.commit()
+            return True
+        except Exception as e:
+            self.logger.error(f"Error updating profile: {e}")
+            self.session.rollback()
+            return False
 
     def __del__(self):
         self.close_connection()
