@@ -276,9 +276,9 @@ class ScrapeMenu(QWidget):
             make = make if make == self._profile.make else "MULTI"
             model = model if model == self._profile.model else "MULTI"
             start_year = (
-                start_year if start_year == self._profile.start_year else "MULTI"
+                start_year if start_year == str(self._profile.start_year) else "MULTI"
             )
-            end_year = end_year if end_year == self._profile.end_year else "MULTI"
+            end_year = end_year if end_year == str(self._profile.end_year) else "MULTI"
             p_dmg = p_dmg if p_dmg == self._profile.primary_dmg else "MULTI"
             s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
             s_dmg = s_dmg if s_dmg == self._profile.secondary_dmg else "MULTI"
