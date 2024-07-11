@@ -10,6 +10,8 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 
+from PyQt6.QtWidgets import QMessageBox
+
 from app.pages import BaseTab
 from app.models import DatabaseHandler, ScatterPlotModel, Profile
 from app.ui import Ui_ScatterTab
@@ -23,7 +25,7 @@ class ScatterTab(BaseTab):
         super().__init__()
         self.ui = Ui_ScatterTab()
         self.ui.setupUi(self)
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
         self.model = ScatterPlotModel(db_handler, profile)
         self.data_dir = data_dir
@@ -203,7 +205,16 @@ class ScatterTab(BaseTab):
             bbox_inches="tight",
             pad_inches=0.75,
         )
-        self.logger.info(f"Saved figure to {path}")
+        self._logger.info(f"Saved figure to {path}")
+        button = QMessageBox.information(
+            self,
+            "Saved",
+            f'Figure saved to:\n{path}',
+            QMessageBox.StandardButton.Open | QMessageBox.StandardButton.Ok,
+        )
+
+        if button == QMessageBox.StandardButton.Open:
+            os.startfile(self.data_dir)
 
 
 class CustomToolbar(NavigationToolbar):

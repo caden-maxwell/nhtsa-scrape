@@ -3,6 +3,8 @@ import logging
 import os
 from pathlib import Path
 
+from PyQt6.QtWidgets import QMessageBox
+
 from app.pages import BaseTab
 from app.models import EventTable, Profile
 from app.ui import Ui_CSVTab
@@ -43,6 +45,16 @@ class CSVTab(BaseTab):
         self.ui.saveBtn.setEnabled(True)
         self.ui.saveBtn.setText("Save CSV")
         self.logger.info(f"Saved CSV to {csv_path}.")
+
+        button = QMessageBox.information(
+            self,
+            "CSV Saved",
+            f"CSV saved to {csv_path}.",
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open,
+        )
+
+        if button == QMessageBox.StandardButton.Open:
+            os.startfile(self.data_dir)
 
         # minval = round(df["NASS_dv"].min(), 1)
         # mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]

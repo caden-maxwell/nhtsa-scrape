@@ -12,7 +12,7 @@ from PyQt6 import QtCore, QtGui, QtWidgets
 class Ui_ScrapeMenu(object):
     def setupUi(self, ScrapeMenu):
         ScrapeMenu.setObjectName("ScrapeMenu")
-        ScrapeMenu.resize(499, 391)
+        ScrapeMenu.resize(586, 391)
         self.verticalLayout = QtWidgets.QVBoxLayout(ScrapeMenu)
         self.verticalLayout.setObjectName("verticalLayout")
         self.horizontalLayout = QtWidgets.QHBoxLayout()
@@ -300,6 +300,9 @@ class Ui_ScrapeMenu(object):
         self.bottomHLayout.setObjectName("bottomHLayout")
         self.horizontalLayout_2 = QtWidgets.QHBoxLayout(self.bottomHLayout)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.multiCheckBox = QtWidgets.QCheckBox(parent=self.bottomHLayout)
+        self.multiCheckBox.setObjectName("multiCheckBox")
+        self.horizontalLayout_2.addWidget(self.multiCheckBox)
         spacerItem1 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Minimum)
         self.horizontalLayout_2.addItem(spacerItem1)
         self.label_3 = QtWidgets.QLabel(parent=self.bottomHLayout)
@@ -365,6 +368,7 @@ class Ui_ScrapeMenu(object):
         self.label_12.setText(_translate("ScrapeMenu", "From"))
         self.label_13.setText(_translate("ScrapeMenu", "To"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("ScrapeMenu", "CISS Params"))
+        self.multiCheckBox.setText(_translate("ScrapeMenu", "Multi-analysis"))
         self.label_3.setText(_translate("ScrapeMenu", "Scrape from: "))
         self.nassRadioBtn.setText(_translate("ScrapeMenu", "NASS"))
         self.cissRadioBtn.setText(_translate("ScrapeMenu", "CISS"))

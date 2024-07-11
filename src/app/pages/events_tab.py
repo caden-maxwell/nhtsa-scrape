@@ -313,7 +313,7 @@ class EventsTab(BaseTab):
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
-        # Make sure only the object that requested the data actually processes it
+        # Make sure only the EventsTab that requested the data actually processes it
         if request.callback.__self__ == self:
             request.callback(request, response)
 
