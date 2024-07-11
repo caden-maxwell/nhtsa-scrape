@@ -17,9 +17,8 @@ class RequestQueueItem:
     params: dict = field(default_factory=dict)
     headers: dict = field(default_factory=dict)
     priority: int = 0
-    extra_data: dict = field(
-        default_factory=dict
-    )  # Additional data used to identify the request (for internal use, not sent to url)
+    # Additional data used to identify the request (for internal use, not sent to url)
+    extra_data: dict = field(default_factory=dict)
     callback: callable = None
 
     def __lt__(self, other: "RequestQueueItem"):
@@ -71,7 +70,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def start(self):
         self.running = True
         self.started.emit()
-        self.__process_requests()
+        self._process_requests()
 
     def stop(self):
         self.stopped.emit()
@@ -159,7 +158,7 @@ class RequestHandler(QObject, metaclass=Singleton):
             f"Successfully updated request handler timeout to {self.timeout}s"
         )
 
-    def __process_requests(self):
+    def _process_requests(self):
         with concurrent.futures.ThreadPoolExecutor() as executor:
             while self.running:
                 # Process signals (e.g. update min/max rate limit)
@@ -190,14 +189,14 @@ class RequestHandler(QObject, metaclass=Singleton):
                 self.logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
 
                 request = self.request_queue.get()
-                executor.submit(self.__send_request, request)
+                executor.submit(self._send_request, request)
 
                 # Rate limit the requests
                 start = time.time()
                 while time.time() - start < rand_time and self.running:
                     time.sleep(0.05)
 
-    def __send_request(self, request: RequestQueueItem):
+    def _send_request(self, request: RequestQueueItem):
         response = None
         self.ongoing_requests.append(request)
         try:

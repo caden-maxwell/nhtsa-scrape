@@ -179,7 +179,7 @@ class EventsTab(BaseTab):
         self._clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.data_dir / "images", event)
+            thumbnail = ImageThumbnail(img_id, img, self.data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
         if self.model.data(index, Qt.ItemDataRole.FontRole):
@@ -226,7 +226,7 @@ class EventsTab(BaseTab):
         self.ui.saveCaseBtn.setText("Saving...")
         self.ui.saveCaseBtn.update()
 
-        self._fetch_case_data(self._save_case_data)
+        self._fetch_case_data(self._save_case)
 
     def _save_edr_btn_clicked(self):
         self.ui.saveEDRBtn.setEnabled(False)
@@ -313,10 +313,8 @@ class EventsTab(BaseTab):
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
-        if (
-            request.priority == Priority.EVENT_DATA.value
-            or request.priority == Priority.IMAGE.value
-        ):
+        # Make sure only the object that requested the data actually processes it
+        if request.callback.__self__ == self:
             request.callback(request, response)
 
             event: Event = self.model.data(
@@ -473,21 +471,22 @@ class EventsTab(BaseTab):
         # If the event is the same as the one currently selected, update the thumbnails
         if event == selected_event:
             self.no_images_label.setVisible(False)
-            thumbnail = ImageThumbnail(img_key, image, self.data_dir / "images", event)
+            thumbnail = ImageThumbnail(img_key, image, self.data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
-    def _save_case_data(self, request: RequestQueueItem, response: Response):
+    def _save_case(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
         self.cache_response(event.case_id, response)
 
-        raw_data_dir = self.data_dir / "raw_case_data"
+        raw_data_dir = self.data_dir / f"case_{event.case_id}"
         os.makedirs(raw_data_dir, exist_ok=True)
 
         # Check whether data is json or xml
+        filename = "case"
         if "application/json" in response.headers.get("Content-Type", ""):
-            self._save_json_data(event, response, raw_data_dir)
+            self._save_json_case(event, response, raw_data_dir, filename)
         elif "text/xml" in response.headers.get("Content-Type", ""):
-            self._save_xml_data(event, response, raw_data_dir)
+            self._save_xml_case(event, response, raw_data_dir, filename)
         else:
             self._logger.error(
                 f"Returned case has unknown content type: {response.headers.get('Content-Type')}"
@@ -497,15 +496,18 @@ class EventsTab(BaseTab):
         self.ui.saveCaseBtn.setText("Save Raw Case Data")
         self.ui.saveCaseBtn.update()
 
-    def _save_json_data(self, event: Event, response: Response, raw_data_dir: Path):
+    def _save_json_case(
+        self, event: Event, response: Response, raw_data_dir: Path, filename: str
+    ):
         # Create a unique file name
-        raw_data_path = raw_data_dir / f"case_{event.case_id}.json"
+        filename = filename + ".json"
+        raw_data_path = raw_data_dir / filename
         i = 1
         while raw_data_path.exists():
-            raw_data_path = raw_data_dir / f"case_{event.case_id}({i}).json"
+            raw_data_path = raw_data_dir / filename.replace(".", f"({i}).")
             i += 1
 
-        # Pretty print the JSON data to the file
+        # Pretty-print the JSON data to the file
         with open(raw_data_path, "w") as f:
             data = json.loads(response.text)
             data = json.dumps(data, indent=4)
@@ -515,15 +517,18 @@ class EventsTab(BaseTab):
             f"Saved JSON case data for case {event.case_id} to {raw_data_path}"
         )
 
-    def _save_xml_data(self, event: Event, response: Response, edr_data_dir: Path):
+    def _save_xml_case(
+        self, event: Event, response: Response, edr_data_dir: Path, filename: str
+    ):
         # Create a unique file name
-        raw_data_path = edr_data_dir / f"case_{event.case_id}.xml"
+        filename = filename + ".xml"
+        raw_data_path = edr_data_dir / filename
         i = 1
         while raw_data_path.exists():
-            raw_data_path = edr_data_dir / f"case_{event.case_id}({i}).xml"
+            raw_data_path = edr_data_dir / filename.replace(".", f"({i}).")
             i += 1
 
-        # Write pretty printed XML data to the file
+        # Write pretty-printed XML data to the file
         with open(raw_data_path, "wb") as f:
             soup = BeautifulSoup(response.content, "xml")
             f.write(soup.prettify("utf-8"))
@@ -536,7 +541,7 @@ class EventsTab(BaseTab):
         event: Event = request.extra_data.get("event")
         self.cache_response(event.case_id, response)
 
-        edr_data_dir = self.data_dir / "edr_data"
+        edr_data_dir = self.data_dir / f"case_{event.case_id}" / "edr"
         os.makedirs(edr_data_dir, exist_ok=True)
 
         if event.scraper_type == "NASS":
@@ -547,10 +552,16 @@ class EventsTab(BaseTab):
             self._logger.error(f"Unknown scraper type: {event.scraper_type}")
 
         self.ui.saveEDRBtn.setEnabled(True)
-        self.ui.saveEDRBtn.setText("Save Event EDR")
+        self.ui.saveEDRBtn.setText("Fetch Event EDR")
         self.ui.saveEDRBtn.update()
 
     def _fetch_nass_edr(self, event: Event, response: Response, edr_data_dir: Path):
+        QMessageBox.warning(
+            self,
+            "Not Yet Implemented",
+            "NASS EDR data fetcher not yet implemented.",
+            QMessageBox.StandardButton.Ok,
+        )
         self._logger.error("NASS EDR data fetcher not yet implemented.")
 
     def _fetch_ciss_edr(self, event: Event, response: Response, edr_data_dir: Path):
@@ -569,7 +580,7 @@ class EventsTab(BaseTab):
             QMessageBox.warning(
                 self,
                 "No EDR Data",
-                "No EDR data found for this event.",
+                "No EDR data found for this vehicle.",
                 QMessageBox.StandardButton.Ok,
             )
             return
@@ -578,13 +589,52 @@ class EventsTab(BaseTab):
         for doc in edr_docs:
             filenames.append(doc.get("FileName"))
 
-        filenames = "\n ".join(filenames)
-        QMessageBox.question(
+        filenames_str = "\n ".join(filenames)
+        button = QMessageBox.question(
             self,
             "EDR Data Found",
-            f"EDR files found for this event. Would you like to save it?\n{filenames}",
+            f"EDR data found for this vehicle. Would you like to save it?\n{filenames_str}",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
+
+        if (
+            button == QMessageBox.StandardButton.No
+            or button == QMessageBox.StandardButton.Escape
+        ):
+            self._logger.debug("User chose not to save EDR data.")
+            return
+
+        for doc in edr_docs:
+            filename = doc.get("FileName")
+            obj_id = doc.get("ObjectID")
+            request = RequestQueueItem(
+                BaseScraper.ROOT
+                + str(ScraperCISS.edr_url).format(filename=filename, obj_id=obj_id),
+                priority=Priority.EVENT_DATA.value,
+                extra_data={"event": event, "dir": edr_data_dir, "filename": filename},
+                callback=self._save_ciss_edr,
+            )
+            self._req_handler.enqueue_request(request)
+
+    def _save_ciss_edr(self, request: RequestQueueItem, response: Response):
+        filename = response.headers["Content-Disposition"].split("filename=")[1]
+
+        event: Event = request.extra_data.get("event")
+        edr_dir: Path = request.extra_data.get("dir")
+        filename: str = request.extra_data.get("filename")
+
+        # Create a unique file name
+        edr_data_path = edr_dir / filename
+        i = 1
+        while edr_data_path.exists():
+            edr_data_path = edr_dir / filename.replace(".", f"({i}).")
+            i += 1
+
+        # Write the EDR data to the file
+        with open(edr_data_path, "wb") as f:
+            f.write(response.content)
+
+        self._logger.info(f"Saved EDR data for case {event.case_id} to {edr_data_path}")
 
     def closeEvent(self, event):
         self._req_handler.clear_queue(Priority.EVENT_DATA.value)
@@ -593,14 +643,14 @@ class EventsTab(BaseTab):
 
 
 class ImageThumbnail(QWidget):
-    def __init__(self, img_id: int, image: Image.Image, images_dir: Path, event: Event):
+    def __init__(self, img_id: int, image: Image.Image, data_dir: Path, event: Event):
         super().__init__()
 
         self.logger = logging.getLogger(__name__)
 
         self.img_id = img_id
         self.image = image
-        self.images_dir = images_dir
+        self.data_dir = data_dir
 
         layout = QGridLayout()
         self.thumbnail_label = QLabel()
@@ -678,7 +728,7 @@ class ImageThumbnail(QWidget):
         draw = ImageDraw.Draw(new_img)
         draw.text(xy=(0, 0), text=text, fill=(0, 0, 0), font=font)
 
-        case_dir = self.images_dir / f"case_{event.case_id}"
+        case_dir = self.data_dir / f"case_{event.case_id}" / "images"
         os.makedirs(case_dir, exist_ok=True)
 
         path = case_dir / f"{self.img_id}.png"
