@@ -1,6 +1,4 @@
 from collections import defaultdict
-from dataclasses import dataclass
-from datetime import datetime
 from io import BytesIO
 import json
 import logging
@@ -36,19 +34,6 @@ from app.scrape import (
 from app.ui import Ui_EventsTab
 
 
-@dataclass
-class _CachedCase:
-    COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
-
-    response: Response
-    created: datetime = datetime.now()
-
-    def expired(self):
-        return (
-            datetime.now() - self.created
-        ).total_seconds() > self.COOKIE_EXPIRED_SECS
-
-
 class EventsTab(BaseTab):
     def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
         super().__init__()
@@ -56,13 +41,12 @@ class EventsTab(BaseTab):
         self.ui.setupUi(self)
         self._logger = logging.getLogger(__name__)
 
-        self.model = EventList(db_handler, profile)
-        self.current_index_vals = None
-        self.data_dir = data_dir
+        self._model = EventList(db_handler, profile)
+        self.current_index_event = None
+        self._data_dir = data_dir
 
-        self.ui.eventsList.setModel(self.model)
-        delegate = CustomItemDelegate()
-        self.ui.eventsList.setItemDelegate(delegate)
+        self.ui.eventsList.setModel(self._model)
+        self.ui.eventsList.setItemDelegate(CustomItemDelegate())
 
         self.ui.eventsList.clicked.connect(self.open_event_details)
         self.ui.scrapeImgsBtn.clicked.connect(self._scrape_btn_clicked)
@@ -92,15 +76,12 @@ class EventsTab(BaseTab):
         self._req_handler = RequestHandler()
         self._req_handler.response_received.connect(self.handle_response)
 
-        self.response_cache: dict[int, _CachedCase] = dict()
         self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
 
-        if self.model.index(0, 0).isValid():
-            self.ui.eventsList.setCurrentIndex(self.model.index(0, 0))
-            self.open_event_details(self.model.index(0, 0))
+        self.refresh_tab()
 
     def refresh_tab(self):
-        self.model.refresh_data()
+        self._model.refresh_data()
         self.list_changed()
 
     def keyPressEvent(self, event):
@@ -116,15 +97,14 @@ class EventsTab(BaseTab):
             scrollbar_width = scrollbar.sizeHint().width()
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
 
-        if self.current_index_vals:
-            # In the case that another event is inserted before the currently
-            # selected event, we need to find the new index of the current one
-            # and select it again.
-            index = self.model.index_from_vals(*self.current_index_vals)
-            self.ui.eventsList.setCurrentIndex(index)
+        if not self.current_index_event and self._model.index(0, 0).isValid():
+            self.current_index_event = self._model.data(
+                self._model.index(0, 0), Qt.ItemDataRole.UserRole
+            ).event
+            self.open_event_details(self._model.index(0, 0))
 
-    def cache_response(self, case_id, response: Response):
-        self.response_cache[case_id] = _CachedCase(response)
+        index = self._model.index_from_vals(self.current_index_event)
+        self.ui.eventsList.setCurrentIndex(index)
 
     def open_event_details(self, index: QModelIndex):
         if not index or not index.isValid():
@@ -151,11 +131,11 @@ class EventsTab(BaseTab):
             self.ui.ignoreBtn.setText("Ignore Event")
             return
 
-        event: Event = self.model.data(index, Qt.ItemDataRole.UserRole).event
+        event: Event = self._model.data(index, Qt.ItemDataRole.UserRole).event
 
         # We need to get the unique values for this index so we can find it later
         # if another event is inserted before it in the list
-        self.current_index_vals = (event.case_id, event.vehicle_num, event.event_num)
+        self.current_index_event = event
 
         # Left side of event view data
         self.ui.makeLineEdit.setText(event.make)
@@ -179,10 +159,10 @@ class EventsTab(BaseTab):
         self._clear_thumbnails()
 
         for img_id, img in images:
-            thumbnail = ImageThumbnail(img_id, img, self.data_dir, event)
+            thumbnail = ImageThumbnail(img_id, img, self._data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
-        if self.model.data(index, Qt.ItemDataRole.FontRole):
+        if self._model.data(index, Qt.ItemDataRole.FontRole):
             self.ui.ignoreBtn.setText("Unignore Event")
         else:
             self.ui.ignoreBtn.setText("Ignore Event")
@@ -214,7 +194,7 @@ class EventsTab(BaseTab):
         self.ui.stopBtn.update()
 
     def _scrape_btn_clicked(self):
-        event: Event = self.model.data(
+        event: Event = self._model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
         self._update_buttons(event, True)
@@ -236,7 +216,7 @@ class EventsTab(BaseTab):
         self._fetch_case_data(self._fetch_edr)
 
     def _fetch_case_data(self, callback: Callable[[RequestQueueItem, Response], None]):
-        event: Event = self.model.data(
+        event: Event = self._model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
 
@@ -248,21 +228,18 @@ class EventsTab(BaseTab):
         else:
             self._logger.error(f"Unknown scraper type: {event.scraper_type}")
 
-        request = RequestQueueItem(
-            BaseScraper.ROOT + str(scraper.case_url_raw).format(case_id=event.case_id),
-            priority=Priority.EVENT_DATA.value,
-            extra_data={"event": event},
-            callback=callback,
+        self._req_handler.enqueue_request(
+            RequestQueueItem(
+                BaseScraper.ROOT
+                + str(scraper.case_url_raw).format(case_id=event.case_id),
+                priority=Priority.EVENT_DATA.value,
+                extra_data={"event": event},
+                callback=callback,
+            )
         )
-        cached_case = self.response_cache.get(event.case_id)
-        if cached_case and not cached_case.expired():
-            self._logger.debug(f"Using cached case ({event.case_id})")
-            callback(request, cached_case.response)
-        else:
-            self._req_handler.enqueue_request(request)
 
     def _stop_btn_clicked(self):
-        event = self.model.data(
+        event = self._model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
 
@@ -276,13 +253,13 @@ class EventsTab(BaseTab):
 
     def _ignore_event(self):
         index = self.ui.eventsList.currentIndex()
-        self.model.setData(
+        self._model.setData(
             index,
-            not self.model.data(index, Qt.ItemDataRole.FontRole),
+            not self._model.data(index, Qt.ItemDataRole.FontRole),
             Qt.ItemDataRole.FontRole,
         )
 
-        if self.model.data(index, Qt.ItemDataRole.FontRole):
+        if self._model.data(index, Qt.ItemDataRole.FontRole):
             self.ui.ignoreBtn.setText("Unignore Event")
         else:
             self.ui.ignoreBtn.setText("Ignore Event")
@@ -303,10 +280,10 @@ class EventsTab(BaseTab):
             return
 
         index = self.ui.eventsList.currentIndex()
-        self.model.delete_event(index)
+        self._model.delete_event(index)
 
-        if index.row() >= self.model.rowCount():
-            index = self.model.index(self.model.rowCount() - 1, 0)
+        if index.row() >= self._model.rowCount():
+            index = self._model.index(self._model.rowCount() - 1, 0)
 
         self.ui.eventsList.setCurrentIndex(index)
         self.open_event_details(index)
@@ -317,14 +294,13 @@ class EventsTab(BaseTab):
         if request.callback.__self__ == self:
             request.callback(request, response)
 
-            event: Event = self.model.data(
+            event: Event = self._model.data(
                 self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
             ).event
             self._update_buttons(event)
 
     def _fetch_imgs(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
-        self.cache_response(event.case_id, response)
 
         scraper_type = event.scraper_type
         if scraper_type == "NASS":
@@ -464,21 +440,20 @@ class EventsTab(BaseTab):
 
         event_imgs[img_key] = image
 
-        selected_event: Event = self.model.data(
+        selected_event: Event = self._model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
 
         # If the event is the same as the one currently selected, update the thumbnails
         if event == selected_event:
             self.no_images_label.setVisible(False)
-            thumbnail = ImageThumbnail(img_key, image, self.data_dir, event)
+            thumbnail = ImageThumbnail(img_key, image, self._data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
     def _save_case(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
-        self.cache_response(event.case_id, response)
 
-        raw_data_dir = self.data_dir / f"case_{event.case_id}"
+        raw_data_dir = self._data_dir / f"case_{event.case_id}"
         os.makedirs(raw_data_dir, exist_ok=True)
 
         # Check whether data is json or xml
@@ -539,9 +514,8 @@ class EventsTab(BaseTab):
 
     def _fetch_edr(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
-        self.cache_response(event.case_id, response)
 
-        edr_data_dir = self.data_dir / f"case_{event.case_id}" / "edr"
+        edr_data_dir = self._data_dir / f"case_{event.case_id}" / "edr"
         os.makedirs(edr_data_dir, exist_ok=True)
 
         if event.scraper_type == "NASS":

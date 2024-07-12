@@ -11,16 +11,15 @@ class SummaryTab(BaseTab):
         self.ui = Ui_SummaryTab()
         self.ui.setupUi(self)
 
-        self.logger = logging.getLogger(__name__)
-
-        self.ui.makeEdit.setText(profile.make)
-        self.ui.modelEdit.setText(profile.model)
-        self.ui.startYearEdit.setText(str(profile.start_year))
-        self.ui.endYearEdit.setText(str(profile.end_year))
-        self.ui.pDmgEdit.setText(profile.primary_dmg)
-        self.ui.sDmgEdit.setText(profile.secondary_dmg)
-        self.ui.minDVEdit.setText(str(profile.min_dv))
-        self.ui.maxDVEdit.setText(str(profile.max_dv))
+        self._logger = logging.getLogger(__name__)
+        self._profile = profile
 
     def refresh_tab(self):
-        pass
+        self.ui.makeEdit.setText(self._profile.make)
+        self.ui.modelEdit.setText(self._profile.model)
+        self.ui.startYearEdit.setText(str(self._profile.start_year))
+        self.ui.endYearEdit.setText(str(self._profile.end_year))
+        self.ui.pDmgEdit.setText(self._profile.primary_dmg)
+        self.ui.sDmgEdit.setText(self._profile.secondary_dmg)
+        self.ui.minDVEdit.setText(str(self._profile.min_dv))
+        self.ui.maxDVEdit.setText(str(self._profile.max_dv))

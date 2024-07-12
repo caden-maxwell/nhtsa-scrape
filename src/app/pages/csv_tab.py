@@ -21,7 +21,7 @@ class CSVTab(BaseTab):
         self.ui.tableView.setModel(self.model)
         self.ui.saveBtn.clicked.connect(self._save_csv)
 
-        self.data_dir = data_dir
+        self._data_dir = data_dir
 
     def refresh_tab(self):
         self.model.refresh_data()
@@ -32,11 +32,11 @@ class CSVTab(BaseTab):
         self.ui.saveBtn.setEnabled(False)
         self.ui.saveBtn.setText("Saving...")
         self.ui.saveBtn.update()
-        os.makedirs(self.data_dir, exist_ok=True)
-        csv_path = self.data_dir / "scrape_data.csv"
+        os.makedirs(self._data_dir, exist_ok=True)
+        csv_path = self._data_dir / "scrape_data.csv"
         i = 1
         while csv_path.exists():
-            csv_path = self.data_dir / f"scrape_data({i}).csv"
+            csv_path = self._data_dir / f"scrape_data({i}).csv"
             i += 1
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
@@ -54,7 +54,7 @@ class CSVTab(BaseTab):
         )
 
         if button == QMessageBox.StandardButton.Open:
-            os.startfile(self.data_dir)
+            os.startfile(self._data_dir)
 
         # minval = round(df["NASS_dv"].min(), 1)
         # mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]

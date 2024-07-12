@@ -27,8 +27,8 @@ class ScatterTab(BaseTab):
         self.ui.setupUi(self)
         self._logger = logging.getLogger(__name__)
 
-        self.model = ScatterPlotModel(db_handler, profile)
-        self.data_dir = data_dir
+        self._model = ScatterPlotModel(db_handler, profile)
+        self._data_dir = data_dir
 
         self.ui.nassDataBtn.clicked.connect(
             lambda: self.btn_update(self.update_nass_data)
@@ -114,10 +114,10 @@ class ScatterTab(BaseTab):
         self.ax.get_legend().set_draggable(True)
 
     def refresh_tab(self):
-        self.model.refresh_data()
+        self._model.refresh_data()
         self.ax.clear()
 
-        case_ids, x_data, y1_data, y2_data = self.model.get_data()
+        case_ids, x_data, y1_data, y2_data = self._model.get_data()
         if len(x_data) < 2:
             self.canvas.draw()
             return
@@ -191,11 +191,11 @@ class ScatterTab(BaseTab):
         self.canvas.draw()
 
     def save_figure(self):
-        os.makedirs(self.data_dir, exist_ok=True)
-        path = self.data_dir / "scatterplot.png"
+        os.makedirs(self._data_dir, exist_ok=True)
+        path = self._data_dir / "scatterplot.png"
         i = 1
         while path.exists():
-            path = self.data_dir / f"scatterplot({i}).png"
+            path = self._data_dir / f"scatterplot({i}).png"
             i += 1
 
         self.figure.savefig(
@@ -214,7 +214,7 @@ class ScatterTab(BaseTab):
         )
 
         if button == QMessageBox.StandardButton.Open:
-            os.startfile(self.data_dir)
+            os.startfile(self._data_dir)
 
 
 class CustomToolbar(NavigationToolbar):
