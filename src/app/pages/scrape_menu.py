@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from bs4 import BeautifulSoup
 from requests import Response
 
@@ -41,13 +42,14 @@ class ScrapeMenu(QWidget):
     back = pyqtSignal()
     end_scrape = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler):
+    def __init__(self, db_handler: DatabaseHandler, data_dir: Path):
         super().__init__()
 
         self.ui = Ui_ScrapeMenu()
         self.ui.setupUi(self)
 
         self._logger = logging.getLogger(__name__)
+        self._data_dir = data_dir
 
         self._profile: Profile = None
         self._scraper: BaseScraper = None
@@ -114,10 +116,7 @@ class ScrapeMenu(QWidget):
 
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
-        if (
-            request.priority == Priority.ALL_COMBOS.value
-            or request.priority == Priority.MODEL_COMBO.value
-        ):
+        if request.callback.__self__ == self:
             request.callback(request, response)
 
     def update_dropdowns(self, request: RequestQueueItem, response: Response):
@@ -269,8 +268,6 @@ class ScrapeMenu(QWidget):
                     f"Scrape aborted: No profile to add data to. profile.id={self._profile.id}"
                 )
                 return
-            self._logger.info(f"Created new profile with ID {self._profile.id}.")
-
         else:
             name = f"MULTI-ANALYSIS {now.strftime('%Y-%m-%d %H:%M:%S')}"
             make = make if make == self._profile.make else "MULTI"
@@ -302,9 +299,11 @@ class ScrapeMenu(QWidget):
 
         if not self._data_viewer:
             self._data_viewer = DataView(
-                self._db_handler, self._profile, new_profile=True
+                self._db_handler, self._profile, self._data_dir
             )
             self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
+            self._db_handler.profile_updated.connect(self._data_viewer.handle_profile_updated)
+            self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
             self._data_viewer.show()
 
         if not nhtsa_model:
@@ -362,9 +361,6 @@ class ScrapeMenu(QWidget):
             return
 
         self._db_handler.add_event(event, self._profile)
-        if self._data_viewer:
-            self._data_viewer.events_tab.cache_response(event.case_id, response)
-            self._data_viewer.update_current_tab()
 
     def handle_scrape_complete(self):
         self._scraper = None
@@ -384,6 +380,13 @@ class ScrapeMenu(QWidget):
 
     def _set_data_viewer_to_none(self):
         self._data_viewer = None
+
+    @pyqtSlot(str)
+    def data_dir_changed(self, data_dir):
+        data_dir = Path(data_dir)
+        self._data_dir = data_dir
+        if self._data_viewer:
+            self._data_viewer.set_data_dir(data_dir)
 
     def cleanup(self):
         if self._scraper and self._scraper.running:

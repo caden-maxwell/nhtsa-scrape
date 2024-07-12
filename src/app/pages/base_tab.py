@@ -17,3 +17,7 @@ class BaseTab(QWidget, ABC, metaclass=_Meta):
     @abstractmethod
     def refresh_tab(self):
         """Refreshes the tab's contents."""
+
+    def set_data_dir(self, data_dir):
+        """Sets the data directory for the tab."""
+        self._data_dir = data_dir

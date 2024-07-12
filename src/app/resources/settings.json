@@ -1,6 +1,0 @@
-{
-    "minRateLimit": 0.5,
-    "maxRateLimit": 2.5,
-    "timeout": 10.0,
-    "debug": true
-}

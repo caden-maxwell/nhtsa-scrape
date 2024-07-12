@@ -20,66 +20,70 @@ class MainWindow(QWidget):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.req_handler = RequestHandler()
+        self._req_handler = RequestHandler()
         path = Path(__file__).parent.parent / "app.db"
-        self.db_handler = DatabaseHandler(path)
+        self._db_handler = DatabaseHandler(path)
 
-        self.req_thread = QThread()
-        self.req_handler.moveToThread(self.req_thread)
-        self.req_thread.started.connect(self.req_handler.start)
+        self._req_thread = QThread()
+        self._req_handler.moveToThread(self._req_thread)
+        self._req_thread.started.connect(self._req_handler.start)
 
         # Setup logger
-        self.logs_window = LogsWindow()
-        self.log_handler = QtLogHandler()
-        self.log_handler.setFormatter(
+        self._logs_window = LogsWindow()
+        self._log_handler = QtLogHandler()
+        self._log_handler.setFormatter(
             ColorFormatter("%(levelname)s - %(name)s - %(message)s")
         )
-        self.log_handler.setLevel(logging.DEBUG)
-        self.log_handler.log_message.connect(self.logs_window.handle_logger_message)
+        self._log_handler.setLevel(logging.DEBUG)
+        self._log_handler.log_message.connect(self._logs_window.handle_logger_message)
         logging.basicConfig(
             level=logging.DEBUG,
-            handlers=[self.log_handler, logging.FileHandler("app.log")],
+            handlers=[self._log_handler, logging.FileHandler("app.log")],
         )
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
         # Clear the logs file
         open("app.log", "w").close()
-        self.logger.info("This logs file serves to record all logs from the most recent application run.")
-        self.logger.info(f"Application started at {datetime.now()}")
+        self._logger.info("This logs file serves to record all logs from the most recent application run.")
+        self._logger.info(f"Application started at {datetime.now()}")
 
         # Setup menus
-        self.mainMenuPage = MainMenu()
-        self.scrapeMenuPage = ScrapeMenu(self.db_handler)
-        self.profilesMenuPage = ProfileMenu(self.db_handler)
-        self.settingsMenuPage = SettingsMenu()
-        self.ui.stackedWidget.addWidget(self.mainMenuPage)
-        self.ui.stackedWidget.addWidget(self.scrapeMenuPage)
-        self.ui.stackedWidget.addWidget(self.profilesMenuPage)
-        self.ui.stackedWidget.addWidget(self.settingsMenuPage)
+        self._mainMenuPage = MainMenu()
+        self._settingsMenuPage = SettingsMenu()
+        data_dir = self._settingsMenuPage.get_save_path()
+        self._scrapeMenuPage = ScrapeMenu(self._db_handler, data_dir)
+        self._profilesMenuPage = ProfileMenu(self._db_handler, data_dir)
+        self.ui.stackedWidget.addWidget(self._mainMenuPage)
+        self.ui.stackedWidget.addWidget(self._scrapeMenuPage)
+        self.ui.stackedWidget.addWidget(self._profilesMenuPage)
+        self.ui.stackedWidget.addWidget(self._settingsMenuPage)
 
-        self.req_handler.started.connect(self.scrapeMenuPage.fetch_search)
-        self.req_thread.start()
+        self._req_handler.started.connect(self._scrapeMenuPage.fetch_search)
+        self._req_thread.start()
 
         # Setup signals
         back_btns = [
-            self.scrapeMenuPage.back,
-            self.profilesMenuPage.back,
-            self.settingsMenuPage.back,
+            self._scrapeMenuPage.back,
+            self._profilesMenuPage.back,
+            self._settingsMenuPage.back,
         ]
         for btn in back_btns:
             btn.connect(
-                lambda: self.ui.stackedWidget.setCurrentWidget(self.mainMenuPage)
+                lambda: self.ui.stackedWidget.setCurrentWidget(self._mainMenuPage)
             )
 
-        self.mainMenuPage.new.connect(
-            lambda: self.ui.stackedWidget.setCurrentWidget(self.scrapeMenuPage)
+        self._mainMenuPage.new.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self._scrapeMenuPage)
         )
-        self.mainMenuPage.existing.connect(
-            lambda: self.ui.stackedWidget.setCurrentWidget(self.profilesMenuPage)
+        self._mainMenuPage.existing.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self._profilesMenuPage)
         )
-        self.mainMenuPage.settings.connect(
-            lambda: self.ui.stackedWidget.setCurrentWidget(self.settingsMenuPage)
+        self._mainMenuPage.settings.connect(
+            lambda: self.ui.stackedWidget.setCurrentWidget(self._settingsMenuPage)
         )
-        self.mainMenuPage.logs.connect(self.logs_window.show)
+        self._mainMenuPage.logs.connect(self._logs_window.show)
+
+        self._settingsMenuPage.save_path_changed.connect(self._profilesMenuPage.data_dir_changed)
+        self._settingsMenuPage.save_path_changed.connect(self._scrapeMenuPage.data_dir_changed)
 
     def closeEvent(self, event: QCloseEvent):
         """Safely close all threads/processes"""
@@ -94,17 +98,17 @@ class MainWindow(QWidget):
 
         if reply == QMessageBox.StandardButton.Yes:
             # Logger
-            self.logger.removeHandler(self.log_handler)
-            self.log_handler.threadpool.waitForDone()
+            self._logger.removeHandler(self._log_handler)
+            self._log_handler.threadpool.waitForDone()
 
             # Request handler
-            self.req_handler.stop()
-            self.req_thread.quit()
-            self.req_thread.wait()
-            self.scrapeMenuPage.cleanup()
+            self._req_handler.stop()
+            self._req_thread.quit()
+            self._req_thread.wait()
+            self._scrapeMenuPage.cleanup()
 
             # Database connection
-            self.db_handler.close_connection()
+            self._db_handler.close_connection()
 
             # Wait for all signals/slots to finish
             QApplication.processEvents()

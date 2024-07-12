@@ -1,6 +1,7 @@
 import logging
+from pathlib import Path
 
-from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection
+from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QMessageBox, QLineEdit, QInputDialog
 
 from app.ui import Ui_ProfileMenu
@@ -11,17 +12,18 @@ from app.pages import DataView
 class ProfileMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler):
+    def __init__(self, db_handler: DatabaseHandler, data_dir: Path):
         super().__init__()
 
-        self.logger = logging.getLogger(__name__)
-        self.db_handler = db_handler
-        self.model = ProfileList(self.db_handler)
+        self._logger = logging.getLogger(__name__)
+        self._db_handler = db_handler
+        self._model = ProfileList(self._db_handler)
+        self._data_dir = data_dir
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
 
-        self.ui.listView.setModel(self.model)
+        self.ui.listView.setModel(self._model)
         self.ui.listView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
@@ -33,21 +35,30 @@ class ProfileMenu(QWidget):
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
         self.ui.renameBtn.clicked.connect(self.handle_rename)
 
-        self.data_viewers = []
+        self._data_viewers: list[DataView] = []
 
     def showEvent(self, event):
-        self.model.refresh_data()
+        self._model.refresh_data()
         return super().showEvent(event)
+
+    @pyqtSlot(str)
+    def data_dir_changed(self, data_dir: str):
+        data_dir = Path(data_dir)
+        self._data_dir = data_dir
+        for viewer in self._data_viewers:
+            viewer.set_data_dir(data_dir)
 
     def handle_open(self):
         selected = self.ui.listView.selectedIndexes()
         for idx in selected:
             profile: Profile = idx.data(role=Qt.ItemDataRole.UserRole)
-            self.logger.debug(f"Opening profile {profile}")
-            data_viewer = DataView(self.db_handler, profile)
-            self.data_viewers.append(data_viewer)
+            self._logger.debug(f"Opening profile {profile}")
+            data_viewer = DataView(self._db_handler, profile, self._data_dir)
+            self._db_handler.profile_updated.connect(data_viewer.handle_profile_updated)
+            self._db_handler.event_added.connect(data_viewer.handle_event_added)
+            self._data_viewers.append(data_viewer)
             data_viewer.exited.connect(
-                lambda viewer=data_viewer: self.data_viewers.remove(viewer)
+                lambda viewer=data_viewer: self._data_viewers.remove(viewer)
             )
             data_viewer.show()
 
@@ -64,7 +75,7 @@ class ProfileMenu(QWidget):
         if response == QMessageBox.StandardButton.No:
             return
 
-        self.model.delete_profiles(selected)
+        self._model.delete_profiles(selected)
         self.ui.listView.clearSelection()
 
     def handle_rename(self):
@@ -80,8 +91,8 @@ class ProfileMenu(QWidget):
         )
         if not ok or not new_name:
             return
-        self.db_handler.update_profile(profile, name=new_name)
-        self.model.refresh_data()
+        self._db_handler.update_profile(profile, name=new_name)
+        self._model.refresh_data()
         self.ui.listView.clearSelection()
 
     def handle_selection_changed(self, selected: QItemSelection, deselected):

@@ -2,7 +2,7 @@ import logging
 
 from PyQt6.QtCore import QAbstractListModel, QModelIndex, Qt, QVariant
 
-from app.models import DatabaseHandler, ProfileEvent, Profile
+from app.models import DatabaseHandler, ProfileEvent, Profile, Event
 
 
 class EventList(QAbstractListModel):
@@ -13,8 +13,8 @@ class EventList(QAbstractListModel):
         self.db_handler = db_handler
         self._data: list[ProfileEvent] = []
 
-        self.profile = profile
-        if not self.profile:
+        self._profile = profile
+        if not self._profile:
             self.logger.error("Profile is nonexistent.")
             return
         self.refresh_data()
@@ -70,13 +70,13 @@ class EventList(QAbstractListModel):
             "y2_data": y2_data,
         }
 
-    def index_from_vals(self, case_id, vehicle_num, event_num):
+    def index_from_vals(self, current_event: Event):
         for i, profile_event in enumerate(self._data):
             event = profile_event.event
             if (
-                event.case_id == case_id
-                and event.vehicle_num == vehicle_num
-                and event.event_num == event_num
+                event.case_id == current_event.case_id
+                and event.vehicle_num == current_event.vehicle_num
+                and event.event_num == current_event.event_num
             ):
                 return self.index(i)
         return QModelIndex()
@@ -89,7 +89,7 @@ class EventList(QAbstractListModel):
         self.refresh_data()
 
     def refresh_data(self):
-        self._data = self.db_handler.get_profile_events(self.profile)
+        self._data = self.db_handler.get_profile_events(self._profile)
         # TODO: Implement sorting in ProfileEvent
         # self._data.sort()
 
