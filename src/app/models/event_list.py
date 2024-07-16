@@ -70,7 +70,7 @@ class EventList(QAbstractListModel):
             "y2_data": y2_data,
         }
 
-    def index_from_vals(self, current_event: Event):
+    def index_from_event(self, current_event: Event):
         for i, profile_event in enumerate(self._data):
             event = profile_event.event
             if (
@@ -95,3 +95,7 @@ class EventList(QAbstractListModel):
 
         self.layoutChanged.emit()
         self.logger.debug("Refreshed data.")
+
+    def set_profile(self, profile: Profile):
+        self._profile = profile
+        self.refresh_data()

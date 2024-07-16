@@ -66,6 +66,10 @@ class ScatterTab(BaseTab):
         btn_func()
         self.canvas.draw()
 
+    def set_model_profile(self, profile: Profile):
+        self._model.set_profile(profile)
+        self.refresh()
+
     def update_nass_data(self):
         checked = self.ui.nassDataBtn.isChecked()
         for plot in self.nass_plots:
@@ -113,7 +117,7 @@ class ScatterTab(BaseTab):
             self.ax.legend(loc="upper left").set_visible(False)
         self.ax.get_legend().set_draggable(True)
 
-    def refresh_tab(self):
+    def refresh(self):
         self._model.refresh_data()
         self.ax.clear()
 
@@ -205,15 +209,19 @@ class ScatterTab(BaseTab):
             bbox_inches="tight",
             pad_inches=0.75,
         )
-        self._logger.info(f"Saved figure to {path}")
-        button = QMessageBox.information(
-            self,
-            "Saved",
-            f'Figure saved to:\n{path}',
-            QMessageBox.StandardButton.Open | QMessageBox.StandardButton.Ok,
+        self._logger.info(f"Figure saved to:\n{path}")
+        box = QMessageBox()
+        box.setWindowTitle("Saved")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText("Figure saved to:")
+        box.setInformativeText(str(path))
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open
         )
+        box.setDefaultButton(QMessageBox.StandardButton.Ok)
+        button_result = box.exec()
 
-        if button == QMessageBox.StandardButton.Open:
+        if button_result == QMessageBox.StandardButton.Open:
             os.startfile(self._data_dir)
 
 

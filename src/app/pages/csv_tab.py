@@ -15,18 +15,22 @@ class CSVTab(BaseTab):
         super().__init__()
         self.ui = Ui_CSVTab()
         self.ui.setupUi(self)
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
-        self.model = EventTable(db_handler, profile)
-        self.ui.tableView.setModel(self.model)
+        self._model = EventTable(db_handler, profile)
+        self.ui.tableView.setModel(self._model)
         self.ui.saveBtn.clicked.connect(self._save_csv)
 
         self._data_dir = data_dir
 
-    def refresh_tab(self):
-        self.model.refresh_data()
+    def refresh(self):
+        self._model.refresh_data()
         self.ui.tableView.hideColumn(0)
         self.ui.tableView.hideColumn(1)
+
+    def set_model_profile(self, profile: Profile):
+        self._model.set_profile(profile)
+        self.refresh()
 
     def _save_csv(self):
         self.ui.saveBtn.setEnabled(False)
@@ -40,20 +44,24 @@ class CSVTab(BaseTab):
             i += 1
         with open(csv_path, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerow(self.model.get_headers())
-            writer.writerows(self.model.all_events())
+            writer.writerow(self._model.get_headers())
+            writer.writerows(self._model.all_events())
         self.ui.saveBtn.setEnabled(True)
         self.ui.saveBtn.setText("Save CSV")
-        self.logger.info(f"Saved CSV to {csv_path}.")
+        self._logger.info(f"Saved CSV to {csv_path}.")
 
-        button = QMessageBox.information(
-            self,
-            "CSV Saved",
-            f"CSV saved to {csv_path}.",
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open,
+        box = QMessageBox()
+        box.setWindowTitle("CSV Saved")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText("CSV saved to:")
+        box.setInformativeText(str(csv_path))
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open
         )
+        box.setDefaultButton(QMessageBox.StandardButton.Ok)
+        button_result = box.exec()
 
-        if button == QMessageBox.StandardButton.Open:
+        if button_result == QMessageBox.StandardButton.Open:
             os.startfile(self._data_dir)
 
         # minval = round(df["NASS_dv"].min(), 1)

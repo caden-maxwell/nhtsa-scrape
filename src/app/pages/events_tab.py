@@ -42,19 +42,18 @@ class EventsTab(BaseTab):
         self._logger = logging.getLogger(__name__)
 
         self._model = EventList(db_handler, profile)
-        self.current_index_event = None
+        self._current_index_event = None
         self._data_dir = data_dir
 
         self.ui.eventsList.setModel(self._model)
         self.ui.eventsList.setItemDelegate(CustomItemDelegate())
 
-        self.ui.eventsList.clicked.connect(self.open_event_details)
-        self.ui.scrapeImgsBtn.clicked.connect(self._scrape_btn_clicked)
+        self.ui.eventsList.clicked.connect(self._open_event_details)
+        self.ui.scrapeImgsBtn.clicked.connect(self._scrape_imgs_clicked)
         self.ui.stopBtn.clicked.connect(self._stop_btn_clicked)
         self.ui.ignoreBtn.clicked.connect(self._ignore_event)
-        self.ui.discardBtn.clicked.connect(self._delete_event)
-        self.ui.saveCaseBtn.clicked.connect(self._save_case_btn_clicked)
-        self.ui.saveEDRBtn.clicked.connect(self._save_edr_btn_clicked)
+        self.ui.saveRawBtn.clicked.connect(self._save_case_clicked)
+        self.ui.fetchEDRBtn.clicked.connect(self._fetch_edr_clicked)
 
         self.ui.imgSetCombo.addItem("Front", "Front")
         self.ui.imgSetCombo.addItem("Back", "Back")
@@ -78,18 +77,23 @@ class EventsTab(BaseTab):
 
         self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
 
-        self.refresh_tab()
+        self.refresh()
 
-    def refresh_tab(self):
+    def refresh(self):
         self._model.refresh_data()
-        self.list_changed()
+        self._list_changed()
+        self._open_event_details(self.ui.eventsList.currentIndex())
+
+    def set_model_profile(self, profile: Profile):
+        self._model.set_profile(profile)
+        self.refresh()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return:
-            self.open_event_details(self.ui.eventsList.currentIndex())
+            self._open_event_details(self.ui.eventsList.currentIndex())
         return super().keyPressEvent(event)
 
-    def list_changed(self):
+    def _list_changed(self):
         scrollbar = self.ui.eventsList.verticalScrollBar()
         list_size = max(self.ui.eventsList.sizeHintForColumn(0), 200)
         scrollbar_width = 0
@@ -97,16 +101,16 @@ class EventsTab(BaseTab):
             scrollbar_width = scrollbar.sizeHint().width()
         self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
 
-        if not self.current_index_event and self._model.index(0, 0).isValid():
-            self.current_index_event = self._model.data(
+        if not self._current_index_event and self._model.index(0, 0).isValid():
+            self._current_index_event = self._model.data(
                 self._model.index(0, 0), Qt.ItemDataRole.UserRole
             ).event
-            self.open_event_details(self._model.index(0, 0))
+            self._open_event_details(self._model.index(0, 0))
 
-        index = self._model.index_from_vals(self.current_index_event)
+        index = self._model.index_from_event(self._current_index_event)
         self.ui.eventsList.setCurrentIndex(index)
 
-    def open_event_details(self, index: QModelIndex):
+    def _open_event_details(self, index: QModelIndex):
         if not index or not index.isValid():
             self.ui.makeLineEdit.setText("")
             self.ui.modelLineEdit.setText("")
@@ -120,22 +124,20 @@ class EventsTab(BaseTab):
             self.ui.nassVCLineEdit.setText("")
             self.ui.totDVLineEdit.setText("")
 
+            self.ui.ignoreBtn.setEnabled(False)
+            self.ui.saveRawBtn.setEnabled(False)
+            self.ui.fetchEDRBtn.setEnabled(False)
             self.ui.scrapeImgsBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(False)
-            self.ui.scrapeImgsBtn.update()
-            self.ui.stopBtn.update()
 
-            self.no_images_label.setVisible(True)
             self._clear_thumbnails()
-
-            self.ui.ignoreBtn.setText("Ignore Event")
             return
 
         event: Event = self._model.data(index, Qt.ItemDataRole.UserRole).event
 
         # We need to get the unique values for this index so we can find it later
         # if another event is inserted before it in the list
-        self.current_index_event = event
+        self._current_index_event = event
 
         # Left side of event view data
         self.ui.makeLineEdit.setText(event.make)
@@ -155,33 +157,37 @@ class EventsTab(BaseTab):
         img_ids = self.img_cache[event]
         images = [(img_id, img) for img_id, img in img_ids.items() if img]
 
-        self.no_images_label.setVisible(not len(images))
         self._clear_thumbnails()
+        self.no_images_label.setVisible(not len(images))
 
         for img_id, img in images:
             thumbnail = ImageThumbnail(img_id, img, self._data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
 
-        if self._model.data(index, Qt.ItemDataRole.FontRole):
-            self.ui.ignoreBtn.setText("Unignore Event")
-        else:
-            self.ui.ignoreBtn.setText("Ignore Event")
+        self.ui.ignoreBtn.setEnabled(True)
+        self._set_ignore_btn_text(self._model.data(index, Qt.ItemDataRole.FontRole))
 
-        self._update_buttons(event)
+        self._update_event_btns(event)
 
     def _clear_thumbnails(self):
         for i in reversed(range(self.ui.thumbnailsLayout.count())):
             widget = self.ui.thumbnailsLayout.itemAt(i).widget()
             self.ui.thumbnailsLayout.removeWidget(widget)
             widget.setParent(None)
+        self.no_images_label.setVisible(True)
 
-    def _update_buttons(self, event: Event, override=False):
+    def _update_event_btns(self, event: Event):
+        """Updates the text and enabled status of the event buttons based on the current state of the request handler.
+
+        Args:
+            event (Event): The event to update the buttons for.
         """
-        Update the scrape images button and stop button based on the current state of the request handler.
-        Set override to True to force the buttons to be set to their scraping state.
-        """
-        extra_data = {"event": event}
-        if self._req_handler.contains(Priority.IMAGE.value, extra_data) or override:
+        if event != self._current_index_event:
+            return
+
+        if self._req_handler.contains(
+            Priority.IMMEDIATE.value, {"for": "images"}
+        ) or self._req_handler.contains(Priority.IMAGE.value, {"event": event}):
             self.ui.scrapeImgsBtn.setText("Scraping...")
             self.ui.scrapeImgsBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -190,32 +196,63 @@ class EventsTab(BaseTab):
             self.ui.scrapeImgsBtn.setEnabled(True)
             self.ui.stopBtn.setVisible(False)
 
+        if self._req_handler.contains(
+            Priority.IMMEDIATE.value, {"for": "raw", "event": event}
+        ):
+            self.ui.saveRawBtn.setText("Saving...")
+            self.ui.saveRawBtn.setEnabled(False)
+        else:
+            self.ui.saveRawBtn.setText("Save Raw Data")
+            self.ui.saveRawBtn.setEnabled(True)
+
+        if self._req_handler.contains(
+            Priority.IMMEDIATE.value, {"for": "edr", "event": event}
+        ):
+            self.ui.fetchEDRBtn.setText("Fetching...")
+            self.ui.fetchEDRBtn.setEnabled(False)
+        else:
+            self.ui.fetchEDRBtn.setText("Fetch EDR")
+            self.ui.fetchEDRBtn.setEnabled(True)
+
         self.ui.scrapeImgsBtn.update()
         self.ui.stopBtn.update()
 
-    def _scrape_btn_clicked(self):
-        event: Event = self._model.data(
-            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        ).event
-        self._update_buttons(event, True)
+    def _scrape_imgs_clicked(self):
+        self.ui.scrapeImgsBtn.setEnabled(False)
+        self.ui.scrapeImgsBtn.setText("Scraping...")
+        self.ui.scrapeImgsBtn.update()
+        self.ui.stopBtn.setVisible(True)
 
-        self._fetch_case_data(self._fetch_imgs)
+        self._fetch_case_data(self._fetch_imgs, request_purpose="images")
+        self._update_event_btns(self._current_index_event)
 
-    def _save_case_btn_clicked(self):
-        self.ui.saveCaseBtn.setEnabled(False)
-        self.ui.saveCaseBtn.setText("Saving...")
-        self.ui.saveCaseBtn.update()
+    def _save_case_clicked(self):
+        self.ui.saveRawBtn.setEnabled(False)
+        self.ui.saveRawBtn.setText("Saving...")
+        self.ui.saveRawBtn.update()
 
-        self._fetch_case_data(self._save_case)
+        self._fetch_case_data(self._save_case, request_purpose="raw")
 
-    def _save_edr_btn_clicked(self):
-        self.ui.saveEDRBtn.setEnabled(False)
-        self.ui.saveEDRBtn.setText("Saving...")
-        self.ui.saveEDRBtn.update()
+        self._update_event_btns(self._current_index_event)
 
-        self._fetch_case_data(self._fetch_edr)
+    def _fetch_edr_clicked(self):
+        self.ui.fetchEDRBtn.setEnabled(False)
+        self.ui.fetchEDRBtn.setText("Fetching...")
+        self.ui.fetchEDRBtn.update()
 
-    def _fetch_case_data(self, callback: Callable[[RequestQueueItem, Response], None]):
+        self._fetch_case_data(self._fetch_edr, request_purpose="edr")
+
+        self._update_event_btns(self._current_index_event)
+
+    def _fetch_case_data(
+        self, callback: Callable[[RequestQueueItem, Response], None], request_purpose=""
+    ):
+        """Fetches the case data for the currently selected event and calls the callback function with the response.
+
+        Args:
+            callback (Callable[[RequestQueueItem, Response], None]): The function to call with the response.
+            request_purpose (str, optional): The purpose of the request. Defaults to "".
+        """
         event: Event = self._model.data(
             self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
         ).event
@@ -232,72 +269,53 @@ class EventsTab(BaseTab):
             RequestQueueItem(
                 BaseScraper.ROOT
                 + str(scraper.case_url_raw).format(case_id=event.case_id),
-                priority=Priority.EVENT_DATA.value,
-                extra_data={"event": event},
+                priority=Priority.IMMEDIATE.value,
+                extra_data={"event": event, "for": request_purpose},
                 callback=callback,
             )
         )
 
     def _stop_btn_clicked(self):
-        event = self._model.data(
-            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        ).event
+        # Stops any requests for a case page requested specifically for images
+        self._req_handler.clear_queue(Priority.IMMEDIATE.value, {"for": "images"})
 
-        extra_data = {"event": event}
-        self._req_handler.clear_queue(Priority.EVENT_DATA.value, extra_data)
-        self._req_handler.clear_queue(Priority.IMAGE.value, extra_data)
+        # Stops any requests for images themselves
+        self._req_handler.clear_queue(
+            Priority.IMAGE.value, {"event": self._current_index_event}
+        )
 
-        self.ui.scrapeImgsBtn.setText("Scrape Images")
-        self.ui.scrapeImgsBtn.setEnabled(True)
-        self.ui.stopBtn.setVisible(False)
+        self._update_event_btns(self._current_index_event)
 
     def _ignore_event(self):
         index = self.ui.eventsList.currentIndex()
+        if not index.isValid():
+            print("No event selected.")
+            return
+
         self._model.setData(
             index,
             not self._model.data(index, Qt.ItemDataRole.FontRole),
             Qt.ItemDataRole.FontRole,
         )
+        self._set_ignore_btn_text(self._model.data(index, Qt.ItemDataRole.FontRole))
 
-        if self._model.data(index, Qt.ItemDataRole.FontRole):
+    def _set_ignore_btn_text(self, ignore: bool):
+        if ignore:
             self.ui.ignoreBtn.setText("Unignore Event")
         else:
             self.ui.ignoreBtn.setText("Ignore Event")
 
-    def _delete_event(self):
-        button = QMessageBox.warning(
-            self,
-            "Delete Event",
-            "Are you sure you want to delete this event? This action cannot be undone.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-
-        if (
-            button == QMessageBox.StandardButton.No
-            or button == QMessageBox.StandardButton.Escape
-        ):
-            return
-
-        index = self.ui.eventsList.currentIndex()
-        self._model.delete_event(index)
-
-        if index.row() >= self._model.rowCount():
-            index = self._model.index(self._model.rowCount() - 1, 0)
-
-        self.ui.eventsList.setCurrentIndex(index)
-        self.open_event_details(index)
-
     @pyqtSlot(RequestQueueItem, Response)
     def handle_response(self, request: RequestQueueItem, response: Response):
-        # Make sure only the EventsTab that requested the data actually processes it
+        """Handles responses from the request handler. Calls the appropriate callback function for the request,
+        but only if the callback is a method of this class.
+
+        Args:
+            request (RequestQueueItem): The request that was sent.
+            response (Response): The response to the request.
+        """
         if request.callback.__self__ == self:
             request.callback(request, response)
-
-            event: Event = self._model.data(
-                self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-            ).event
-            self._update_buttons(event)
 
     def _fetch_imgs(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -308,7 +326,7 @@ class EventsTab(BaseTab):
         elif scraper_type == "CISS":
             self._fetch_imgs_ciss(event, request, response)
 
-        self._update_buttons(event)
+        self._update_event_btns(event)
 
     def _fetch_imgs_nass(
         self, event: Event, request: RequestQueueItem, response: Response
@@ -440,15 +458,23 @@ class EventsTab(BaseTab):
 
         event_imgs[img_key] = image
 
-        selected_event: Event = self._model.data(
-            self.ui.eventsList.currentIndex(), Qt.ItemDataRole.UserRole
-        ).event
+        self._update_thumbnails(event)
+        self._update_event_btns(event)
 
-        # If the event is the same as the one currently selected, update the thumbnails
-        if event == selected_event:
+    def _update_thumbnails(self, event: Event):
+
+        if event != self._current_index_event:
+            return
+
+        self._clear_thumbnails()
+        event_imgs = self.img_cache[event]
+        if event_imgs:
             self.no_images_label.setVisible(False)
-            thumbnail = ImageThumbnail(img_key, image, self._data_dir, event)
-            self.ui.thumbnailsLayout.addWidget(thumbnail)
+
+        for img_id, img in event_imgs.items():
+            if img:
+                thumbnail = ImageThumbnail(img_id, img, self._data_dir, event)
+                self.ui.thumbnailsLayout.addWidget(thumbnail)
 
     def _save_case(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -467,9 +493,7 @@ class EventsTab(BaseTab):
                 f"Returned case has unknown content type: {response.headers.get('Content-Type')}"
             )
 
-        self.ui.saveCaseBtn.setEnabled(True)
-        self.ui.saveCaseBtn.setText("Save Raw Case Data")
-        self.ui.saveCaseBtn.update()
+        self._update_event_btns(event)
 
     def _save_json_case(
         self, event: Event, response: Response, raw_data_dir: Path, filename: str
@@ -525,18 +549,58 @@ class EventsTab(BaseTab):
         else:
             self._logger.error(f"Unknown scraper type: {event.scraper_type}")
 
-        self.ui.saveEDRBtn.setEnabled(True)
-        self.ui.saveEDRBtn.setText("Fetch Event EDR")
-        self.ui.saveEDRBtn.update()
+        self._update_event_btns(event)
 
     def _fetch_nass_edr(self, event: Event, response: Response, edr_data_dir: Path):
-        QMessageBox.warning(
+        soup = BeautifulSoup(response.content, "xml")
+        veh_ext_forms = soup.find("VehicleExteriorForms")
+
+        try:
+            veh_ext_form = veh_ext_forms.find(
+                "VehicleExteriorForm", {"VehicleNumber": {event.vehicle_num}}
+            )
+            edr_data = veh_ext_form.find("EDR")
+            edr_data = edr_data.find("EDRfile")
+            edr_id = edr_data.get("EDRID")
+        except Exception:
+            QMessageBox.warning(
+                self,
+                "No EDR Data",
+                "No EDR data found for this vehicle.",
+                QMessageBox.StandardButton.Ok,
+            )
+            return
+
+        button = QMessageBox.question(
             self,
-            "Not Yet Implemented",
-            "NASS EDR data fetcher not yet implemented.",
-            QMessageBox.StandardButton.Ok,
+            "EDR Data Found",
+            "EDR data found for this vehicle. Would you like to save it?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
-        self._logger.error("NASS EDR data fetcher not yet implemented.")
+
+        if (
+            button == QMessageBox.StandardButton.No
+            or button == QMessageBox.StandardButton.Escape
+        ):
+            self._logger.debug("User chose not to save EDR data.")
+            return
+
+        self._req_handler.enqueue_request(
+            RequestQueueItem(
+                BaseScraper.ROOT
+                + str(ScraperNASS.edr_url).format(
+                    veh_num=event.vehicle_num, edr_id=edr_id, case_id=event.case_id
+                ),
+                priority=Priority.IMMEDIATE.value,
+                extra_data={
+                    "event": event,
+                    "dir": edr_data_dir,
+                    "edr_id": edr_id,
+                    "for": "edr",
+                },
+                callback=self._save_nass_edr,
+            )
+        )
 
     def _fetch_ciss_edr(self, event: Event, response: Response, edr_data_dir: Path):
         json_data: dict = response.json()
@@ -564,7 +628,7 @@ class EventsTab(BaseTab):
             filenames.append(doc.get("FileName"))
 
         filenames_str = "\n ".join(filenames)
-        button = QMessageBox.question(
+        button_result = QMessageBox.question(
             self,
             "EDR Data Found",
             f"EDR data found for this vehicle. Would you like to save it?\n{filenames_str}",
@@ -572,8 +636,8 @@ class EventsTab(BaseTab):
         )
 
         if (
-            button == QMessageBox.StandardButton.No
-            or button == QMessageBox.StandardButton.Escape
+            button_result == QMessageBox.StandardButton.No
+            or button_result == QMessageBox.StandardButton.Escape
         ):
             self._logger.debug("User chose not to save EDR data.")
             return
@@ -584,11 +648,37 @@ class EventsTab(BaseTab):
             request = RequestQueueItem(
                 BaseScraper.ROOT
                 + str(ScraperCISS.edr_url).format(filename=filename, obj_id=obj_id),
-                priority=Priority.EVENT_DATA.value,
-                extra_data={"event": event, "dir": edr_data_dir, "filename": filename},
+                priority=Priority.IMMEDIATE.value,
+                extra_data={
+                    "event": event,
+                    "dir": edr_data_dir,
+                    "filename": filename,
+                    "for": "edr",
+                },
                 callback=self._save_ciss_edr,
             )
             self._req_handler.enqueue_request(request)
+
+    def _save_nass_edr(self, request: RequestQueueItem, response: Response):
+        event: Event = request.extra_data.get("event")
+        edr_dir: Path = request.extra_data.get("dir")
+        edr_id: str = request.extra_data.get("edr_id")
+
+        # Create a unique file name
+        filename = f"edr_{edr_id}.html"
+        edr_data_path = edr_dir / filename
+        i = 1
+        while edr_data_path.exists():
+            edr_data_path = edr_dir / filename.replace(".", f"({i}).")
+            i += 1
+
+        # Write the EDR data to the file
+        with open(edr_data_path, "wb") as f:
+            f.write(response.content)
+
+        self._logger.info(f"Saved EDR data for case {event.case_id} to {edr_data_path}")
+
+        self._update_event_btns(event)
 
     def _save_ciss_edr(self, request: RequestQueueItem, response: Response):
         filename = response.headers["Content-Disposition"].split("filename=")[1]
@@ -609,9 +699,12 @@ class EventsTab(BaseTab):
             f.write(response.content)
 
         self._logger.info(f"Saved EDR data for case {event.case_id} to {edr_data_path}")
+        self._update_event_btns(event)
 
     def closeEvent(self, event):
-        self._req_handler.clear_queue(Priority.EVENT_DATA.value)
+        # TODO: This will clear all immediate and image requests, even if they are not for the current tab
+        #   Not too much of an issue, but could be improved
+        self._req_handler.clear_queue(Priority.IMMEDIATE.value)
         self._req_handler.clear_queue(Priority.IMAGE.value)
         self._logger.debug("Cleared image requests.")
 
@@ -655,7 +748,7 @@ class ImageThumbnail(QWidget):
         pixmap = QPixmap()
 
         # If img.size is not on a byte boundary, .fromImage will crash without throwing an error
-        # We have a problematic image that is 1919 x 1079, for example. We need to resize it to 1920 x 1080
+        # For example, we have a problematic image that is 1919 x 1079, we need to resize it to 1920 x 1080
         if img.size[0] % 8 != 0 or img.size[1] % 8 != 0:
             img = img.resize(((img.size[0] + 7) // 8 * 8, (img.size[1] + 7) // 8 * 8))
 
@@ -712,7 +805,7 @@ class ImageThumbnail(QWidget):
             i += 1
 
         new_img.save(path, "PNG")
-        self.logger.debug(f"Saved image to {path}")
+        self.logger.info(f"Saved image to {path}")
         self.save_button.setText("Saved!")
 
     def open_image(self):
