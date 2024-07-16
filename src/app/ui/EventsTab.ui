@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>901</width>
-    <height>771</height>
+    <width>895</width>
+    <height>714</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -59,7 +59,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>863</width>
+           <width>857</width>
            <height>198</height>
           </rect>
          </property>
@@ -108,29 +108,31 @@
      <layout class="QHBoxLayout" name="horizontalLayout_3">
       <item>
        <widget class="QPushButton" name="ignoreBtn">
+        <property name="toolTip">
+         <string>Do not include this event in scatterplot or CSV.</string>
+        </property>
         <property name="text">
-         <string>Ignore Event</string>
+         <string>Ignore</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="discardBtn">
+       <widget class="QPushButton" name="fetchEDRBtn">
+        <property name="toolTip">
+         <string>Attempt to download EDR data for this vehicle.</string>
+        </property>
         <property name="text">
-         <string>Discard Event</string>
+         <string>Fetch EDR</string>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="saveEDRBtn">
-        <property name="text">
-         <string>Save Event EDR</string>
+       <widget class="QPushButton" name="saveRawBtn">
+        <property name="toolTip">
+         <string>Download raw (unparsed) data for this event.</string>
         </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="saveCaseBtn">
         <property name="text">
-         <string>Save Raw Case Data</string>
+         <string>Save Raw Data</string>
         </property>
        </widget>
       </item>

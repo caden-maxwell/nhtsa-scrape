@@ -8,17 +8,17 @@ from app.models import DatabaseHandler, Event, Profile
 class EventTable(QAbstractTableModel):
     def __init__(self, db_handler: DatabaseHandler, profile: Profile):
         super().__init__()
-        self.logger = logging.getLogger(__name__)
+        self._logger = logging.getLogger(__name__)
 
-        self.db_handler = db_handler
+        self._db_handler = db_handler
         self._data: list[tuple] = []
 
-        self.profile = profile
-        if not self.profile:
-            self.logger.error("Profile is nonexistent.")
+        self._profile = profile
+        if not self._profile:
+            self._logger.error("Profile is nonexistent.")
             return
 
-        self._headers = self.db_handler.get_headers(Event)
+        self._headers = self._db_handler.get_headers(Event)
         self.refresh_data()
 
     def rowCount(self, parent: QModelIndex = ...) -> int:
@@ -51,7 +51,14 @@ class EventTable(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def refresh_data(self):
-        self._data: list[Event] = self.db_handler.get_events(self.profile, include_ignored=False)
+        self._data: list[Event] = self._db_handler.get_events(
+            self._profile, include_ignored=False
+        )
         self._data = [event.to_tuple() for event in self._data]
         self.layoutChanged.emit()
-        self.logger.debug("Refreshed data.")
+        self._logger.debug("Refreshed data.")
+
+    def set_profile(self, profile: Profile):
+        self._profile = profile
+        self.refresh_data()
+        self._logger.debug(f"Set profile to {profile.id}.")

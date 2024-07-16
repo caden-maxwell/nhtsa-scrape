@@ -19,6 +19,10 @@ class ScatterPlotModel:
     def get_data(self):
         return self._case_ids, self._x_data, self._y1_data, self._y2_data
 
+    def set_profile(self, profile: Profile):
+        self.profile = profile
+        self.refresh_data()
+
     def refresh_data(self):
         self._case_ids = []
         self._x_data = []

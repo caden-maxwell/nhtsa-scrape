@@ -117,41 +117,74 @@ class RequestHandler(QObject, metaclass=Singleton):
         Returns True if the request queue contains requests of the given priority.
         Priority of -1 returns True if the queue is not empty.
         """
-        return (
-            len(self.get_queued_requests(priority, match_data)) > 0
-            or len(self.get_ongoing_requests(priority, match_data)) > 0
-        )
+        return self.get_requests(priority, match_data) != []
 
-    def get_queued_requests(self, priority=-1, match_data={}):
+    def get_requests(self, priority=-1, match_data={}) -> list[RequestQueueItem]:
+        return self._get_queued_requests(
+            priority, match_data
+        ) + self._get_ongoing_requests(priority, match_data)
+
+    def _get_queued_requests(self, priority=-1, extra_data={}):
+        """Get queued requests with the given priority and extra data. Queued requests are requests that have not yet been sent.
+
+        Args:
+            priority (int, optional): Priority of the request. Defaults to -1, which returns all queued requests.
+            extra_data (dict, optional): Extra data to match with the request. Defaults to {}.
+
+        Returns:
+            list[RequestQueueItem]: List of queued requests that match the given priority and extra data.
+        """
         if priority == -1:
             return self._request_queue.queue
 
         queued_requests = []
         for request in self._request_queue.queue:
-            if self._priority_data_match(request, priority, match_data):
+            if self._priority_data_match(request, priority, extra_data):
                 queued_requests.append(request)
         return queued_requests
 
-    def get_ongoing_requests(self, priority=-1, match_data={}):
+    def _get_ongoing_requests(self, priority=-1, extra_data={}):
+        """Get ongoing requests with the given priority and extra data. Ongoing requests are requests that have been sent but have not yet received a response.
+
+        Args:
+            priority (int, optional): Priority of the request. Defaults to -1, which returns all ongoing requests.
+            extra_data (dict, optional): Extra data to match with the request. Defaults to {}.
+
+        Returns:
+            list[RequestQueueItem]: List of ongoing requests that match the given priority and extra data.
+        """
         if priority == -1:
             return self._ongoing_requests
 
         ongoing_requests = []
         for request in self._ongoing_requests:
-            if self._priority_data_match(request, priority, match_data):
+            if self._priority_data_match(request, priority, extra_data):
                 ongoing_requests.append(request)
         return ongoing_requests
 
     def _priority_data_match(
-        self, request: RequestQueueItem, priority: int, match_data: dict
+        self, request: RequestQueueItem, priority: int, extra_data: dict
     ):
+        """Check if the request matches the given priority and extra data.
+
+        Args:
+            request (RequestQueueItem): Request to check.
+            priority (int): Priority to match.
+            extra_data (dict): Extra data to match with requests. If empty, only the priority
+                is checked. Every key-value pair must match a request's extra_data,
+                but the request's actual extra_data may have additional keys.
+
+        Returns:
+            bool: True if the request matches the given priority and extra data.
         """
-        Return True if the request matches the given priority and match_data.
-        Skip match_data check if not provided.
-        """
-        return request.priority == priority and (
-            request.extra_data == match_data or not match_data
-        )
+        if request.priority != priority:
+            return False
+
+        for key, value in extra_data.items():
+            if key not in request.extra_data or request.extra_data[key] != value:
+                return False
+
+        return True
 
     @pyqtSlot(float)
     def update_min_rate_limit(self, min_rate_limit):
@@ -183,7 +216,7 @@ class RequestHandler(QObject, metaclass=Singleton):
                 if self._request_queue.empty():
                     time.sleep(0.1)  # Avoid busy waiting
                     continue
-                
+
                 # Adjust rate limit based on queue size
                 interval = (self._max_rate_limit - self._min_rate_limit) / 4
                 current_rate_limit = self._min_rate_limit

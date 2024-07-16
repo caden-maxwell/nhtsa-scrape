@@ -108,8 +108,8 @@ class ScrapeMenu(QWidget):
             self._req_handler.enqueue_request(
                 RequestQueueItem(
                     BaseScraper.ROOT + nhtsa_model.scraper.search_url,
-                    priority=Priority.ALL_COMBOS.value,
-                    callback=self.update_dropdowns,
+                    priority=Priority.IMMEDIATE.value,
+                    callback=self._update_dropdowns,
                     extra_data={"search_model": nhtsa_model},
                 )
             )
@@ -119,7 +119,7 @@ class ScrapeMenu(QWidget):
         if request.callback.__self__ == self:
             request.callback(request, response)
 
-    def update_dropdowns(self, request: RequestQueueItem, response: Response):
+    def _update_dropdowns(self, request: RequestQueueItem, response: Response):
         """Parses the response from a search site and populates the search fields."""
         nhtsa_model: _SearchModel = request.extra_data["search_model"]
 
@@ -167,7 +167,7 @@ class ScrapeMenu(QWidget):
     def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"search_model": search_model}
-        self._req_handler.clear_queue(Priority.MODEL_COMBO.value, match_data=extra_data)
+        self._req_handler.clear_queue(Priority.IMMEDIATE.value, match_data=extra_data)
 
         params = (
             {"make": search_model.make_combo.currentText()}
@@ -178,7 +178,7 @@ class ScrapeMenu(QWidget):
             RequestQueueItem(
                 BaseScraper.ROOT + search_model.scraper.models_url,
                 params=params,
-                priority=Priority.MODEL_COMBO.value,
+                priority=Priority.IMMEDIATE.value,
                 extra_data=extra_data,
                 callback=self.update_model_dropdown,
             )
@@ -227,20 +227,18 @@ class ScrapeMenu(QWidget):
         )
 
         make = nhtsa_model.make_combo.currentText().upper()
-        make_txt = make if make != "ALL" else "ANY MAKE"
-
         model = nhtsa_model.model_combo.currentText().upper()
-        model_txt = model if model != "ALL" else "ANY MODEL"
-
         start_year = nhtsa_model.start_year_combo.currentText().upper()
         end_year = nhtsa_model.end_year_combo.currentText().upper()
-
         p_dmg = nhtsa_model.p_dmg_combo.currentText().upper()
-        p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
+        s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
+        min_dv = nhtsa_model.min_dv_spinbox.value()
+        max_dv = nhtsa_model.max_dv_spinbox.value()
 
+        make_txt = make if make != "ALL" else "ANY MAKE"
+        model_txt = model if model != "ALL" else "ANY MODEL"
+        p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
         name = f"{make_txt} {model_txt} ({start_year}-{end_year}) {p_dmg_txt}"
-        name = name.replace("(ALL-ALL)", "(ANY YEAR)")
-        name = name.replace("(ALL-", "(UP TO ").replace("-ALL)", " OR NEWER)")
 
         # Only use a new data viewer if there isn't one already open or multi-analysis is disabled
         now = datetime.now()
@@ -269,32 +267,23 @@ class ScrapeMenu(QWidget):
                 )
                 return
         else:
-            name = f"MULTI-ANALYSIS {now.strftime('%Y-%m-%d %H:%M:%S')}"
-            make = make if make == self._profile.make else "MULTI"
-            model = model if model == self._profile.model else "MULTI"
-            start_year = (
-                start_year if start_year == str(self._profile.start_year) else "MULTI"
-            )
-            end_year = end_year if end_year == str(self._profile.end_year) else "MULTI"
-            p_dmg = p_dmg if p_dmg == self._profile.primary_dmg else "MULTI"
-            s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
-            s_dmg = s_dmg if s_dmg == self._profile.secondary_dmg else "MULTI"
-            min_dv = nhtsa_model.min_dv_spinbox.value()
-            min_dv = min_dv if min_dv == self._profile.min_dv else "MULTI"
-            max_dv = nhtsa_model.max_dv_spinbox.value()
-            max_dv = max_dv if max_dv == self._profile.max_dv else "MULTI"
-
             self._db_handler.update_profile(
                 self._profile,
-                name=name,
-                make=make,
-                model=model,
-                start_year=start_year,
-                end_year=end_year,
-                p_dmg=p_dmg,
-                s_dmg=s_dmg,
-                min_dv=min_dv,
-                max_dv=max_dv,
+                name=f"MULTI-ANALYSIS {now.strftime('%Y-%m-%d %H:%M:%S')}",
+                make=make if make == self._profile.make else "MULTI",
+                model=model if model == self._profile.model else "MULTI",
+                start_year=(
+                    start_year
+                    if start_year == str(self._profile.start_year)
+                    else "MULTI"
+                ),
+                end_year=(
+                    end_year if end_year == str(self._profile.end_year) else "MULTI"
+                ),
+                p_dmg=p_dmg if p_dmg == self._profile.primary_dmg else "MULTI",
+                s_dmg=s_dmg if s_dmg == self._profile.secondary_dmg else "MULTI",
+                min_dv=min_dv if min_dv == self._profile.min_dv else "MULTI",
+                max_dv=max_dv if max_dv == self._profile.max_dv else "MULTI",
             )
 
         if not self._data_viewer:
@@ -302,39 +291,22 @@ class ScrapeMenu(QWidget):
                 self._db_handler, self._profile, self._data_dir
             )
             self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
-            self._db_handler.profile_updated.connect(self._data_viewer.handle_profile_updated)
             self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
             self._data_viewer.show()
+        else:
+            self._data_viewer.set_profile(self._profile)
 
         if not nhtsa_model:
             self._logger.error("Scrape aborted: No database selected.")
             return
 
         self._scraper = nhtsa_model.scraper(
-            make=(
-                nhtsa_model.make_combo.currentText(),
-                int(nhtsa_model.make_combo.currentData()),
-            ),
-            model=(
-                nhtsa_model.model_combo.currentText(),
-                int(nhtsa_model.model_combo.currentData()),
-            ),
-            start_model_year=(
-                nhtsa_model.start_year_combo.currentText(),
-                int(nhtsa_model.start_year_combo.currentData()),
-            ),
-            end_model_year=(
-                nhtsa_model.end_year_combo.currentText(),
-                int(nhtsa_model.end_year_combo.currentData()),
-            ),
-            primary_damage=(
-                nhtsa_model.p_dmg_combo.currentText(),
-                int(nhtsa_model.p_dmg_combo.currentData() or -1),
-            ),
-            secondary_damage=(
-                nhtsa_model.s_dmg_combo.currentText(),
-                int(nhtsa_model.s_dmg_combo.currentData() or -1),
-            ),
+            make=_get_combo_text_data(nhtsa_model.make_combo),
+            model=_get_combo_text_data(nhtsa_model.model_combo),
+            start_model_year=_get_combo_text_data(nhtsa_model.start_year_combo),
+            end_model_year=_get_combo_text_data(nhtsa_model.end_year_combo),
+            primary_damage=_get_combo_text_data(nhtsa_model.p_dmg_combo),
+            secondary_damage=_get_combo_text_data(nhtsa_model.s_dmg_combo),
             min_dv=nhtsa_model.min_dv_spinbox.value(),
             max_dv=nhtsa_model.max_dv_spinbox.value(),
         )
@@ -392,3 +364,7 @@ class ScrapeMenu(QWidget):
         if self._scraper and self._scraper.running:
             self._logger.warning("Scrape engine is still running. Aborting.")
             self.end_scrape.emit()
+
+
+def _get_combo_text_data(combo: QComboBox) -> tuple[str, int]:
+    return combo.currentText(), int(combo.currentData() or -1)

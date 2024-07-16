@@ -20,6 +20,7 @@ class ScraperNASS(BaseScraper):
     )
     case_list_url = "/LegacyCDS"
     img_url = "/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={version}"
+    edr_url = "/nass-cds/CaseForm.aspx?ViewPage&xsl=VE.xsl&tab=EDR&form=VehicleExteriorForms&baseNode=&vehnum={veh_num}&occnum=-1&pos={edr_id}&pos2=-1&websrc=true&title=Vehicle%20%20Exterior%20-%20EDR&caseid={case_id}&year=&fullimage=false"
 
     # NASS-specific dropdown field ids
     field_names = FieldNames(

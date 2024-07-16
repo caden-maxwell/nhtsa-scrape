@@ -135,59 +135,15 @@
      </layout>
     </widget>
    </item>
-   <item row="0" column="1">
-    <widget class="QGroupBox" name="statsBox">
-     <property name="title">
-      <string>Scrape Statistics:</string>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="openBtn">
+     <property name="toolTip">
+      <string>Open directory containing raw data, images, etc.</string>
      </property>
-     <layout class="QFormLayout" name="formLayout_2">
-      <item row="0" column="1">
-       <widget class="QLineEdit" name="totalCasesEdit">
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="totalCasesLabel">
-        <property name="text">
-         <string>Total Cases Scraped:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="failedParsesLabel">
-        <property name="text">
-         <string>Failed to Parse:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QLineEdit" name="failedParsesEdit">
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
-       <widget class="QLabel" name="totalTimeLabel">
-        <property name="text">
-         <string>Total Time:</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="1">
-       <widget class="QLineEdit" name="totalTimeEdit">
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     <property name="text">
+      <string>Open Saved Data Location</string>
+     </property>
     </widget>
-   </item>
-   <item row="8" column="0" colspan="2">
-    <widget class="QListView" name="listView"/>
    </item>
   </layout>
  </widget>

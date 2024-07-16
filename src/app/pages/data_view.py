@@ -1,4 +1,3 @@
-from datetime import datetime
 import logging
 import os
 from pathlib import Path
@@ -29,7 +28,7 @@ class DataView(QWidget):
         self._prev_profile_dir = profile_dir  # Used if the profile is renamed
         self._data_dir = data_dir
 
-        self._summary_tab = SummaryTab(profile)
+        self._summary_tab = SummaryTab(profile, profile_dir)
         self._events_tab = EventsTab(db_handler, profile, profile_dir)
         self._scatter_tab = ScatterTab(db_handler, profile, profile_dir)
         self._csv_tab = CSVTab(db_handler, profile, profile_dir)
@@ -40,33 +39,27 @@ class DataView(QWidget):
             self._csv_tab,
         ]
 
-        self.ui.tabWidget.addTab(self._summary_tab, "Summary")
         self.ui.tabWidget.addTab(self._events_tab, "Events")
         self.ui.tabWidget.addTab(self._scatter_tab, "Scatterplot")
         self.ui.tabWidget.addTab(self._csv_tab, "Data Table")
+        self.ui.tabWidget.addTab(self._summary_tab, "Scrape")
 
         self.ui.tabWidget.setCurrentWidget(self._events_tab)
         self.ui.tabWidget.currentChanged.connect(self.update_current_tab)
 
     def _get_profile_dir(self) -> str:
         """Generate a directory name for the profile."""
-        created = datetime.fromtimestamp(float(self._profile.created)).strftime(
-            "%Y-%m-%d %H-%M-%S"
-        )
-        dir_name = f"{self._profile.name}_{created}".replace(" ", "_")
+        dir_name = f"{self._profile.name}".replace(" ", "_")
         filename_safe = ["_", "-", "(", ")"]
         dir_name = "".join(
             c if c.isalnum() or c in filename_safe else "_" for c in dir_name
         )
         return re.sub(r"[_-]{2,}", "_", dir_name)
 
-    def get_profile(self) -> Profile:
-        return self._profile
-
     def update_current_tab(self):
         """Refresh the currently selected tab."""
         widget: BaseTab = self.ui.tabWidget.currentWidget()
-        widget.refresh_tab()
+        widget.refresh()
 
     def set_data_dir(self, data_dir: Path):
         self._data_dir = data_dir
@@ -81,9 +74,7 @@ class DataView(QWidget):
         try:
             os.rename(self._prev_profile_dir, profile_dir)
         except Exception as e:
-            self._logger.error(
-                f"Failed to move profile directory: {e}", exc_info=True
-            )
+            self._logger.error(f"Failed to move profile directory: {e}", exc_info=True)
             return
         self._prev_profile_dir = profile_dir
 
@@ -95,9 +86,18 @@ class DataView(QWidget):
         if profile.id == self._profile.id:
             self._set_tabs_profile_dir()
 
+    def set_profile(self, profile: Profile):
+        self._profile = profile
+        self._csv_tab.set_model_profile(profile)
+        self._events_tab.set_model_profile(profile)
+        self._scatter_tab.set_model_profile(profile)
+        self._summary_tab.set_profile(profile)
+        self._set_tabs_profile_dir()
+
     @pyqtSlot(Event)
     def handle_event_added(self, event):
-        self._events_tab.refresh_tab()
+        for tab in self._tabs:
+            tab.refresh()
 
     def closeEvent(self, event):
         self.exited.emit()
