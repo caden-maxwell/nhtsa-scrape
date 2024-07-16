@@ -99,7 +99,7 @@ class EventsTab(BaseTab):
         scrollbar_width = 0
         if scrollbar.isVisible():
             scrollbar_width = scrollbar.sizeHint().width()
-        self.ui.eventsList.setFixedWidth(list_size + scrollbar_width + 4)
+        self.ui.eventsList.setMinimumWidth(list_size + scrollbar_width + 4)
 
         if not self._current_index_event and self._model.index(0, 0).isValid():
             self._current_index_event = self._model.data(
