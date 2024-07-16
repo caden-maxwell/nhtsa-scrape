@@ -42,7 +42,9 @@ class ScrapeMenu(QWidget):
     back = pyqtSignal()
     end_scrape = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler, data_dir: Path):
+    def __init__(
+        self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path
+    ):
         super().__init__()
 
         self.ui = Ui_ScrapeMenu()
@@ -56,7 +58,7 @@ class ScrapeMenu(QWidget):
         self._engine_thread: QThread = None
         self._db_handler = db_handler
 
-        self._req_handler = RequestHandler()
+        self._req_handler = req_handler
         self._req_handler.response_received.connect(self.handle_response)
 
         self.ui.backBtn.clicked.connect(self.back.emit)
@@ -167,7 +169,6 @@ class ScrapeMenu(QWidget):
     def fetch_models(self, search_model: _SearchModel):
         """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
         extra_data = {"search_model": search_model}
-        self._req_handler.clear_queue(Priority.IMMEDIATE.value, match_data=extra_data)
 
         params = (
             {"make": search_model.make_combo.currentText()}
@@ -288,13 +289,19 @@ class ScrapeMenu(QWidget):
 
         if not self._data_viewer:
             self._data_viewer = DataView(
-                self._db_handler, self._profile, self._data_dir
+                self._req_handler, self._db_handler, self._profile, self._data_dir
             )
             self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
             self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
             self._data_viewer.show()
-        else:
-            self._data_viewer.set_profile(self._profile)
+        elif self._data_viewer.get_profile() != self._profile:
+            self._data_viewer.disconnect()
+            self._data_viewer = DataView(
+                self._req_handler, self._db_handler, self._profile, self._data_dir
+            )
+            self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
+            self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
+            self._data_viewer.show()
 
         if not nhtsa_model:
             self._logger.error("Scrape aborted: No database selected.")

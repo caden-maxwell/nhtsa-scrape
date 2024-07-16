@@ -35,7 +35,13 @@ from app.ui import Ui_EventsTab
 
 
 class EventsTab(BaseTab):
-    def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
+    def __init__(
+        self,
+        req_handler: RequestHandler,
+        db_handler: DatabaseHandler,
+        profile: Profile,
+        data_dir: Path,
+    ):
         super().__init__()
         self.ui = Ui_EventsTab()
         self.ui.setupUi(self)
@@ -72,7 +78,7 @@ class EventsTab(BaseTab):
         self.ui.imgWidgetGrid.addWidget(self.no_images_label, 0, 0)
         self.no_images_label.setVisible(True)
 
-        self._req_handler = RequestHandler()
+        self._req_handler = req_handler
         self._req_handler.response_received.connect(self.handle_response)
 
         self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
@@ -83,10 +89,6 @@ class EventsTab(BaseTab):
         self._model.refresh_data()
         self._list_changed()
         self._open_event_details(self.ui.eventsList.currentIndex())
-
-    def set_model_profile(self, profile: Profile):
-        self._model.set_profile(profile)
-        self.refresh()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Return:

@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,1,0">
+  <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0">
    <item>
     <layout class="QHBoxLayout" name="topHLayout" stretch="0,1">
      <item>
@@ -33,7 +33,7 @@
     </layout>
    </item>
    <item>
-    <widget class="QListView" name="listView">
+    <widget class="QTreeView" name="treeView">
      <property name="selectionMode">
       <enum>QAbstractItemView::ExtendedSelection</enum>
      </property>

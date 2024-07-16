@@ -42,20 +42,7 @@ class RequestQueueItem:
         return self.priority == other.priority
 
 
-class Singleton(type(QObject), type):
-    """Singleton metaclass for QObjects: https://stackoverflow.com/questions/59459770/receiving-pyqtsignal-from-singleton."""
-
-    def __init__(cls, name, bases, dict):
-        super().__init__(name, bases, dict)
-        cls._instance = None
-
-    def __call__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__call__(*args, **kwargs)
-        return cls._instance
-
-
-class RequestHandler(QObject, metaclass=Singleton):
+class RequestHandler(QObject):
     started = pyqtSignal()
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
@@ -66,8 +53,6 @@ class RequestHandler(QObject, metaclass=Singleton):
 
     ABS_MIN_RATE_LIMIT = 0.2  # Absolute minimum rate limit in seconds
     MIN_TIMEOUT = 0.1  # Minimum request timeout in seconds
-
-    _instance = None  # Singleton instance
 
     def __init__(self):
         super().__init__()
@@ -95,7 +80,7 @@ class RequestHandler(QObject, metaclass=Singleton):
     def enqueue_request(self, request: RequestQueueItem):
         self._request_queue.put(request)
 
-    def clear_queue(self, priority=-1, match_data={}):
+    def clear_queue(self, priority=-1, extra_data={}):
         if priority == -1:
             self._request_queue = queue.PriorityQueue()
             return
@@ -103,13 +88,13 @@ class RequestHandler(QObject, metaclass=Singleton):
         requests = self._request_queue.queue
         self._request_queue.queue = []
         for request in requests:
-            if not self._priority_data_match(request, priority, match_data):
+            if not self._priority_data_match(request, priority, extra_data):
                 self._request_queue.put(request)
 
         ongoing_requests = self._ongoing_requests
         self._ongoing_requests = []
         for request in ongoing_requests:
-            if not self._priority_data_match(request, priority, match_data):
+            if not self._priority_data_match(request, priority, extra_data):
                 self._ongoing_requests.append(request)
 
     def contains(self, priority=-1, match_data={}):

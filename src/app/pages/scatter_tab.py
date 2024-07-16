@@ -66,10 +66,6 @@ class ScatterTab(BaseTab):
         btn_func()
         self.canvas.draw()
 
-    def set_model_profile(self, profile: Profile):
-        self._model.set_profile(profile)
-        self.refresh()
-
     def update_nass_data(self):
         checked = self.ui.nassDataBtn.isChecked()
         for plot in self.nass_plots:

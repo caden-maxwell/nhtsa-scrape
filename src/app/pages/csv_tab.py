@@ -28,10 +28,6 @@ class CSVTab(BaseTab):
         self.ui.tableView.hideColumn(0)
         self.ui.tableView.hideColumn(1)
 
-    def set_model_profile(self, profile: Profile):
-        self._model.set_profile(profile)
-        self.refresh()
-
     def _save_csv(self):
         self.ui.saveBtn.setEnabled(False)
         self.ui.saveBtn.setText("Saving...")

@@ -5,7 +5,13 @@ from requests import Response
 
 from PyQt6.QtCore import pyqtSlot
 
-from app.scrape import RequestQueueItem, BaseScraper, Priority, FieldNames
+from app.scrape import (
+    RequestQueueItem,
+    BaseScraper,
+    Priority,
+    FieldNames,
+    RequestHandler,
+)
 from app.resources import payload_NASS
 from app.models import Event
 
@@ -36,6 +42,7 @@ class ScraperNASS(BaseScraper):
 
     def __init__(
         self,
+        req_handler: RequestHandler,
         make,
         model,
         start_model_year,
@@ -45,7 +52,7 @@ class ScraperNASS(BaseScraper):
         min_dv,
         max_dv,
     ):
-        super().__init__()
+        super().__init__(req_handler)
 
         self._payload = payload_NASS.copy()
 

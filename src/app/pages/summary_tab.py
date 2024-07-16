@@ -42,7 +42,3 @@ class SummaryTab(BaseTab):
                 "Failed to open profile directory",
                 QMessageBox.StandardButton.Ok,
             )
-
-    def set_profile(self, profile: Profile):
-        self._profile = profile
-        self.refresh()

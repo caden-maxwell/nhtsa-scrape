@@ -51,14 +51,14 @@ class SettingsMenu(QWidget):
         },
     }
 
-    def __init__(self):
+    def __init__(self, req_handler: RequestHandler):
         super().__init__()
 
         self.ui = Ui_SettingsMenu()
         self.ui.setupUi(self)
 
         self._logger = logging.getLogger(__name__)
-        self._req_handler = RequestHandler()
+        self._req_handler = req_handler
         self._validator = Draft7Validator(self.SETTINGS_SCHEMA)
 
         self.min_rate_limit_changed.connect(self._req_handler.update_min_rate_limit)

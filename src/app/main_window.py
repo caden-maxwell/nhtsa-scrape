@@ -48,10 +48,10 @@ class MainWindow(QWidget):
 
         # Setup menus
         self._mainMenuPage = MainMenu()
-        self._settingsMenuPage = SettingsMenu()
+        self._settingsMenuPage = SettingsMenu(self._req_handler)
         data_dir = self._settingsMenuPage.get_save_path()
-        self._scrapeMenuPage = ScrapeMenu(self._db_handler, data_dir)
-        self._profilesMenuPage = ProfileMenu(self._db_handler, data_dir)
+        self._scrapeMenuPage = ScrapeMenu(self._req_handler, self._db_handler, data_dir)
+        self._profilesMenuPage = ProfileMenu(self._req_handler, self._db_handler, data_dir)
         self.ui.stackedWidget.addWidget(self._mainMenuPage)
         self.ui.stackedWidget.addWidget(self._scrapeMenuPage)
         self.ui.stackedWidget.addWidget(self._profilesMenuPage)
