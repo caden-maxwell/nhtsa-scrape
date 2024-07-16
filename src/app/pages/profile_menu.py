@@ -4,6 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QMessageBox, QLineEdit, QInputDialog
 
+from app.scrape import RequestHandler
 from app.ui import Ui_ProfileMenu
 from app.models import ProfileList, DatabaseHandler, Profile
 from app.pages import DataView
@@ -12,26 +13,29 @@ from app.pages import DataView
 class ProfileMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler, data_dir: Path):
+    def __init__(
+        self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path
+    ):
         super().__init__()
 
         self._logger = logging.getLogger(__name__)
         self._db_handler = db_handler
         self._model = ProfileList(self._db_handler)
         self._data_dir = data_dir
+        self._req_handler = req_handler
 
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
 
-        self.ui.listView.setModel(self._model)
-        self.ui.listView.selectionModel().selectionChanged.connect(
+        self.ui.treeView.setModel(self._model)
+        self.ui.treeView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
-        self.ui.listView.clearSelection()
+        self.ui.treeView.clearSelection()
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.openBtn.clicked.connect(self.handle_open)
-        self.ui.listView.doubleClicked.connect(self.handle_open)
+        self.ui.treeView.doubleClicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
         self.ui.renameBtn.clicked.connect(self.handle_rename)
 
@@ -49,11 +53,11 @@ class ProfileMenu(QWidget):
             viewer.set_data_dir(data_dir)
 
     def handle_open(self):
-        selected = self.ui.listView.selectedIndexes()
+        selected = self.ui.treeView.selectedIndexes()
         for idx in selected:
             profile: Profile = idx.data(role=Qt.ItemDataRole.UserRole)
             self._logger.debug(f"Opening profile {profile}")
-            data_viewer = DataView(self._db_handler, profile, self._data_dir)
+            data_viewer = DataView(self._req_handler, self._db_handler, profile, self._data_dir)
             self._db_handler.profile_updated.connect(data_viewer.handle_profile_updated)
             self._db_handler.event_added.connect(data_viewer.handle_event_added)
             self._data_viewers.append(data_viewer)
@@ -63,7 +67,7 @@ class ProfileMenu(QWidget):
             data_viewer.show()
 
     def handle_delete(self):
-        selected = self.ui.listView.selectedIndexes()
+        selected = self.ui.treeView.selectedIndexes()
         dialog = QMessageBox(
             QMessageBox.Icon.Warning,
             "Delete Profile",
@@ -76,10 +80,10 @@ class ProfileMenu(QWidget):
             return
 
         self._model.delete_profiles(selected)
-        self.ui.listView.clearSelection()
+        self.ui.treeView.clearSelection()
 
     def handle_rename(self):
-        selected = self.ui.listView.selectedIndexes().pop()
+        selected = self.ui.treeView.selectedIndexes().pop()
         profile: Profile = selected.data(role=Qt.ItemDataRole.UserRole)
         profile_name = selected.data(role=Qt.ItemDataRole.DisplayRole)
         new_name, ok = QInputDialog.getText(
@@ -93,16 +97,16 @@ class ProfileMenu(QWidget):
             return
         self._db_handler.update_profile(profile, name=new_name)
         self._model.refresh_data()
-        self.ui.listView.clearSelection()
+        self.ui.treeView.clearSelection()
 
     def handle_selection_changed(self, selected: QItemSelection, deselected):
         self.ui.openBtn.setEnabled(False)
         self.ui.deleteBtn.setEnabled(False)
         self.ui.renameBtn.setEnabled(False)
-        if self.ui.listView.selectedIndexes():
+        if self.ui.treeView.selectedIndexes():
             self.ui.openBtn.setEnabled(True)
             self.ui.deleteBtn.setEnabled(True)
-            if len(self.ui.listView.selectedIndexes()) == 1:
+            if len(self.ui.treeView.selectedIndexes()) == 1:
                 self.ui.renameBtn.setEnabled(True)
 
     def keyPressEvent(self, event) -> None:

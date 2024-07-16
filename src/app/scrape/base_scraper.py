@@ -71,7 +71,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 
     @abstractmethod
-    def __init__(self):
+    def __init__(self, req_handler: RequestHandler):
         """
         Initializes the BaseScraper. Do not make any signal/slot connections here,
         as this function will be run in the main thread. If you need to connect signals/slots,
@@ -80,7 +80,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         super().__init__()
 
         self._logger = logging.getLogger(__name__)
-        self._req_handler = RequestHandler()
+        self._req_handler = req_handler
 
         self.running = False
         self.start_time = datetime.now()

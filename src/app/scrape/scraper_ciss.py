@@ -7,7 +7,7 @@ import json
 from collections import defaultdict, namedtuple
 from fuzzywuzzy import fuzz
 
-from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames
+from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames, RequestHandler
 from app.resources import payload_CISS
 from app.models import Event
 
@@ -37,6 +37,7 @@ class ScraperCISS(BaseScraper):
 
     def __init__(
         self,
+        req_handler: RequestHandler,
         make,
         model,
         start_model_year,
@@ -46,7 +47,7 @@ class ScraperCISS(BaseScraper):
         min_dv,
         max_dv,
     ):
-        super().__init__()
+        super().__init__(req_handler)
 
         self._payload = payload_CISS.copy()
 

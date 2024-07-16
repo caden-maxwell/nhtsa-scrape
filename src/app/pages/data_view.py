@@ -8,13 +8,20 @@ from PyQt6.QtWidgets import QWidget
 
 from app.pages import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
 from app.models import DatabaseHandler, Profile, Event
+from app.scrape import RequestHandler
 from app.ui import Ui_DataView
 
 
 class DataView(QWidget):
     exited = pyqtSignal()
 
-    def __init__(self, db_handler: DatabaseHandler, profile: Profile, data_dir: Path):
+    def __init__(
+        self,
+        req_handler: RequestHandler,
+        db_handler: DatabaseHandler,
+        profile: Profile,
+        data_dir: Path,
+    ):
         super().__init__()
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
@@ -29,7 +36,7 @@ class DataView(QWidget):
         self._data_dir = data_dir
 
         self._summary_tab = SummaryTab(profile, profile_dir)
-        self._events_tab = EventsTab(db_handler, profile, profile_dir)
+        self._events_tab = EventsTab(req_handler, db_handler, profile, profile_dir)
         self._scatter_tab = ScatterTab(db_handler, profile, profile_dir)
         self._csv_tab = CSVTab(db_handler, profile, profile_dir)
         self._tabs: list[BaseTab] = [
@@ -86,18 +93,13 @@ class DataView(QWidget):
         if profile.id == self._profile.id:
             self._set_tabs_profile_dir()
 
-    def set_profile(self, profile: Profile):
-        self._profile = profile
-        self._csv_tab.set_model_profile(profile)
-        self._events_tab.set_model_profile(profile)
-        self._scatter_tab.set_model_profile(profile)
-        self._summary_tab.set_profile(profile)
-        self._set_tabs_profile_dir()
-
     @pyqtSlot(Event)
     def handle_event_added(self, event):
         for tab in self._tabs:
             tab.refresh()
+
+    def get_profile(self):
+        return self._profile
 
     def closeEvent(self, event):
         self.exited.emit()
