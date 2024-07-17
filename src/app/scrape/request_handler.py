@@ -1,14 +1,9 @@
-import concurrent.futures
+from dataclasses import dataclass, field
 from datetime import datetime
 import logging
-import queue
-import random
 import requests
-import time
-from dataclasses import dataclass, field
 
-from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, pyqtSlot
 
 
 @dataclass
@@ -24,32 +19,59 @@ class _CachedResponse:
         ).total_seconds() > self.COOKIE_EXPIRED_SECS
 
 
-@dataclass
+@dataclass(order=True)
 class RequestQueueItem:
-    url: str
-    method: str = "GET"
-    params: dict = field(default_factory=dict)
-    headers: dict = field(default_factory=dict)
+    url: str = field(compare=False)
+    method: str = field(default="GET", compare=False)
+    params: dict = field(default_factory=dict, compare=False)
+    headers: dict = field(default_factory=dict, compare=False)
     priority: int = 0
     # Additional data used to identify the request (for internal use, not sent to url)
-    extra_data: dict = field(default_factory=dict)
-    callback: callable = None
+    extra_data: dict = field(default_factory=dict, compare=False)
+    callback: callable = field(default=None, compare=False)
 
-    def __lt__(self, other: "RequestQueueItem"):
-        return self.priority < other.priority
-
-    def __eq__(self, other: "RequestQueueItem"):
-        return self.priority == other.priority
+    def __repr__(self):
+        return f"RequestQueueItem(url={self.url}, priority={self.priority})"
 
 
-class RequestHandler(QObject):
+class WorkerSignals(QObject):
     started = pyqtSignal()
+    finished = pyqtSignal(RequestQueueItem, requests.Response)
+
+
+# Define a worker class that inherits QObject
+class RequestWorker(QRunnable):
+    def __init__(self, request: RequestQueueItem, timeout: float):
+        super().__init__()
+        self._request = request
+        self._timeout = timeout
+        self.signals = WorkerSignals()
+
+    @pyqtSlot()
+    def run(self):
+        self.signals.started.emit()
+        response = None
+        try:
+            response = requests.get(
+                url=self._request.url,
+                headers=self._request.headers,
+                timeout=self._timeout,
+            )
+        except Exception as e:
+            print(f"Failed to get response for {self._request.url}: {e}")
+
+        self.signals.finished.emit(self._request, response)
+
+
+# Create a controller class to manage the requests
+class RequestController(QObject):
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
 
     DEFAULT_MIN_RATE_LIMIT = 0.5  # Default minimum rate limit in seconds
     DEFAULT_MAX_RATE_LIMIT = 2.5  # Default maximum rate limit in seconds
     DEFAULT_TIMEOUT = 7  # Default request timeout in seconds
+    MAX_CONCURRENT_REQUESTS = -1  # Maximum number of concurrent requests
 
     ABS_MIN_RATE_LIMIT = 0.2  # Absolute minimum rate limit in seconds
     MIN_TIMEOUT = 0.1  # Minimum request timeout in seconds
@@ -58,56 +80,154 @@ class RequestHandler(QObject):
         super().__init__()
         self._logger = logging.getLogger(__name__)
 
-        self._request_queue = queue.PriorityQueue()
-        self._running = False
-        self._ongoing_requests = []
+        self._request_queue: list[RequestQueueItem] = []
+        self._ongoing_requests: list[RequestQueueItem] = []
         self._response_cache: dict[str, _CachedResponse] = {}
 
         self._min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
         self._max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
         self._timeout = self.DEFAULT_TIMEOUT
 
-    def start(self):
-        self._running = True
-        self.started.emit()
-        self._process_requests()
+        self._threadpool = QThreadPool()
+        self._delay_timer = QTimer()
+        self._delay_timer.setInterval(int(self.DEFAULT_MIN_RATE_LIMIT * 1000))
+        self._delay_timer.setSingleShot(True)
+        self._delay_timer.timeout.connect(self._start_next_request)
+
+        self.running = True
 
     def stop(self):
+        self.running = False
         self.stopped.emit()
-        self._running = False
 
-    @pyqtSlot(RequestQueueItem)
-    def enqueue_request(self, request: RequestQueueItem):
-        self._request_queue.put(request)
+    def _start_next_request(self):
+        """Start the next request in the queue if both the rate limit and concurrent request limit are met.
+        If the rate limit is not met, the delay timer is started to wait for the next request.
+        """
+        if self._request_queue and self.running:
 
-    def clear_queue(self, priority=-1, extra_data={}):
-        if priority == -1:
-            self._request_queue = queue.PriorityQueue()
+            # if the next request's response is cached, we can use it immediately
+            request = self._request_queue[0]
+            prepared_req = requests.Request(
+                method=request.method,
+                url=request.url,
+                params=request.params,
+                headers=request.headers,
+            ).prepare()
+            request.url = prepared_req.url
+
+            if request.url in self._response_cache:
+                cached = self._response_cache[request.url]
+                if not cached.expired():
+                    self._logger.debug(f"Using cached response for {request.url}.")
+                    self._process_response(
+                        request, self._response_cache[request.url].response
+                    )
+                    self._request_queue.remove(request)
+                    return
+            # If not in cache, perform additional checks
+
+            # Check if the rate limit is met
+            if self._delay_timer.remainingTime() > 0:
+                self._logger.debug(
+                    f"Need to wait {self._delay_timer.remainingTime()/1000:.2f} seconds before next request"
+                )
+                return
+
+            # Check if the maximum concurrent requests limit is met
+            if (
+                self._threadpool.activeThreadCount() >= self.MAX_CONCURRENT_REQUESTS
+                and self.MAX_CONCURRENT_REQUESTS != -1
+            ):
+                self._logger.debug("Maximum concurrent requests reached. Waiting...")
+                self._delay_timer.start()
+                return
+
+            # Start the next request
+            request = self._request_queue.pop(0)
+            self._execute_request(request)
+
+            self._delay_timer.start()
+
+    def _execute_request(self, request: RequestQueueItem):
+        """Execute a request using a RequestWorker instance.
+
+        Args:
+            request (RequestQueueItem): Request to execute.
+        """
+
+        if request.method != "GET":
+            self._logger.error(f"Invalid request method: {request.method}")
             return
 
-        requests = self._request_queue.queue
-        self._request_queue.queue = []
-        for request in requests:
-            if not self._priority_data_match(request, priority, extra_data):
-                self._request_queue.put(request)
+        request.headers.update({"User-Agent": "Mozilla/5.0"})
+        self._ongoing_requests.append(request)
 
-        ongoing_requests = self._ongoing_requests
-        self._ongoing_requests = []
-        for request in ongoing_requests:
-            if not self._priority_data_match(request, priority, extra_data):
-                self._ongoing_requests.append(request)
+        runnable = RequestWorker(request, self._timeout)
+        runnable.signals.finished.connect(self._handle_response)
+        self._threadpool.start(runnable)
 
-    def contains(self, priority=-1, match_data={}):
+    def enqueue_request(self, request: RequestQueueItem):
+        """Enqueue a request to be sent.
+
+        Args:
+            request (RequestQueueItem): Request to enqueue.
         """
-        Returns True if the request queue contains requests of the given priority.
-        Priority of -1 returns True if the queue is not empty.
-        """
-        return self.get_requests(priority, match_data) != []
+        # Method to enqueue a request
+        self._request_queue.append(request)
+        self._request_queue.sort()
+        self._logger.debug(f"Enqueued request for {request.url}")
+        self._start_next_request()
 
-    def get_requests(self, priority=-1, match_data={}) -> list[RequestQueueItem]:
-        return self._get_queued_requests(
-            priority, match_data
-        ) + self._get_ongoing_requests(priority, match_data)
+    def contains_requests(self, priority=-1, extra_data={}):
+        """Check if the request queue or ongoing requests contains any requests with the given priority and extra data.
+
+        Args:
+            priority (int, optional): Priority of the requests to check. Defaults to -1.
+            extra_data (dict, optional): Extra data to match with each request. Defaults to {}.
+
+        Returns:
+            bool: True if the request queue or ongoing requests contains any requests with the given priority and extra data.
+        """
+        return any(self.get_requests(priority, extra_data))
+
+    def get_requests(self, priority=-1, extra_data={}):
+        """Get requests with the given priority and extra data. If no priority is given, all requests are returned.
+
+        Args:
+            priority (int, optional): Priority of the requests to get. Defaults to -1.
+            extra_data (dict, optional): Extra data to match with each request. Defaults to {}.
+
+        Returns:
+            tuple[list[RequestQueueItem], list[RequestQueueItem]]: Tuple of queued and ongoing requests matching the params.
+        """
+        queued = self._get_queued_requests(priority, extra_data)
+        ongoing = self._get_ongoing_requests(priority, extra_data)
+        return queued, ongoing
+
+    def clear_requests(self, priority=-1, extra_data={}):
+        if priority == -1:
+            self._request_queue.clear()
+            self._ongoing_requests.clear()
+            self._logger.debug("Cleared all requests.")
+            return
+
+        self._request_queue = [
+            request
+            for request in self._request_queue
+            if not self._priority_and_data_match(request, priority, extra_data)
+        ]
+        self._request_queue.sort()
+
+        self._ongoing_requests = [
+            request
+            for request in self._ongoing_requests
+            if not self._priority_and_data_match(request, priority, extra_data)
+        ]
+
+        self._logger.debug(
+            f"Cleared requests with priority {priority} and extra data {extra_data}."
+        )
 
     def _get_queued_requests(self, priority=-1, extra_data={}):
         """Get queued requests with the given priority and extra data. Queued requests are requests that have not yet been sent.
@@ -115,18 +235,17 @@ class RequestHandler(QObject):
         Args:
             priority (int, optional): Priority of the request. Defaults to -1, which returns all queued requests.
             extra_data (dict, optional): Extra data to match with the request. Defaults to {}.
+            opposite (bool, optional): If True, returns requests that expicitly do not match the given priority and extra data. Defaults to False.
 
         Returns:
             list[RequestQueueItem]: List of queued requests that match the given priority and extra data.
         """
-        if priority == -1:
-            return self._request_queue.queue
-
-        queued_requests = []
-        for request in self._request_queue.queue:
-            if self._priority_data_match(request, priority, extra_data):
-                queued_requests.append(request)
-        return queued_requests
+        return [
+            request
+            for request in self._request_queue
+            if self._priority_and_data_match(request, priority, extra_data)
+            or priority == -1
+        ]
 
     def _get_ongoing_requests(self, priority=-1, extra_data={}):
         """Get ongoing requests with the given priority and extra data. Ongoing requests are requests that have been sent but have not yet received a response.
@@ -138,17 +257,15 @@ class RequestHandler(QObject):
         Returns:
             list[RequestQueueItem]: List of ongoing requests that match the given priority and extra data.
         """
-        if priority == -1:
-            return self._ongoing_requests
+        return [
+            request
+            for request in self._ongoing_requests
+            if self._priority_and_data_match(request, priority, extra_data)
+            or priority == -1
+        ]
 
-        ongoing_requests = []
-        for request in self._ongoing_requests:
-            if self._priority_data_match(request, priority, extra_data):
-                ongoing_requests.append(request)
-        return ongoing_requests
-
-    def _priority_data_match(
-        self, request: RequestQueueItem, priority: int, extra_data: dict
+    def _priority_and_data_match(
+        self, request: RequestQueueItem, priority: int = -1, extra_data: dict = {}
     ):
         """Check if the request matches the given priority and extra data.
 
@@ -192,95 +309,41 @@ class RequestHandler(QObject):
             f"Successfully updated request handler timeout to {self._timeout}s"
         )
 
-    def _process_requests(self):
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            while self._running:
-                # Process signals (e.g. update min/max rate limit)
-                QApplication.processEvents()
+    @pyqtSlot(RequestQueueItem, requests.Response)
+    def _handle_response(self, request: RequestQueueItem, response: requests.Response):
+        """Handle a response from a request worker.
 
-                if self._request_queue.empty():
-                    time.sleep(0.1)  # Avoid busy waiting
-                    continue
-
-                # Adjust rate limit based on queue size
-                interval = (self._max_rate_limit - self._min_rate_limit) / 4
-                current_rate_limit = self._min_rate_limit
-                if self._request_queue.qsize() <= 10:
-                    pass
-                elif self._request_queue.qsize() <= 20:
-                    current_rate_limit = self._min_rate_limit + interval
-                elif self._request_queue.qsize() <= 30:
-                    current_rate_limit = self._min_rate_limit + interval * 2
-                elif self._request_queue.qsize() <= 40:
-                    current_rate_limit = self._min_rate_limit + interval * 3
-                else:
-                    current_rate_limit = self._max_rate_limit
-
-                # Randomize the rate limit to be 25% above or below the current rate limit
-                rand_time = current_rate_limit + random.uniform(
-                    -current_rate_limit / 4, current_rate_limit / 4
-                )
-                self._logger.debug(f"Randomized rate limit: {rand_time:.2f}s")
-
-                request = self._request_queue.get()
-                executor.submit(self._send_request, request)
-
-                # Rate limit the requests
-                start = time.time()
-                while time.time() - start < rand_time and self._running:
-                    time.sleep(0.05)
-
-    def _send_request(self, request: RequestQueueItem):
-        response = None
-
-        if request.method != "GET":
-            self._logger.error(f"Invalid request method: {request.method}")
-            return
-
-        prepared_request = requests.Request(
-            method=request.method,
-            url=request.url,
-            params=request.params,
-            headers=request.headers,
-        ).prepare()
-
-        # Check if the response has already been cached
-        if prepared_request.url in self._response_cache:
-            cached_response = self._response_cache[prepared_request.url]
-            if not cached_response.expired() and self._running:
-                self._logger.debug(
-                    f"Using cached response for {request.url} created at {cached_response.created}"
-                )
-                response = cached_response.response
-                self.response_received.emit(request, response)
-                return
-
-        self._ongoing_requests.append(request)
-        try:
-            response = requests.get(
-                prepared_request.url,
-                headers=prepared_request.headers,
-                timeout=self._timeout,
+        Args:
+            request (RequestQueueItem): Request that was sent.
+            response (requests.Response): Response received from the request.
+        """
+        if request not in self._ongoing_requests:
+            self._logger.debug(
+                f"Ignoring response for {request.url}, removed from ongoing requests."
             )
-            if response.status_code != 200:
-                raise ValueError(f"Invalid response code: {response.status_code}")
-        except requests.exceptions.RequestException as e:
-            self._logger.error(f"Request Exception: {e}")
             return
-        except Exception as e:
-            self._logger.error(f"Exception: {e}")
-            return
-        finally:
-            # If we clear the ongoing_requests in another thread while this request is being processed,
-            # it will be removed from the list before we get here. This is fine, we just ignore the response.
-            if request in self._ongoing_requests:
-                self._ongoing_requests.remove(request)
-            else:
-                self._logger.debug(
-                    f"Ignoring response for {request}, removed from ongoing requests."
-                )
-                return
 
-        if response and self._running:
+        self._ongoing_requests.remove(request)
+        self._process_response(request, response)
+
+    def _process_response(self, request: RequestQueueItem, response: requests.Response):
+        """Process a response from a request worker or the cache.
+
+        Args:
+            request (RequestQueueItem): Request that was sent.
+            response (requests.Response): Response received from the request.
+        """
+        if not response:
+            self._logger.error(f"Failed to get response for {request.url}.")
+            return
+
+        if response.status_code != 200:
+            self._logger.error(
+                f"Received non-200 status code for {request.url}: {response.status_code}"
+            )
+            return
+
+        # Cache and emit the response
+        if self.running:
             self._response_cache[response.url] = _CachedResponse(response)
             self.response_received.emit(request, response)

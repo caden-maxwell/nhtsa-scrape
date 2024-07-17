@@ -3,12 +3,11 @@ from pathlib import Path
 from datetime import datetime
 
 from PyQt6.QtWidgets import QWidget, QApplication, QMessageBox
-from PyQt6.QtCore import QThread
 from PyQt6.QtGui import QCloseEvent
 
 from app.log_utils import QtLogHandler, ColorFormatter
 from app.pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
-from app.scrape import RequestHandler
+from app.scrape import RequestController
 from app.models import DatabaseHandler
 from app.ui import Ui_MainWindow
 
@@ -20,13 +19,9 @@ class MainWindow(QWidget):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self._req_handler = RequestHandler()
+        self._req_handler = RequestController()
         path = Path(__file__).parent.parent / "app.db"
         self._db_handler = DatabaseHandler(path)
-
-        self._req_thread = QThread()
-        self._req_handler.moveToThread(self._req_thread)
-        self._req_thread.started.connect(self._req_handler.start)
 
         # Setup logger
         self._logs_window = LogsWindow()
@@ -43,7 +38,9 @@ class MainWindow(QWidget):
         self._logger = logging.getLogger(__name__)
         # Clear the logs file
         open("app.log", "w").close()
-        self._logger.info("This logs file serves to record all logs from the most recent application run.")
+        self._logger.info(
+            "This logs file serves to record all logs from the most recent application run."
+        )
         self._logger.info(f"Application started at {datetime.now()}")
 
         # Setup menus
@@ -51,14 +48,13 @@ class MainWindow(QWidget):
         self._settingsMenuPage = SettingsMenu(self._req_handler)
         data_dir = self._settingsMenuPage.get_save_path()
         self._scrapeMenuPage = ScrapeMenu(self._req_handler, self._db_handler, data_dir)
-        self._profilesMenuPage = ProfileMenu(self._req_handler, self._db_handler, data_dir)
+        self._profilesMenuPage = ProfileMenu(
+            self._req_handler, self._db_handler, data_dir
+        )
         self.ui.stackedWidget.addWidget(self._mainMenuPage)
         self.ui.stackedWidget.addWidget(self._scrapeMenuPage)
         self.ui.stackedWidget.addWidget(self._profilesMenuPage)
         self.ui.stackedWidget.addWidget(self._settingsMenuPage)
-
-        self._req_handler.started.connect(self._scrapeMenuPage.fetch_search)
-        self._req_thread.start()
 
         # Setup signals
         back_btns = [
@@ -82,8 +78,12 @@ class MainWindow(QWidget):
         )
         self._mainMenuPage.logs.connect(self._logs_window.show)
 
-        self._settingsMenuPage.save_path_changed.connect(self._profilesMenuPage.data_dir_changed)
-        self._settingsMenuPage.save_path_changed.connect(self._scrapeMenuPage.data_dir_changed)
+        self._settingsMenuPage.save_path_changed.connect(
+            self._profilesMenuPage.data_dir_changed
+        )
+        self._settingsMenuPage.save_path_changed.connect(
+            self._scrapeMenuPage.data_dir_changed
+        )
 
     def closeEvent(self, event: QCloseEvent):
         """Safely close all threads/processes"""
@@ -103,8 +103,6 @@ class MainWindow(QWidget):
 
             # Request handler
             self._req_handler.stop()
-            self._req_thread.quit()
-            self._req_thread.wait()
             self._scrapeMenuPage.cleanup()
 
             # Database connection

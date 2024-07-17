@@ -4,7 +4,7 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal, Qt, QItemSelection, pyqtSlot
 from PyQt6.QtWidgets import QWidget, QMessageBox, QLineEdit, QInputDialog
 
-from app.scrape import RequestHandler
+from app.scrape import RequestController
 from app.ui import Ui_ProfileMenu
 from app.models import ProfileList, DatabaseHandler, Profile
 from app.pages import DataView
@@ -14,7 +14,7 @@ class ProfileMenu(QWidget):
     back = pyqtSignal()
 
     def __init__(
-        self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path
+        self, req_handler: RequestController, db_handler: DatabaseHandler, data_dir: Path
     ):
         super().__init__()
 

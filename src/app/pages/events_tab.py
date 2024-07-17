@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
 from app.pages import BaseTab
 from app.models import DatabaseHandler, EventList, Event, Profile
 from app.scrape import (
-    RequestHandler,
+    RequestController,
     Priority,
     RequestQueueItem,
     BaseScraper,
@@ -37,7 +37,7 @@ from app.ui import Ui_EventsTab
 class EventsTab(BaseTab):
     def __init__(
         self,
-        req_handler: RequestHandler,
+        req_handler: RequestController,
         db_handler: DatabaseHandler,
         profile: Profile,
         data_dir: Path,
@@ -187,9 +187,9 @@ class EventsTab(BaseTab):
         if event != self._current_index_event:
             return
 
-        if self._req_handler.contains(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "images"}
-        ) or self._req_handler.contains(Priority.IMAGE.value, {"event": event}):
+        ) or self._req_handler.contains_requests(Priority.IMAGE.value, {"event": event}):
             self.ui.scrapeImgsBtn.setText("Scraping...")
             self.ui.scrapeImgsBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -198,7 +198,7 @@ class EventsTab(BaseTab):
             self.ui.scrapeImgsBtn.setEnabled(True)
             self.ui.stopBtn.setVisible(False)
 
-        if self._req_handler.contains(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "raw", "event": event}
         ):
             self.ui.saveRawBtn.setText("Saving...")
@@ -207,7 +207,7 @@ class EventsTab(BaseTab):
             self.ui.saveRawBtn.setText("Save Raw Data")
             self.ui.saveRawBtn.setEnabled(True)
 
-        if self._req_handler.contains(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "edr", "event": event}
         ):
             self.ui.fetchEDRBtn.setText("Fetching...")
@@ -279,10 +279,10 @@ class EventsTab(BaseTab):
 
     def _stop_btn_clicked(self):
         # Stops any requests for a case page requested specifically for images
-        self._req_handler.clear_queue(Priority.IMMEDIATE.value, {"for": "images"})
+        self._req_handler.clear_requests(Priority.IMMEDIATE.value, {"for": "images"})
 
         # Stops any requests for images themselves
-        self._req_handler.clear_queue(
+        self._req_handler.clear_requests(
             Priority.IMAGE.value, {"event": self._current_index_event}
         )
 
@@ -701,13 +701,14 @@ class EventsTab(BaseTab):
             f.write(response.content)
 
         self._logger.info(f"Saved EDR data for case {event.case_id} to {edr_data_path}")
+        print(f"Saved EDR data for case {event.case_id} to {edr_data_path}")
         self._update_event_btns(event)
 
     def closeEvent(self, event):
         # TODO: This will clear all immediate and image requests, even if they are not for the current tab
         #   Not too much of an issue, but could be improved
-        self._req_handler.clear_queue(Priority.IMMEDIATE.value)
-        self._req_handler.clear_queue(Priority.IMAGE.value)
+        self._req_handler.clear_requests(Priority.IMMEDIATE.value)
+        self._req_handler.clear_requests(Priority.IMAGE.value)
         self._logger.debug("Cleared image requests.")
 
 
