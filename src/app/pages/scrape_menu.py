@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpin
 from app.models import DatabaseHandler, Profile, Event
 from app.pages import DataView
 from app.scrape import (
-    RequestHandler,
+    RequestController,
     BaseScraper,
     ScraperNASS,
     ScraperCISS,
@@ -43,7 +43,7 @@ class ScrapeMenu(QWidget):
     end_scrape = pyqtSignal()
 
     def __init__(
-        self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path
+        self, req_handler: RequestController, db_handler: DatabaseHandler, data_dir: Path
     ):
         super().__init__()
 
@@ -103,6 +103,8 @@ class ScrapeMenu(QWidget):
         self.ui.databaseBtnGroup.buttonClicked.connect(self.set_submit_btn)
 
         self._data_viewer = None
+
+        self.fetch_search()
 
     def fetch_search(self):
         """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
@@ -308,6 +310,7 @@ class ScrapeMenu(QWidget):
             return
 
         self._scraper = nhtsa_model.scraper(
+            req_handler=self._req_handler,
             make=_get_combo_text_data(nhtsa_model.make_combo),
             model=_get_combo_text_data(nhtsa_model.model_combo),
             start_model_year=_get_combo_text_data(nhtsa_model.start_year_combo),

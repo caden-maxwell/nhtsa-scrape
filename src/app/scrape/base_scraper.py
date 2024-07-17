@@ -5,9 +5,9 @@ import logging
 import textwrap
 from requests import Response
 
-from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot, QTimer
+from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from app.scrape import RequestHandler, RequestQueueItem, Priority
+from app.scrape import RequestController, RequestQueueItem, Priority
 from app.models import Event
 
 
@@ -30,6 +30,7 @@ class _Meta(type(ABC), type(QObject)):
 
 
 class BaseScraper(QObject, ABC, metaclass=_Meta):
+    enqueue_request = pyqtSignal(RequestQueueItem)
     event_parsed = pyqtSignal(Event, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
@@ -71,7 +72,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 
     @abstractmethod
-    def __init__(self, req_handler: RequestHandler):
+    def __init__(self, req_controller: RequestController):
         """
         Initializes the BaseScraper. Do not make any signal/slot connections here,
         as this function will be run in the main thread. If you need to connect signals/slots,
@@ -80,7 +81,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         super().__init__()
 
         self._logger = logging.getLogger(__name__)
-        self._req_handler = req_handler
+        self._req_handler = req_controller
 
         self.running = False
         self.start_time = datetime.now()
@@ -93,14 +94,9 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         self._payload = {}
 
     def start(self):
-        self._req_handler.response_received.connect(
-            self._handle_response
-        )  # This needs to be connected here instead of init to avoid running in the main thread
-
-        self._timer = QTimer()
-        self._timer.setInterval(500)  # Every 0.5 seconds
-        self._timer.timeout.connect(self._check_complete)
-        self._timer.start()
+        # Connections need to be made here instead of init to avoid running in the main thread
+        self._req_handler.response_received.connect(self._handle_response)
+        self.enqueue_request.connect(self._req_handler.enqueue_request)
 
         self.running = True
         self.started.emit()
@@ -116,24 +112,13 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
     def _handle_response(self, request: RequestQueueItem, response: Response):
         """Handles the response from a request."""
 
-    def _check_complete(self):
-        """Checks if the scraper can be completed and emits the completed signal if so."""
-        if (
-            not (
-                self._req_handler.contains(Priority.CASE_LIST.value)
-                or self._req_handler.contains(Priority.CASE.value)
-            )
-            and self.running
-        ):
-            self.complete()
-
     def complete(self):
         """Completes the scraping process and emits the completed signal."""
 
         # Order matters here, otherwise the request handler will start making
         # unnecessary case list requests once the individual cases are cleared
-        self._req_handler.clear_queue(Priority.CASE_LIST.value)
-        self._req_handler.clear_queue(Priority.CASE.value)
+        self._req_handler.clear_requests(Priority.CASE_LIST.value)
+        self._req_handler.clear_requests(Priority.CASE.value)
 
         if self.success_cases + self.failed_cases < 1:
             self._logger.info("No data was found. Scrape complete.")
@@ -153,5 +138,4 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
             )
 
         self.running = False
-        self._timer.stop()
         self.completed.emit()

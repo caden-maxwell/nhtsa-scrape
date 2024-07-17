@@ -7,7 +7,7 @@ import json
 from collections import defaultdict, namedtuple
 from fuzzywuzzy import fuzz
 
-from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames, RequestHandler
+from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames, RequestController
 from app.resources import payload_CISS
 from app.models import Event
 
@@ -37,7 +37,7 @@ class ScraperCISS(BaseScraper):
 
     def __init__(
         self,
-        req_handler: RequestHandler,
+        req_handler: RequestController,
         make,
         model,
         start_model_year,
@@ -127,7 +127,7 @@ class ScraperCISS(BaseScraper):
         self._req_case_list()
 
     def _req_case_list(self):
-        self._req_handler.enqueue_request(
+        self.enqueue_request.emit(
             RequestQueueItem(
                 self.ROOT + self.case_list_url,
                 method="GET",
@@ -170,6 +170,7 @@ class ScraperCISS(BaseScraper):
             self._logger.debug(
                 f"No cases found on page {self._payload['currentPage']}. Scrape complete."
             )
+            self.complete()
             return
 
         self._logger.info(
@@ -177,7 +178,7 @@ class ScraperCISS(BaseScraper):
         )
 
         for case_id in case_ids:
-            self._req_handler.enqueue_request(
+            self.enqueue_request.emit(
                 RequestQueueItem(
                     self.ROOT + self.case_url_raw.format(case_id=case_id),
                     priority=Priority.CASE.value,

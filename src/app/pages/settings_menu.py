@@ -6,7 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QFileDialog
 
-from app.scrape import RequestHandler
+from app.scrape import RequestController
 from app.ui import Ui_SettingsMenu
 
 
@@ -20,22 +20,22 @@ class SettingsMenu(QWidget):
         "type": "object",
         "properties": {
             "minRateLimit": {
-                "description": f"Minimum rate limit in seconds. Must be greater than {RequestHandler.ABS_MIN_RATE_LIMIT} to avoid IP bans.",
+                "description": f"Minimum rate limit in seconds. Must be greater than {RequestController.ABS_MIN_RATE_LIMIT} to avoid IP bans.",
                 "type": "number",
-                "default": RequestHandler.DEFAULT_MIN_RATE_LIMIT,
-                "minimum": RequestHandler.ABS_MIN_RATE_LIMIT,
+                "default": RequestController.DEFAULT_MIN_RATE_LIMIT,
+                "minimum": RequestController.ABS_MIN_RATE_LIMIT,
             },
             "maxRateLimit": {
                 "description": "Maximum rate limit in seconds. Must be greater than or equal to the minimum rate limit.",
                 "type": "number",
-                "default": RequestHandler.DEFAULT_MAX_RATE_LIMIT,
-                "minimum": RequestHandler.ABS_MIN_RATE_LIMIT,
+                "default": RequestController.DEFAULT_MAX_RATE_LIMIT,
+                "minimum": RequestController.ABS_MIN_RATE_LIMIT,
             },
             "timeout": {
                 "description": "Request timeout in seconds.",
                 "type": "number",
-                "default": RequestHandler.DEFAULT_TIMEOUT,
-                "minimum": RequestHandler.MIN_TIMEOUT,
+                "default": RequestController.DEFAULT_TIMEOUT,
+                "minimum": RequestController.MIN_TIMEOUT,
             },
             "debug": {
                 "description": "Enable debug logging.",
@@ -51,7 +51,7 @@ class SettingsMenu(QWidget):
         },
     }
 
-    def __init__(self, req_handler: RequestHandler):
+    def __init__(self, req_handler: RequestController):
         super().__init__()
 
         self.ui = Ui_SettingsMenu()
