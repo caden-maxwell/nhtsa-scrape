@@ -35,13 +35,23 @@ class RequestQueueItem:
 
 
 class WorkerSignals(QObject):
+    """Signals emitted by a RequestWorker instance."""
+
     started = pyqtSignal()
-    finished = pyqtSignal(RequestQueueItem, requests.Response)
+    response = pyqtSignal(RequestQueueItem, requests.Response)
+    exception = pyqtSignal(Exception)
 
 
-# Define a worker class that inherits QObject
 class RequestWorker(QRunnable):
+    """Worker class to send requests in a separate thread."""
+
     def __init__(self, request: RequestQueueItem, timeout: float):
+        """Create a new RequestWorker instance.
+
+        Args:
+            request (RequestQueueItem): Request to send.
+            timeout (float): Request timeout in seconds.
+        """
         super().__init__()
         self._request = request
         self._timeout = timeout
@@ -58,9 +68,9 @@ class RequestWorker(QRunnable):
                 timeout=self._timeout,
             )
         except Exception as e:
-            print(f"Failed to get response for {self._request.url}: {e}")
-
-        self.signals.finished.emit(self._request, response)
+            self.signals.exception.emit(e)
+        else:
+            self.signals.response.emit(self._request, response)
 
 
 # Create a controller class to manage the requests
@@ -120,13 +130,13 @@ class RequestController(QObject):
                 cached = self._response_cache[request.url]
                 if not cached.expired():
                     self._logger.debug(f"Using cached response for {request.url}.")
+                    self._request_queue.remove(request)
                     self._process_response(
                         request, self._response_cache[request.url].response
                     )
-                    self._request_queue.remove(request)
                     return
-            # If not in cache, perform additional checks
 
+            # If not in cache, perform additional checks:
             # Check if the rate limit is met
             if self._delay_timer.remainingTime() > 0:
                 self._logger.debug(
@@ -164,7 +174,8 @@ class RequestController(QObject):
         self._ongoing_requests.append(request)
 
         runnable = RequestWorker(request, self._timeout)
-        runnable.signals.finished.connect(self._handle_response)
+        runnable.signals.response.connect(self._handle_response)
+        runnable.signals.exception.connect(self._handle_exception)
         self._threadpool.start(runnable)
 
     def enqueue_request(self, request: RequestQueueItem):
@@ -324,7 +335,14 @@ class RequestController(QObject):
             return
 
         self._ongoing_requests.remove(request)
+
+        self._response_cache[response.url] = _CachedResponse(response)
+
         self._process_response(request, response)
+
+    @pyqtSlot(Exception)
+    def _handle_exception(self, exception: Exception):
+        self._logger.error(f"Request worker exception: {exception}")
 
     def _process_response(self, request: RequestQueueItem, response: requests.Response):
         """Process a response from a request worker or the cache.
@@ -345,5 +363,4 @@ class RequestController(QObject):
 
         # Cache and emit the response
         if self.running:
-            self._response_cache[response.url] = _CachedResponse(response)
             self.response_received.emit(request, response)
