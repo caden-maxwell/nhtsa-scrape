@@ -43,7 +43,7 @@ class CSVTab(BaseTab):
             writer.writerow(self._model.get_headers())
             writer.writerows(self._model.all_events())
         self.ui.saveBtn.setEnabled(True)
-        self.ui.saveBtn.setText("Save CSV")
+        self.ui.saveBtn.setText("Save as CSV")
         self._logger.info(f"Saved CSV to {csv_path}.")
 
         box = QMessageBox()

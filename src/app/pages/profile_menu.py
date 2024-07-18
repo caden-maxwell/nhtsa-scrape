@@ -27,15 +27,15 @@ class ProfileMenu(QWidget):
         self.ui = Ui_ProfileMenu()
         self.ui.setupUi(self)
 
-        self.ui.treeView.setModel(self._model)
-        self.ui.treeView.selectionModel().selectionChanged.connect(
+        self.ui.listView.setModel(self._model)
+        self.ui.listView.selectionModel().selectionChanged.connect(
             self.handle_selection_changed
         )
-        self.ui.treeView.clearSelection()
+        self.ui.listView.clearSelection()
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.openBtn.clicked.connect(self.handle_open)
-        self.ui.treeView.doubleClicked.connect(self.handle_open)
+        self.ui.listView.doubleClicked.connect(self.handle_open)
         self.ui.deleteBtn.clicked.connect(self.handle_delete)
         self.ui.renameBtn.clicked.connect(self.handle_rename)
 
@@ -53,7 +53,7 @@ class ProfileMenu(QWidget):
             viewer.set_data_dir(data_dir)
 
     def handle_open(self):
-        selected = self.ui.treeView.selectedIndexes()
+        selected = self.ui.listView.selectedIndexes()
         for idx in selected:
             profile: Profile = idx.data(role=Qt.ItemDataRole.UserRole)
             self._logger.debug(f"Opening profile {profile}")
@@ -67,7 +67,7 @@ class ProfileMenu(QWidget):
             data_viewer.show()
 
     def handle_delete(self):
-        selected = self.ui.treeView.selectedIndexes()
+        selected = self.ui.listView.selectedIndexes()
         dialog = QMessageBox(
             QMessageBox.Icon.Warning,
             "Delete Profile",
@@ -80,10 +80,10 @@ class ProfileMenu(QWidget):
             return
 
         self._model.delete_profiles(selected)
-        self.ui.treeView.clearSelection()
+        self.ui.listView.clearSelection()
 
     def handle_rename(self):
-        selected = self.ui.treeView.selectedIndexes().pop()
+        selected = self.ui.listView.selectedIndexes().pop()
         profile: Profile = selected.data(role=Qt.ItemDataRole.UserRole)
         profile_name = selected.data(role=Qt.ItemDataRole.DisplayRole)
         new_name, ok = QInputDialog.getText(
@@ -97,16 +97,16 @@ class ProfileMenu(QWidget):
             return
         self._db_handler.update_profile(profile, name=new_name)
         self._model.refresh_data()
-        self.ui.treeView.clearSelection()
+        self.ui.listView.clearSelection()
 
     def handle_selection_changed(self, selected: QItemSelection, deselected):
         self.ui.openBtn.setEnabled(False)
         self.ui.deleteBtn.setEnabled(False)
         self.ui.renameBtn.setEnabled(False)
-        if self.ui.treeView.selectedIndexes():
+        if self.ui.listView.selectedIndexes():
             self.ui.openBtn.setEnabled(True)
             self.ui.deleteBtn.setEnabled(True)
-            if len(self.ui.treeView.selectedIndexes()) == 1:
+            if len(self.ui.listView.selectedIndexes()) == 1:
                 self.ui.renameBtn.setEnabled(True)
 
     def keyPressEvent(self, event) -> None:

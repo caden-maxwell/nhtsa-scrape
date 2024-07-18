@@ -20,7 +20,7 @@
    <item row="0" column="0">
     <widget class="QPushButton" name="saveBtn">
      <property name="text">
-      <string>Save Data to CSV</string>
+      <string>Save as CSV</string>
      </property>
     </widget>
    </item>
