@@ -81,7 +81,8 @@ class EventsTab(BaseTab):
         self._req_controller = req_controller
         self._req_controller.response_received.connect(self.handle_response)
 
-        self.img_cache = defaultdict(dict)  # key: event, value: dict of img_id: img
+        # key: event, value: dict of img_id: img
+        self.img_cache = defaultdict(lambda: defaultdict(dict))
 
         self.refresh()
 
@@ -156,15 +157,18 @@ class EventsTab(BaseTab):
         self.ui.totDVLineEdit.setText(str(event.TOT_dv))
 
         # Clear and repopulate image thumbnails
-        img_ids = self.img_cache[event]
-        images = [(img_id, img) for img_id, img in img_ids.items() if img]
-
         self._clear_thumbnails()
-        self.no_images_label.setVisible(not len(images))
 
-        for img_id, img in images:
+        img_ids = self.img_cache[event]
+        empty = True
+        for img_id, img in img_ids.items():
+            if not img:
+                continue
             thumbnail = ImageThumbnail(img_id, img, self._data_dir, event)
             self.ui.thumbnailsLayout.addWidget(thumbnail)
+            empty = False
+
+        self.no_images_label.setVisible(empty)
 
         self.ui.ignoreBtn.setEnabled(True)
         self._set_ignore_btn_text(self._model.data(index, Qt.ItemDataRole.FontRole))
@@ -175,7 +179,7 @@ class EventsTab(BaseTab):
         for i in reversed(range(self.ui.thumbnailsLayout.count())):
             widget = self.ui.thumbnailsLayout.itemAt(i).widget()
             self.ui.thumbnailsLayout.removeWidget(widget)
-            widget.setParent(None)
+            widget.deleteLater()
         self.no_images_label.setVisible(True)
 
     def _update_event_btns(self, event: Event):
@@ -421,7 +425,9 @@ class EventsTab(BaseTab):
         for photo in filtered_photos:
             obj_id = photo.get("ObjectId")
 
-            if event_imgs.get(obj_id):
+            # Skip if we already have the image (implicitly creates
+            #   a new None entry in the dict if it doesn't exist)
+            if event_imgs[obj_id]:
                 continue
 
             self._req_controller.enqueue_request(
@@ -432,7 +438,6 @@ class EventsTab(BaseTab):
                     callback=self._parse_image,
                 )
             )
-            event_imgs.update({obj_id: None})
         self.img_cache[event] = event_imgs
 
     def _parse_image(self, request: RequestQueueItem, response: Response):
@@ -462,23 +467,15 @@ class EventsTab(BaseTab):
 
         event_imgs[img_key] = image
 
-        self._update_thumbnails(event)
         self._update_event_btns(event)
 
-    def _update_thumbnails(self, event: Event):
-
-        if event != self._current_index_event:
+        if self._current_index_event != event:
             return
 
-        self._clear_thumbnails()
-        event_imgs = self.img_cache[event]
-        if event_imgs:
-            self.no_images_label.setVisible(False)
+        thumbnail = ImageThumbnail(img_key, image, self._data_dir, event)
+        self.ui.thumbnailsLayout.addWidget(thumbnail)
 
-        for img_id, img in event_imgs.items():
-            if img:
-                thumbnail = ImageThumbnail(img_id, img, self._data_dir, event)
-                self.ui.thumbnailsLayout.addWidget(thumbnail)
+        self.no_images_label.setVisible(False)
 
     def _save_case(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
