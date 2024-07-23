@@ -6,6 +6,8 @@
 
 Sorted from highest (top) to lowest priority:
 
-- ENHANCE: Add helpful event messages at bottom of screen so user knows when something is saved or goes wrong instead of obtrusive message boxes.
+- FIX: Unused max request time after refactoring the RequestHandler
+- FIX: Remove messageboxes for individual events, too obtrusive
+- ENHANCE: Replace those^ messageboxes with messages at bottom of screen so the user knows something actually happened
 - ENHANCE: Include link for each case
-- FIX: Logic for profile naming/renaming.
+- FIX: Logic for profile naming/renaming (weird behavior, maybe just remove renaming from multi-analysis)
