@@ -6,6 +6,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from app.ui import Ui_SummaryTab
 from app.pages import BaseTab
+from app.pages.utils import open_file
 from app.models import Profile
 
 
@@ -33,7 +34,7 @@ class SummaryTab(BaseTab):
     def open_profile(self):
         os.makedirs(self._profile_dir, exist_ok=True)
         try:
-            os.startfile(self._profile_dir)
+            open_file(self._profile_dir, self)
         except Exception as e:
             self._logger.error(f"Failed to open profile directory: {e}")
             QMessageBox.critical(
