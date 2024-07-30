@@ -776,13 +776,16 @@ class ImageThumbnail(QWidget):
 
         width, height = self.image.size
         font_size = 100
-        font = ImageFont.truetype("segoeui.ttf", font_size)
+        font_path = Path(__file__).parent.parent / "resources" / "OpenSans-Regular.ttf"
+
+        font = ImageFont.truetype(font_path, font_size)
+
         text_length = draw.textlength(text, font)
 
         # Iteratively make the text size smaller until it fits in the width of the image
         while text_length > width:
             font_size -= 1
-            font = ImageFont.truetype("segoeui.ttf", font_size)
+            font = ImageFont.truetype(font_path, font_size)
             text_length = draw.textlength(text, font)
 
         x1, y1, x2, y2 = draw.textbbox((0, 0), text, font)
