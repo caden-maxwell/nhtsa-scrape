@@ -11,3 +11,4 @@ Sorted from highest (top) to lowest priority:
 - ENHANCE: Replace those^ messageboxes with messages at bottom of screen so the user knows something actually happened
 - ENHANCE: Include link for each case
 - FIX: Logic for profile naming/renaming (weird behavior, maybe just remove renaming from multi-analysis)
+- FIX: edr directory made even if no EDR exists
