@@ -5,7 +5,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[("app/resources/icon.png", "app/resources")],
+    datas=[("app/resources/icon.png", "app/resources"), ("app/resources/OpenSans-Regular.ttf", "app/resources")],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
