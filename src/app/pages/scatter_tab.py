@@ -13,6 +13,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from PyQt6.QtWidgets import QMessageBox
 
 from app.pages import BaseTab
+from app.pages.utils import open_file
 from app.models import DatabaseHandler, ScatterPlotModel, Profile
 from app.ui import Ui_ScatterTab
 
@@ -218,7 +219,7 @@ class ScatterTab(BaseTab):
         button_result = box.exec()
 
         if button_result == QMessageBox.StandardButton.Open:
-            os.startfile(self._data_dir)
+            open_file(self._data_dir, self)
 
 
 class CustomToolbar(NavigationToolbar):
