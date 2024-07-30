@@ -5,7 +5,6 @@ Pillow
 lxml
 numpy
 matplotlib
-seaborn
 sqlalchemy
 jsonschema
 python-Levenshtein

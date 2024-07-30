@@ -6,6 +6,7 @@ from pathlib import Path
 from PyQt6.QtWidgets import QMessageBox
 
 from app.pages import BaseTab
+from app.pages.utils import open_file
 from app.models import EventTable, Profile
 from app.ui import Ui_CSVTab
 
@@ -58,7 +59,7 @@ class CSVTab(BaseTab):
         button_result = box.exec()
 
         if button_result == QMessageBox.StandardButton.Open:
-            os.startfile(self._data_dir)
+            open_file(self._data_dir, self)
 
         # minval = round(df["NASS_dv"].min(), 1)
         # mincase = df.loc[df["NASS_dv"].idxmin(), "case_id"]
