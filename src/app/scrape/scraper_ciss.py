@@ -7,7 +7,13 @@ import json
 from collections import defaultdict, namedtuple
 from fuzzywuzzy import fuzz
 
-from app.scrape import BaseScraper, RequestQueueItem, Priority, FieldNames, RequestController
+from app.scrape import (
+    BaseScraper,
+    RequestQueueItem,
+    Priority,
+    FieldNames,
+    RequestController,
+)
 from app.resources import payload_CISS
 from app.models import Event
 
@@ -177,8 +183,9 @@ class ScraperCISS(BaseScraper):
             f"Requesting {len(case_ids)} case{'s'[:len(case_ids)^1]} from page {self.current_page}..."
         )
 
+        requests = []
         for case_id in case_ids:
-            self.enqueue_request.emit(
+            requests.append(
                 RequestQueueItem(
                     self.ROOT + self.case_url_raw.format(case_id=case_id),
                     priority=Priority.CASE.value,
@@ -186,6 +193,7 @@ class ScraperCISS(BaseScraper):
                     extra_data={"database": "CISS"},
                 )
             )
+        self.batch_enqueue.emit(requests)
 
         self.current_page += 1
         self._payload["currentPage"] = self.current_page

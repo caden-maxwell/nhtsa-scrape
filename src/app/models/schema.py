@@ -18,14 +18,8 @@ class Profile(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
-    make: Mapped[str] = mapped_column()
-    model: Mapped[str] = mapped_column()
-    start_year: Mapped[int] = mapped_column()
-    end_year: Mapped[int] = mapped_column()
-    primary_dmg: Mapped[str] = mapped_column()
-    secondary_dmg: Mapped[str] = mapped_column()
-    min_dv: Mapped[int] = mapped_column()
-    max_dv: Mapped[int] = mapped_column()
+    params: Mapped[str] = mapped_column()
+    multi: Mapped[bool] = mapped_column()
     created: Mapped[int] = mapped_column()
     modified: Mapped[int] = mapped_column()
 

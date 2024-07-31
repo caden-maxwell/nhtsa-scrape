@@ -31,10 +31,11 @@ class _Meta(type(ABC), type(QObject)):
 
 class BaseScraper(QObject, ABC, metaclass=_Meta):
     enqueue_request = pyqtSignal(RequestQueueItem)
+    batch_enqueue = pyqtSignal(list)
     event_parsed = pyqtSignal(Event, Response)
     started = pyqtSignal()
     completed = pyqtSignal()
-    ROOT = "https://crashviewer.nhtsa.dot.gov/"
+    ROOT = "https://crashviewer.nhtsa.dot.gov"
 
     @property
     @abstractmethod
@@ -97,6 +98,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         # Connections need to be made here instead of init to avoid running in the main thread
         self._req_handler.response_received.connect(self._handle_response)
         self.enqueue_request.connect(self._req_handler.enqueue_request)
+        self.batch_enqueue.connect(self._req_handler.batch_enqueue)
 
         self.running = True
         self.started.emit()
