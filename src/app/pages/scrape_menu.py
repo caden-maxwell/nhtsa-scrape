@@ -373,7 +373,7 @@ class ScrapeMenu(QWidget):
         data_dir = Path(data_dir)
         self._data_dir = data_dir
         if self._data_viewer and not self._dv_closed:
-            self._data_viewer.set_data_dir(data_dir)
+            self._data_viewer.handle_data_dir_updated(data_dir)
 
     def cleanup(self):
         if self._scraper and self._scraper.running:

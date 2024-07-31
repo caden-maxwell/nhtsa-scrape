@@ -63,23 +63,24 @@ class DataView(QWidget):
 
     def update_current_tab(self):
         """Refresh the currently selected tab."""
-        widget: BaseTab = self.ui.tabWidget.currentWidget()
-        widget.refresh()
-
-    def set_data_dir(self, data_dir: Path):
-        self._data_dir = data_dir
-        self._set_tabs_profile_dir()
+        current_tab: BaseTab = self.ui.tabWidget.currentWidget()
+        current_tab.refresh()
 
     def _set_tabs_profile_dir(self):
         profile_dir = (self._data_dir / self._get_profile_dir()).resolve()
 
         for tab in self._tabs:
             tab.set_data_dir(profile_dir)
+            tab.refresh()
 
     @pyqtSlot(Profile)
     def handle_profile_updated(self, profile: Profile):
         if profile.id == self._profile.id:
             self._set_tabs_profile_dir()
+
+    def handle_data_dir_updated(self, data_dir: Path):
+        self._data_dir = data_dir
+        self._set_tabs_profile_dir()
 
     @pyqtSlot(Event, Profile)
     def handle_event_added(self, event: Event, profile: Profile):

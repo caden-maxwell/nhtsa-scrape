@@ -50,7 +50,7 @@ class ProfileMenu(QWidget):
         data_dir = Path(data_dir)
         self._data_dir = data_dir
         for viewer in self._data_viewers:
-            viewer.set_data_dir(data_dir)
+            viewer.handle_data_dir_updated(data_dir)
 
     def handle_open(self):
         selected = self.ui.listView.selectedIndexes()
