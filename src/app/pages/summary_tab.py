@@ -31,7 +31,7 @@ class SummaryTab(BaseTab):
 
     def open_profile(self):
         os.makedirs(self._profile_dir, exist_ok=True)
-        success = open_path(self._profile_dir, self)
+        success = open_path(self._profile_dir)
         if not success:
             QMessageBox.critical(
                 self,

@@ -59,7 +59,7 @@ class CSVTab(BaseTab):
         button_result = box.exec()
 
         if button_result == QMessageBox.StandardButton.Open:
-            success = open_path(self._data_dir, self)
+            success = open_path(self._data_dir)
             if not success:
                 QMessageBox.critical(
                     self,

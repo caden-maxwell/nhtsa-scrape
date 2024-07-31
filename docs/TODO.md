@@ -6,7 +6,6 @@
 
 Sorted from highest (top) to lowest priority:
 
-- ENHANCE: Add "Open" to settings to go straight to data folder
 - FIX: Photo "saved" dialog doesn't reset
 - FIX: Remove messageboxes for individual events, too obtrusive
 - ENHANCE: Replace those^ messageboxes with messages at bottom of screen so the user knows something actually happened

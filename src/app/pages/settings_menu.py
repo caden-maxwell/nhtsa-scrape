@@ -6,6 +6,7 @@ from pathlib import Path
 from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QFileDialog
 
+from app.pages.utils import open_path
 from app.scrape import RequestController
 from app.ui import Ui_SettingsMenu
 
@@ -64,17 +65,17 @@ class SettingsMenu(QWidget):
         self.settings_path.touch(exist_ok=True)
         self._logger.debug(f"Settings path: {self.settings_path}")
 
-        self.settings = {}
+        self._settings = {}
         for key, value in self.SETTINGS_SCHEMA["properties"].items():
-            self.settings[key] = value["default"]
-        validate(self.settings, self.SETTINGS_SCHEMA)
+            self._settings[key] = value["default"]
+        validate(self._settings, self.SETTINGS_SCHEMA)
 
         # Update and validate settings from file
         try:
-            tmp_settings = self.settings.copy()
+            tmp_settings = self._settings.copy()
             tmp_settings.update(json.loads(self.settings_path.read_text()))
             validate(tmp_settings, self.SETTINGS_SCHEMA)
-            self.settings = tmp_settings
+            self._settings = tmp_settings
         except ValidationError:
             errors = self._validator.iter_errors(tmp_settings)
             for error in errors:
@@ -88,18 +89,18 @@ class SettingsMenu(QWidget):
                         "default"
                     ]
                     self._logger.debug(f"Set '{param}' to default value.")
-            self.settings = tmp_settings
+            self._settings = tmp_settings
 
             # Make sure the settings are valid after fixing them
-            validate(self.settings, self.SETTINGS_SCHEMA)
-            self.settings_path.write_text(json.dumps(self.settings, indent=4))
+            validate(self._settings, self.SETTINGS_SCHEMA)
+            self.settings_path.write_text(json.dumps(self._settings, indent=4))
         except Exception as e:
             self._logger.error(
                 f"Failed to load settings file: {e}. Using default settings."
             )
 
         self._logger.info(
-            f"Successfully loaded settings:\n{json.dumps(self.settings, indent=4)}"
+            f"Successfully loaded settings:\n{json.dumps(self._settings, indent=4)}"
         )
 
         self.ui.backBtn.clicked.connect(self.back.emit)
@@ -108,47 +109,49 @@ class SettingsMenu(QWidget):
         self.ui.rateLimitSpinBox.setToolTip(
             self.SETTINGS_SCHEMA["properties"]["rateLimit"]["description"]
         )
-        self.ui.rateLimitSpinBox.setValue(self.settings["rateLimit"])
+        self.ui.rateLimitSpinBox.setValue(self._settings["rateLimit"])
         self.ui.rateLimitSpinBox.editingFinished.connect(
             lambda: self._update_rate_limit(self.ui.rateLimitSpinBox.value())
         )
 
         # Set up timeout spinbox
-        self.ui.timeoutSpinBox.setValue(self.settings["timeout"])
+        self.ui.timeoutSpinBox.setValue(self._settings["timeout"])
         self.ui.timeoutSpinBox.editingFinished.connect(
             lambda: self._update_timeout(self.ui.timeoutSpinBox.value())
         )
 
         # Update request handler with settings
-        self.rate_limit_changed.emit(self.settings["rateLimit"])
-        self.timeout_changed.emit(self.settings["timeout"])
+        self.rate_limit_changed.emit(self._settings["rateLimit"])
+        self.timeout_changed.emit(self._settings["timeout"])
 
         # Set up debug checkbox
         self.ui.debugCheckbox.setToolTip(
             self.SETTINGS_SCHEMA["properties"]["debug"]["description"]
         )
-        self.ui.debugCheckbox.setChecked(self.settings["debug"])
+        self.ui.debugCheckbox.setChecked(self._settings["debug"])
         self.ui.debugCheckbox.clicked.connect(self._toggle_debug)
 
         # Set up data save path
         self.ui.filenameEdit.setToolTip(
             self.SETTINGS_SCHEMA["properties"]["dataSavePath"]["description"]
         )
-        self.ui.filenameEdit.setText(self.settings["dataSavePath"])
+        self.ui.filenameEdit.setText(self._settings["dataSavePath"])
         self.ui.browseBtn.clicked.connect(self._browse_data_save_path)
 
         try:
-            Path(self.settings["dataSavePath"]).mkdir(parents=True, exist_ok=True)
+            Path(self._settings["dataSavePath"]).mkdir(parents=True, exist_ok=True)
         except Exception as e:
             self._logger.error(
-                f"Failed to create data save path '{self.settings['dataSavePath']}': {e}"
+                f"Failed to create data save path '{self._settings['dataSavePath']}': {e}"
             )
             # Set data save path to default
-            self.settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"][
+            self._settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"][
                 "dataSavePath"
             ]["default"]
-            self.settings_path.write_text(json.dumps(self.settings, indent=4))
-            self.ui.filenameEdit.setText(self.settings["dataSavePath"])
+            self.settings_path.write_text(json.dumps(self._settings, indent=4))
+            self.ui.filenameEdit.setText(self._settings["dataSavePath"])
+
+        self.ui.openBtn.clicked.connect(self._open_save_path)
 
     def _update_rate_limit(self, value):
         value = round(value, 2)
@@ -163,11 +166,11 @@ class SettingsMenu(QWidget):
             value = min_rate_limit
 
         # If the value has not changed, no need to update anything else
-        if value == self.settings["rateLimit"]:
+        if value == self._settings["rateLimit"]:
             return
 
-        self.settings["rateLimit"] = value
-        self.settings_path.write_text(json.dumps(self.settings, indent=4))
+        self._settings["rateLimit"] = value
+        self.settings_path.write_text(json.dumps(self._settings, indent=4))
         self.rate_limit_changed.emit(value)
 
     def _update_timeout(self, value):
@@ -179,11 +182,11 @@ class SettingsMenu(QWidget):
             value = min_timeout
 
         # If the value has not changed, no need to update anything else
-        if value == self.settings["timeout"]:
+        if value == self._settings["timeout"]:
             return
 
-        self.settings["timeout"] = value
-        self.settings_path.write_text(json.dumps(self.settings, indent=4))
+        self._settings["timeout"] = value
+        self.settings_path.write_text(json.dumps(self._settings, indent=4))
         self.timeout_changed.emit(value)
 
     def _toggle_debug(self, checked):
@@ -194,20 +197,23 @@ class SettingsMenu(QWidget):
         else:
             self._logger.info("Disabled debug logging.")
             root_logger.setLevel(logging.INFO)
-        self.settings["debug"] = checked
-        self.settings_path.write_text(json.dumps(self.settings, indent=4))
+        self._settings["debug"] = checked
+        self.settings_path.write_text(json.dumps(self._settings, indent=4))
 
     def _browse_data_save_path(self):
         path = QFileDialog.getExistingDirectory(
-            self, "Select Directory", self.settings["dataSavePath"]
+            self, "Select Directory", self._settings["dataSavePath"]
         )
 
         if path and Path(path).exists():
             self.ui.filenameEdit.setText(path)
-            self.settings["dataSavePath"] = path
-            self.settings_path.write_text(json.dumps(self.settings, indent=4))
+            self._settings["dataSavePath"] = path
+            self.settings_path.write_text(json.dumps(self._settings, indent=4))
             self._logger.info(f"Set data save path to '{path}'.")
             self.save_path_changed.emit(path)
 
     def get_save_path(self):
-        return Path(self.settings["dataSavePath"])
+        return Path(self._settings["dataSavePath"])
+
+    def _open_save_path(self):
+        open_path(self._settings["dataSavePath"])
