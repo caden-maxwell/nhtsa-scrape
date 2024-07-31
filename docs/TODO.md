@@ -6,9 +6,8 @@
 
 Sorted from highest (top) to lowest priority:
 
-- FIX: Add params to summary tab instead of just "?"
-- FIX: Photo "saved" dialog doesn't reset
 - ENHANCE: Add "Open" to settings to go straight to data folder
+- FIX: Photo "saved" dialog doesn't reset
 - FIX: Remove messageboxes for individual events, too obtrusive
 - ENHANCE: Replace those^ messageboxes with messages at bottom of screen so the user knows something actually happened
 - ENHANCE: Include link for each case
@@ -17,4 +16,5 @@ Sorted from highest (top) to lowest priority:
         - Linear regression
         - Scatterplot itself
     - Database functions
-    - Saving photos to file (completely blocks GUI as of right now)
+    - Saving photos to file
+- ENHANCE: Make summary tab textedit into treeview for nicer json viewing

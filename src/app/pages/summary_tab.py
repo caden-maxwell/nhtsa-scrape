@@ -22,7 +22,12 @@ class SummaryTab(BaseTab):
         self.ui.openBtn.clicked.connect(self.open_profile)
 
     def refresh(self):
+        # Get scroll amount in lineedit so we can go back there after updating it
+        scroll = self.ui.paramsEdit.verticalScrollBar().value()
+        self.ui.paramsEdit.clear()
+
         self.ui.paramsEdit.setText(self._profile.params)
+        self.ui.paramsEdit.verticalScrollBar().setValue(scroll)
 
     def open_profile(self):
         os.makedirs(self._profile_dir, exist_ok=True)
