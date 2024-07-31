@@ -23,6 +23,7 @@ def open_path(path: Path) -> bool:
     except Exception as e:
         logging.getLogger(__file__).error(f"Could not open path '{path}': {e}")
         return False
+    return True
 
 
 def remove_path(path: Path) -> bool:
@@ -39,3 +40,4 @@ def remove_path(path: Path) -> bool:
     except OSError as e:
         logging.error(f"Could not remove directory '{path}': {e}")
         return False
+    return True
