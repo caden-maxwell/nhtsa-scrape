@@ -232,11 +232,29 @@ class ScrapeMenu(QWidget):
             None,
         )
 
+        if not nhtsa_model:
+            self._logger.error("Scrape aborted: No database was selected.")
+            return
+
         make = nhtsa_model.make_combo.currentText().upper()
         model = nhtsa_model.model_combo.currentText().upper()
         start_year = nhtsa_model.start_year_combo.currentText().upper()
         end_year = nhtsa_model.end_year_combo.currentText().upper()
         p_dmg = nhtsa_model.p_dmg_combo.currentText().upper()
+        s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
+        min_dv = nhtsa_model.min_dv_spinbox.value()
+        max_dv = nhtsa_model.max_dv_spinbox.value()
+        params = {
+            "database": self.ui.databaseBtnGroup.checkedButton().text(),
+            "make": make,
+            "model": model,
+            "start_year": start_year,
+            "end_year": end_year,
+            "primary_damage": p_dmg,
+            "secondary_damage": s_dmg,
+            "min_dv": min_dv,
+            "max_dv": max_dv,
+        }
 
         make_txt = make if make != "ALL" else "ANY MAKE"
         model_txt = model if model != "ALL" else "ANY MODEL"
@@ -253,7 +271,7 @@ class ScrapeMenu(QWidget):
         ):
             self._profile = Profile(
                 name=name,
-                params="?",
+                params=json.dumps({"Scrape 1": params}, indent=4),
                 multi=False,
                 created=int(now.timestamp()),
                 modified=int(now.timestamp()),
@@ -272,24 +290,23 @@ class ScrapeMenu(QWidget):
             if not self._data_viewer or self._dv_closed:
                 self._new_data_viewer()
 
+            old_params = json.loads(self._profile.params)
+            new_params = {**old_params, f"Scrape {len(old_params) + 1}": params}
+
             self._db_handler.update_profile(
                 self._profile,
                 multi=True,
-                params=None,
+                params=json.dumps(new_params, indent=4),
             )
-
-        if not nhtsa_model:
-            self._logger.error("Scrape aborted: No database selected.")
-            return
 
         self._scraper = nhtsa_model.scraper(
             req_handler=self._req_handler,
-            make=_get_combo_text_data(nhtsa_model.make_combo),
-            model=_get_combo_text_data(nhtsa_model.model_combo),
-            start_model_year=_get_combo_text_data(nhtsa_model.start_year_combo),
-            end_model_year=_get_combo_text_data(nhtsa_model.end_year_combo),
-            primary_damage=_get_combo_text_data(nhtsa_model.p_dmg_combo),
-            secondary_damage=_get_combo_text_data(nhtsa_model.s_dmg_combo),
+            make=_get_combo_as_tuple(nhtsa_model.make_combo),
+            model=_get_combo_as_tuple(nhtsa_model.model_combo),
+            start_model_year=_get_combo_as_tuple(nhtsa_model.start_year_combo),
+            end_model_year=_get_combo_as_tuple(nhtsa_model.end_year_combo),
+            primary_damage=_get_combo_as_tuple(nhtsa_model.p_dmg_combo),
+            secondary_damage=_get_combo_as_tuple(nhtsa_model.s_dmg_combo),
             min_dv=nhtsa_model.min_dv_spinbox.value(),
             max_dv=nhtsa_model.max_dv_spinbox.value(),
         )
@@ -364,5 +381,13 @@ class ScrapeMenu(QWidget):
             self.end_scrape.emit()
 
 
-def _get_combo_text_data(combo: QComboBox) -> tuple[str, int]:
+def _get_combo_as_tuple(combo: QComboBox) -> tuple[str, int]:
+    """Packages combo box text and data into a tuple.
+
+    Args:
+        combo (QComboBox): The combo box to extract data from.
+
+    Returns:
+        tuple[str, int]: The text and data from the combo box.
+    """
     return combo.currentText(), int(combo.currentData() or -1)
