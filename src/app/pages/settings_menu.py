@@ -12,24 +12,17 @@ from app.ui import Ui_SettingsMenu
 
 class SettingsMenu(QWidget):
     back = pyqtSignal()
-    min_rate_limit_changed = pyqtSignal(float)
-    max_rate_limit_changed = pyqtSignal(float)
+    rate_limit_changed = pyqtSignal(float)
     timeout_changed = pyqtSignal(float)
     save_path_changed = pyqtSignal(str)
     SETTINGS_SCHEMA = {
         "type": "object",
         "properties": {
-            "minRateLimit": {
-                "description": f"Minimum rate limit in seconds. Must be greater than {RequestController.ABS_MIN_RATE_LIMIT} to avoid IP bans.",
+            "rateLimit": {
+                "description": f"Rate limit in seconds. Should be greater than {RequestController.MIN_RATE_LIMIT} to avoid site bans.",
                 "type": "number",
-                "default": RequestController.DEFAULT_MIN_RATE_LIMIT,
-                "minimum": RequestController.ABS_MIN_RATE_LIMIT,
-            },
-            "maxRateLimit": {
-                "description": "Maximum rate limit in seconds. Must be greater than or equal to the minimum rate limit.",
-                "type": "number",
-                "default": RequestController.DEFAULT_MAX_RATE_LIMIT,
-                "minimum": RequestController.ABS_MIN_RATE_LIMIT,
+                "default": RequestController.DEFAULT_RATE_LIMIT,
+                "minimum": RequestController.MIN_RATE_LIMIT,
             },
             "timeout": {
                 "description": "Request timeout in seconds.",
@@ -61,8 +54,7 @@ class SettingsMenu(QWidget):
         self._req_handler = req_handler
         self._validator = Draft7Validator(self.SETTINGS_SCHEMA)
 
-        self.min_rate_limit_changed.connect(self._req_handler.update_min_rate_limit)
-        self.max_rate_limit_changed.connect(self._req_handler.update_max_rate_limit)
+        self.rate_limit_changed.connect(self._req_handler.update_rate_limit)
         self.timeout_changed.connect(self._req_handler.update_timeout)
 
         self.settings_path = (
@@ -113,21 +105,12 @@ class SettingsMenu(QWidget):
         self.ui.backBtn.clicked.connect(self.back.emit)
 
         # Set up min rate limit spinbox
-        self.ui.minRateSpinBox.setToolTip(
-            self.SETTINGS_SCHEMA["properties"]["minRateLimit"]["description"]
+        self.ui.rateLimitSpinBox.setToolTip(
+            self.SETTINGS_SCHEMA["properties"]["rateLimit"]["description"]
         )
-        self.ui.minRateSpinBox.setValue(self.settings["minRateLimit"])
-        self.ui.minRateSpinBox.editingFinished.connect(
-            lambda: self._update_min_rate(self.ui.minRateSpinBox.value())
-        )
-
-        # Set up max rate limit spinbox
-        self.ui.maxRateSpinBox.setToolTip(
-            self.SETTINGS_SCHEMA["properties"]["maxRateLimit"]["description"]
-        )
-        self.ui.maxRateSpinBox.setValue(self.settings["maxRateLimit"])
-        self.ui.maxRateSpinBox.editingFinished.connect(
-            lambda: self._update_max_rate(self.ui.maxRateSpinBox.value())
+        self.ui.rateLimitSpinBox.setValue(self.settings["rateLimit"])
+        self.ui.rateLimitSpinBox.editingFinished.connect(
+            lambda: self._update_rate_limit(self.ui.rateLimitSpinBox.value())
         )
 
         # Set up timeout spinbox
@@ -137,8 +120,7 @@ class SettingsMenu(QWidget):
         )
 
         # Update request handler with settings
-        self.min_rate_limit_changed.emit(self.settings["minRateLimit"])
-        self.max_rate_limit_changed.emit(self.settings["maxRateLimit"])
+        self.rate_limit_changed.emit(self.settings["rateLimit"])
         self.timeout_changed.emit(self.settings["timeout"])
 
         # Set up debug checkbox
@@ -168,48 +150,25 @@ class SettingsMenu(QWidget):
             self.settings_path.write_text(json.dumps(self.settings, indent=4))
             self.ui.filenameEdit.setText(self.settings["dataSavePath"])
 
-    def _update_min_rate(self, value):
+    def _update_rate_limit(self, value):
         value = round(value, 2)
 
         # Ensure minimum rate is no smaller than the absolute minimum
-        abs_min_rate = self.SETTINGS_SCHEMA["properties"]["minRateLimit"]["minimum"]
-        if value < abs_min_rate:
+        min_rate_limit = self.SETTINGS_SCHEMA["properties"]["rateLimit"]["minimum"]
+        if value < min_rate_limit:
             self._logger.warning(
-                f"Minimum rate limit must be greater than {abs_min_rate}s to avoid IP bans."
+                f"Rate limit set to {min_rate_limit}s to avoid site bans."
             )
-            self.ui.minRateSpinBox.setValue(abs_min_rate)
-            value = abs_min_rate
-
-        # If minimum is more than maximum, update maximum to match
-        if value > self.ui.maxRateSpinBox.value():
-            self.ui.maxRateSpinBox.setValue(value)
-            self._update_max_rate(value)
+            self.ui.rateLimitSpinBox.setValue(min_rate_limit)
+            value = min_rate_limit
 
         # If the value has not changed, no need to update anything else
-        if value == self.settings["minRateLimit"]:
+        if value == self.settings["rateLimit"]:
             return
 
-        self.settings["minRateLimit"] = value
+        self.settings["rateLimit"] = value
         self.settings_path.write_text(json.dumps(self.settings, indent=4))
-        self.min_rate_limit_changed.emit(value)
-
-    def _update_max_rate(self, value):
-        value = round(value, 2)
-        min_box_val = round(self.ui.minRateSpinBox.value(), 2)
-        if value < min_box_val:
-            self._logger.warning(
-                f"Maximum rate limit must be greater than or equal to the minimum rate limit ({min_box_val}s)."
-            )
-            self.ui.maxRateSpinBox.setValue(min_box_val)
-            value = min_box_val
-
-        # If the value has not changed, no need to update anything else
-        if value == self.settings["maxRateLimit"]:
-            return
-
-        self.settings["maxRateLimit"] = value
-        self.settings_path.write_text(json.dumps(self.settings, indent=4))
-        self.max_rate_limit_changed.emit(value)
+        self.rate_limit_changed.emit(value)
 
     def _update_timeout(self, value):
         value = round(value, 2)

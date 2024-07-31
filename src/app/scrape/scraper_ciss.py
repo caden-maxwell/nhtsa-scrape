@@ -57,9 +57,8 @@ class ScraperCISS(BaseScraper):
 
         self._payload = payload_CISS.copy()
 
-        # Named tuple to store the text and value of a dropdown option
+        # Named tuple to store the text and value of a dropdown option, as we may need both
         Option = namedtuple("Param", ["text", "value"])
-
         self._make = Option(*make)
         self._model = Option(*model)
         self._start_model_year = Option(*start_model_year)
@@ -93,7 +92,7 @@ class ScraperCISS(BaseScraper):
         elif end_year - start_year > 50:
             start_year = end_year - 50
             self._logger.warning(
-                "A model range of over 50 years will result in an error on the CISS website. The range has been limited to 50 years."
+                "A model range with more than 50 years will result in an error on the server. The range has been limited to 50 years."
             )
 
         payload = {
@@ -115,18 +114,19 @@ class ScraperCISS(BaseScraper):
         self._payload.update(payload)
 
     def _scrape(self):
-        self._logger.debug(
+        self._logger.info(
             textwrap.dedent(
-                f"""{self.__class__.__name__} started with these params:
-                {{
-                    Make: {self._make.text},
-                    Model: {self._model.text},
-                    Model Years: {self._start_model_year.value} - {self._end_model_year.value},
-                    Min Delta V: {self._min_dv},
-                    Max Delta V: {self._max_dv},
-                    Primary Damage: {self._primary_damage.text},
-                    Secondary Damage: {self._secondary_damage.text},
-                }}"""
+                f"""
+                --== {self.__class__.__name__} Started ==--
+                    Make: {self._make.text}
+                    Model: {self._model.text}
+                    Model Years: {self._start_model_year.text} - {self._end_model_year.text}
+                    Primary Damage: {self._primary_damage.text}
+                    Secondary Damage: {self._secondary_damage.text}
+                    Min Delta V: {self._min_dv}
+                    Max Delta V: {self._max_dv}
+                --==--==--==--==--==--==--==--
+                """
             )
         )
 
@@ -173,7 +173,7 @@ class ScraperCISS(BaseScraper):
             case_ids = [int(url.split("=")[-1]) for url in urls]
 
         if not case_ids:
-            self._logger.debug(
+            self._logger.info(
                 f"No cases found on page {self._payload['currentPage']}. Scrape complete."
             )
             self.complete()
@@ -197,7 +197,7 @@ class ScraperCISS(BaseScraper):
 
         self.current_page += 1
         self._payload["currentPage"] = self.current_page
-        self._logger.debug(f"Queueing page {self.current_page}...")
+        self._logger.info(f"Queueing page {self.current_page}...")
 
         self._req_case_list()
 
@@ -206,7 +206,9 @@ class ScraperCISS(BaseScraper):
             return
 
         if not response.content:
-            self._logger.error(f"Received empty response from {request.url}.")
+            self._logger.error(
+                f"Received empty response from {request.url}. There may be an issue with the server."
+            )
             self.failed_cases += 1
             return
 
@@ -252,7 +254,9 @@ class ScraperCISS(BaseScraper):
         case_id = case_json.get("CaseId", -1)
 
         if not vehicle_nums:
-            self._logger.warning(f"No matching vehicles found in case {case_id}.")
+            self._logger.warning(
+                f"No matching vehicles found in case {case_id}. Excluding from results."
+            )
             self.failed_cases += 1
             return
 
@@ -333,7 +337,7 @@ class ScraperCISS(BaseScraper):
             cdc_event = veh_forms[event["voi"]]["CDCs"].get(event["event_num"])
             if not cdc_event:
                 self._logger.warning(
-                    f"Vehicle {event['voi']} does not have a CDC for event {event['event_num']}."
+                    f"Vehicle {event['voi']} does not have a CDC for event {event['event_num']}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -347,7 +351,7 @@ class ScraperCISS(BaseScraper):
             # if any of the delta-v values are missing, skip this event
             if any(dv is None for dv in (total_dv, lat_dv, long_dv)):
                 self._logger.warning(
-                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}."
+                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -358,7 +362,7 @@ class ScraperCISS(BaseScraper):
 
             if not crush_profile:
                 self._logger.warning(
-                    f"No crush profile found for event {event['event_num']} in case {case_id}."
+                    f"No crush profile found for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -378,7 +382,7 @@ class ScraperCISS(BaseScraper):
                     smashl = int(smashl.split(" ")[0])
             else:
                 self._logger.warning(
-                    f" No crush in file for event {event['event_num']} in case {case_id}."
+                    f" No crush in file for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue

@@ -1,3 +1,4 @@
+from collections import namedtuple
 import textwrap
 from bs4 import BeautifulSoup
 import numpy as np
@@ -56,23 +57,27 @@ class ScraperNASS(BaseScraper):
 
         self._payload = payload_NASS.copy()
 
-        _, self._make = make
-        _, self._model = model
-        _, self._start_model_year = start_model_year
-        _, self._end_model_year = end_model_year
-        _, self._primary_damage = primary_damage
-        _, self._secondary_damage = secondary_damage
+        # Named tuple to store the text and value of a dropdown option, as we may need both
+        Option = namedtuple("Param", ["text", "value"])
+        self._make = Option(*make)
+        self._model = Option(*model)
+        self._start_model_year = Option(*start_model_year)
+        self._end_model_year = Option(*end_model_year)
+        self._primary_damage = Option(*primary_damage)
+        self._secondary_damage = Option(*secondary_damage)
         self._min_dv = min_dv
         self._max_dv = max_dv
 
         payload = {
-            self.field_names.make: self._make,
-            self.field_names.model: self._model,
-            self.field_names.start_model_year: self._start_model_year,
-            self.field_names.end_model_year: self._end_model_year,
-            self.field_names.primary_damage: self._primary_damage,
+            self.field_names.make: self._make.value,
+            self.field_names.model: self._model.value,
+            self.field_names.start_model_year: self._start_model_year.value,
+            self.field_names.end_model_year: self._end_model_year.value,
+            self.field_names.primary_damage: self._primary_damage.value,
             self.field_names.secondary_damage: (
-                self._secondary_damage if self._secondary_damage != -1 else None
+                self._secondary_damage.value
+                if self._secondary_damage.value != -1
+                else None
             ),
             self.field_names.min_dv: self._min_dv,
             self.field_names.max_dv: self._max_dv,
@@ -81,19 +86,19 @@ class ScraperNASS(BaseScraper):
         self._payload.update(payload)
 
     def _scrape(self):
-        self._logger.debug(
+        self._logger.info(
             textwrap.dedent(
-                f"""{self.__class__.__name__} started with these params:
-                {{
-                    Make: {self._payload[self.field_names.make]},
-                    Model: {self._payload[self.field_names.model]},
-                    Model Start Year: {self._payload[self.field_names.start_model_year]},
-                    Model End Year: {self._payload[self.field_names.end_model_year]},
-                    Min Delta V: {self._payload[self.field_names.min_dv]},
-                    Max Delta V: {self._payload[self.field_names.max_dv]},
-                    Primary Damage: {self._payload[self.field_names.primary_damage]},
-                    Secondary Damage: {self._payload[self.field_names.secondary_damage]},
-                }}"""
+                f"""
+                --== {self.__class__.__name__} Started ==--
+                    Make: {self._make.text}
+                    Model: {self._model.text}
+                    Model Years: {self._start_model_year.text} - {self._end_model_year.text}
+                    Primary Damage: {self._primary_damage.text}
+                    Secondary Damage: {self._secondary_damage.text}
+                    Min Delta V: {self._min_dv}
+                    Max Delta V: {self._max_dv}
+                --==--==--==--==--==--==--==--
+                """
             )
         )
 
@@ -141,7 +146,7 @@ class ScraperNASS(BaseScraper):
             case_ids = [url.split("=")[-1] for url in urls]
 
         if not case_ids:
-            self._logger.debug(
+            self._logger.info(
                 f"No cases found on page {self._payload['currentPage']}. Scrape complete."
             )
             self.complete()
@@ -164,7 +169,7 @@ class ScraperNASS(BaseScraper):
 
         self.current_page += 1
         self._payload["currentPage"] = self.current_page
-        self._logger.debug(f"Queueing page {self.current_page}...")
+        self._logger.info(f"Queueing page {self.current_page}...")
 
         self._req_case_list()
 
@@ -173,7 +178,9 @@ class ScraperNASS(BaseScraper):
             return
 
         if not response.content:
-            self._logger.error(f"Received empty response from {request.url}.")
+            self._logger.error(
+                f"Received empty response from {request.url}. There may be an issue with the server."
+            )
             self.failed_cases += 1
             return
 
@@ -182,25 +189,28 @@ class ScraperNASS(BaseScraper):
 
         def make_match(veh_sum: BeautifulSoup):
             return (
-                self._make == int(veh_sum.find("Make").get("value")) or self._make == -1
+                self._make.value == int(veh_sum.find("Make").get("value"))
+                or self._make.value == -1
             )
 
         def model_match(veh_sum: BeautifulSoup):
             return (
-                self._model == int(veh_sum.find("Model").get("value"))
-                or self._model == -1
+                self._model.value == int(veh_sum.find("Model").get("value"))
+                or self._model.value == -1
             )
 
         def year_match(veh_sum: BeautifulSoup):
-            end_year = self._end_model_year if (self._end_model_year) != -1 else 9999
+            end_year = (
+                self._end_model_year.value if (self._end_model_year.value) != -1 else 9999
+            )
             year = veh_sum.find("Year").text
             if year == "Unknown":
-                if self._start_model_year == -1 and end_year == 9999:
+                if self._start_model_year.value == -1 and end_year == 9999:
                     return True
                 return False
             elif not year.isnumeric():
                 return False
-            return self._start_model_year <= int(year) <= end_year
+            return self._start_model_year.value <= int(year) <= end_year
 
         # Get the vehicles in the case that match the search criteria
         vehicle_nums = []
@@ -213,7 +223,9 @@ class ScraperNASS(BaseScraper):
                 vehicle_nums.append(int(veh_summary.get("VehicleNumber")))
 
         if not vehicle_nums:
-            self._logger.warning(f"No matching vehicles found in case {case_id}.")
+            self._logger.warning(
+                f"No matching vehicles found in case {case_id}. Excluding from results."
+            )
             self.failed_cases += 1
             return
         self._logger.debug(f"Vehicle numbers: {vehicle_nums}")
@@ -276,7 +288,7 @@ class ScraperNASS(BaseScraper):
             )
             if not veh_ext_form:
                 self._logger.warning(
-                    f"Vehicle {event['voi']} does not have an exterior vehicle form."
+                    f"Vehicle {event['voi']} in case {case_id} does not have an exterior vehicle form. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -286,7 +298,7 @@ class ScraperNASS(BaseScraper):
             )
             if not cdc_event:
                 self._logger.warning(
-                    f"No CDCevent found for event {event['event_num']} in case {case_id}."
+                    f"No CDCevent found for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -299,7 +311,7 @@ class ScraperNASS(BaseScraper):
 
             if any(dv is None for dv in (total_dv, lat_dv, long_dv)):
                 self._logger.warning(
-                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}."
+                    f"One or more of Delta-V values not found for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -313,7 +325,7 @@ class ScraperNASS(BaseScraper):
 
             if not crush_object:
                 self._logger.warning(
-                    f"No crush profile for event {event['event_num']} in case {case_id}."
+                    f"No crush profile for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
@@ -333,7 +345,7 @@ class ScraperNASS(BaseScraper):
                 smashl = crush_object.find("SMASHL")["value"]
             else:
                 self._logger.warning(
-                    f"No crush in file for event {event['event_num']} in case {case_id}."
+                    f"No crush in file for event {event['event_num']} in case {case_id}. Skipping..."
                 )
                 failed_events += 1
                 continue
