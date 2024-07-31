@@ -78,13 +78,12 @@ class RequestController(QObject):
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
 
-    DEFAULT_MIN_RATE_LIMIT = 0.5  # Default minimum rate limit in seconds
-    DEFAULT_MAX_RATE_LIMIT = 2.5  # Default maximum rate limit in seconds
+    DEFAULT_RATE_LIMIT = 0.7  # Default rate limit in seconds
     DEFAULT_TIMEOUT = 7  # Default request timeout in seconds
     MAX_CONCURRENT_REQUESTS = -1  # Maximum number of concurrent requests
 
-    ABS_MIN_RATE_LIMIT = 0.2  # Absolute minimum rate limit in seconds
-    MIN_TIMEOUT = 0.1  # Minimum request timeout in seconds
+    MIN_RATE_LIMIT = 0.25  # Minimum rate limit in seconds
+    MIN_TIMEOUT = 0.25  # Minimum request timeout in seconds
 
     def __init__(self):
         super().__init__()
@@ -94,13 +93,12 @@ class RequestController(QObject):
         self._ongoing_requests: list[RequestQueueItem] = []
         self._response_cache: dict[str, _CachedResponse] = {}
 
-        self._min_rate_limit = self.DEFAULT_MIN_RATE_LIMIT
-        self._max_rate_limit = self.DEFAULT_MAX_RATE_LIMIT
+        self._rate_limit = self.DEFAULT_RATE_LIMIT
         self._timeout = self.DEFAULT_TIMEOUT
 
         self._threadpool = QThreadPool()
         self._delay_timer = QTimer()
-        self._delay_timer.setInterval(int(self._min_rate_limit * 1000))
+        self._delay_timer.setInterval(int(self._rate_limit * 1000))
         self._delay_timer.setSingleShot(True)
         self._delay_timer.timeout.connect(self._start_next_request)
 
@@ -134,16 +132,16 @@ class RequestController(QObject):
                     self._process_response(
                         request, self._response_cache[request.url].response
                     )
-
-                    # Need to restart timer or else we'll hang
-                    self._delay_timer.start()
+                    self._start_timer()
                     return
+                else:
+                    self._logger.debug(f"Cached response expired for {request.url}.")
 
             # If not in cache, perform additional checks:
             # Check if the rate limit is met
             if self._delay_timer.remainingTime() > 0:
                 self._logger.debug(
-                    f"Need to wait {self._delay_timer.remainingTime()/1000:.2f} seconds before next request"
+                    f"Need to wait {self._delay_timer.remainingTime()/1000:.2f} seconds before next request!"
                 )
                 return
 
@@ -152,19 +150,24 @@ class RequestController(QObject):
                 self._threadpool.activeThreadCount() >= self.MAX_CONCURRENT_REQUESTS
                 and self.MAX_CONCURRENT_REQUESTS != -1
             ):
-                self._logger.debug("Maximum concurrent requests reached. Waiting...")
-
-                # Need to restart timer or else we'll hang
-                self._delay_timer.start()
+                self._logger.debug(
+                    "Maximum concurrent requests reached. Waiting for reponses."
+                )
+                self._start_timer()
                 return
 
             # Start the next request
-            request = self._request_queue.pop(0)
+            self._request_queue.remove(request)
             self._execute_request(request)
 
-            # Need to restart timer or else we'll hang
-            self._delay_timer.start()
-            self._logger.debug(f"Rate limiting next request to {self._min_rate_limit}s")
+            self._start_timer()
+            self._logger.debug(f"Rate limiting next request to {self._rate_limit}s")
+
+    def _start_timer(self):
+        # Need to convert s to ms
+        self._delay_timer.setInterval(int(self._rate_limit * 1000))
+
+        self._delay_timer.start()
 
     def _execute_request(self, request: RequestQueueItem):
         """Execute a request using a RequestWorker instance.
@@ -325,18 +328,10 @@ class RequestController(QObject):
         return True
 
     @pyqtSlot(float)
-    def update_min_rate_limit(self, min_rate_limit):
-        self._min_rate_limit = max(min_rate_limit, self.ABS_MIN_RATE_LIMIT)
-        self._delay_timer.setInterval(int(self._min_rate_limit * 1000))
+    def update_rate_limit(self, rate_limit):
+        self._rate_limit = max(rate_limit, self.MIN_RATE_LIMIT)
         self._logger.debug(
-            f"Successfully updated request handler min rate limit to {self._min_rate_limit}s."
-        )
-
-    @pyqtSlot(float)
-    def update_max_rate_limit(self, max_rate_limit):
-        self._max_rate_limit = max(max_rate_limit, self._min_rate_limit)
-        self._logger.debug(
-            f"Successfully updated request handler max rate limit to {self._max_rate_limit}s."
+            f"Successfully updated request handler min rate limit to {self._rate_limit}s."
         )
 
     @pyqtSlot(float)

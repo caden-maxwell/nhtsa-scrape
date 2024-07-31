@@ -10,7 +10,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("fusion")
 
-    # load window icon
     icon_path = Path(__file__).parent / "app" / "resources" / "icon.png"
     pixmap = QPixmap()
     pixmap.loadFromData(icon_path.read_bytes())

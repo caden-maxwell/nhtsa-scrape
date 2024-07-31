@@ -1,2 +1,1 @@
-from .payloadNASS import payload_NASS
-from .payloadCISS import payload_CISS
+from .payloads import payload_NASS, payload_CISS
