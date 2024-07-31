@@ -43,7 +43,10 @@ class ScrapeMenu(QWidget):
     end_scrape = pyqtSignal()
 
     def __init__(
-        self, req_handler: RequestController, db_handler: DatabaseHandler, data_dir: Path
+        self,
+        req_handler: RequestController,
+        db_handler: DatabaseHandler,
+        data_dir: Path,
     ):
         super().__init__()
 
@@ -234,76 +237,46 @@ class ScrapeMenu(QWidget):
         start_year = nhtsa_model.start_year_combo.currentText().upper()
         end_year = nhtsa_model.end_year_combo.currentText().upper()
         p_dmg = nhtsa_model.p_dmg_combo.currentText().upper()
-        s_dmg = nhtsa_model.s_dmg_combo.currentText().upper()
-        min_dv = nhtsa_model.min_dv_spinbox.value()
-        max_dv = nhtsa_model.max_dv_spinbox.value()
 
         make_txt = make if make != "ALL" else "ANY MAKE"
         model_txt = model if model != "ALL" else "ANY MODEL"
         p_dmg_txt = p_dmg if p_dmg != "ALL" else ""
         name = f"{make_txt} {model_txt} ({start_year}-{end_year}) {p_dmg_txt}"
 
-        # Only use a new data viewer if there isn't one already open or multi-analysis is disabled
         now = datetime.now()
-        if (
-            not self._db_handler.profile_exists(self._profile)
-            or not self.ui.multiCheckBox.isChecked()
+
+        # The only case in which we keep the old data viewer open is if we are
+        #   performing multi-analysis and the previously used profile exists
+        if not (
+            self.ui.multiCheckBox.isChecked()
+            and self._db_handler.profile_exists(self._profile)
         ):
             self._profile = Profile(
                 name=name,
-                make=make,
-                model=model,
-                start_year=start_year,
-                end_year=end_year,
-                primary_dmg=p_dmg,
-                secondary_dmg=nhtsa_model.s_dmg_combo.currentText().upper(),
-                min_dv=nhtsa_model.min_dv_spinbox.value(),
-                max_dv=nhtsa_model.min_dv_spinbox.value(),
+                params="?",
+                multi=False,
                 created=int(now.timestamp()),
                 modified=int(now.timestamp()),
             )
-            self._db_handler.add_profile(self._profile)
+            result = self._db_handler.add_profile(self._profile)
 
-            if self._profile.id < 0:
-                self._logger.error(
-                    f"Scrape aborted: No profile to add data to. profile.id={self._profile.id}"
-                )
+            # Make sure the profile was successfully created
+            if result < 0:
+                self._logger.error("Scrape aborted: Profile not created successfully.")
                 return
+
+            self._new_data_viewer()
         else:
+            # If multi-analysis and current profile exists, check if we need to open a new data viewer
+            #   Update the profile fields to indicate multi-analysis and add the new params
+            if not self._data_viewer or self._dv_closed:
+                self._new_data_viewer()
+
             self._db_handler.update_profile(
                 self._profile,
-                name=f"MULTI-ANALYSIS {now.strftime('%Y-%m-%d %H:%M:%S')}",
-                make=make if make == self._profile.make else "MULTI",
-                model=model if model == self._profile.model else "MULTI",
-                start_year=(
-                    start_year
-                    if start_year == str(self._profile.start_year)
-                    else "MULTI"
-                ),
-                end_year=(
-                    end_year if end_year == str(self._profile.end_year) else "MULTI"
-                ),
-                p_dmg=p_dmg if p_dmg == self._profile.primary_dmg else "MULTI",
-                s_dmg=s_dmg if s_dmg == self._profile.secondary_dmg else "MULTI",
-                min_dv=min_dv if min_dv == self._profile.min_dv else "MULTI",
-                max_dv=max_dv if max_dv == self._profile.max_dv else "MULTI",
+                multi=True,
+                params=None,
             )
-
-        if not self._data_viewer:
-            self._data_viewer = DataView(
-                self._req_handler, self._db_handler, self._profile, self._data_dir
-            )
-            self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
-            self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
-            self._data_viewer.show()
-        elif self._data_viewer.get_profile() != self._profile:
-            self._data_viewer.disconnect()
-            self._data_viewer = DataView(
-                self._req_handler, self._db_handler, self._profile, self._data_dir
-            )
-            self._data_viewer.destroyed.connect(self._set_data_viewer_to_none)
-            self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
-            self._data_viewer.show()
 
         if not nhtsa_model:
             self._logger.error("Scrape aborted: No database selected.")
@@ -331,10 +304,28 @@ class ScrapeMenu(QWidget):
         self._engine_thread.started.connect(self._scraper.start)
         self._engine_thread.start()
 
+    def _new_data_viewer(self):
+        if self._db_handler.profile_exists(self._profile):
+            self._data_viewer = DataView(
+                self._req_handler, self._db_handler, self._profile, self._data_dir
+            )
+            self._db_handler.profile_updated.connect(
+                self._data_viewer.handle_profile_updated
+            )
+            self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
+            self._data_viewer.exited.connect(self._set_dv_closed)
+            self._data_viewer.show()
+            self._dv_closed = False
+        else:
+            self._logger.warning("Cannot open data viewer, profile does not exist.")
+
+    def _set_dv_closed(self):
+        self._dv_closed = True
+
     @pyqtSlot(Event, Response)
     def add_event(self, event: Event, response: Response):
         if not self._db_handler.profile_exists(self._profile):
-            if self._data_viewer:
+            if self._data_viewer and not self._dv_closed:
                 self._data_viewer.close()
 
             if self._scraper and self._scraper.running:
@@ -360,14 +351,11 @@ class ScrapeMenu(QWidget):
         self.ui.stopBtn.setVisible(False)
         self.ui.submitBtn.setVisible(True)
 
-    def _set_data_viewer_to_none(self):
-        self._data_viewer = None
-
     @pyqtSlot(str)
-    def data_dir_changed(self, data_dir):
+    def data_dir_changed(self, data_dir: str):
         data_dir = Path(data_dir)
         self._data_dir = data_dir
-        if self._data_viewer:
+        if self._data_viewer and not self._dv_closed:
             self._data_viewer.set_data_dir(data_dir)
 
     def cleanup(self):

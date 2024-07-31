@@ -100,7 +100,7 @@ class RequestController(QObject):
 
         self._threadpool = QThreadPool()
         self._delay_timer = QTimer()
-        self._delay_timer.setInterval(int(self.DEFAULT_MIN_RATE_LIMIT * 1000))
+        self._delay_timer.setInterval(int(self._min_rate_limit * 1000))
         self._delay_timer.setSingleShot(True)
         self._delay_timer.timeout.connect(self._start_next_request)
 
@@ -134,6 +134,9 @@ class RequestController(QObject):
                     self._process_response(
                         request, self._response_cache[request.url].response
                     )
+
+                    # Need to restart timer or else we'll hang
+                    self._delay_timer.start()
                     return
 
             # If not in cache, perform additional checks:
@@ -150,6 +153,8 @@ class RequestController(QObject):
                 and self.MAX_CONCURRENT_REQUESTS != -1
             ):
                 self._logger.debug("Maximum concurrent requests reached. Waiting...")
+
+                # Need to restart timer or else we'll hang
                 self._delay_timer.start()
                 return
 
@@ -157,7 +162,9 @@ class RequestController(QObject):
             request = self._request_queue.pop(0)
             self._execute_request(request)
 
+            # Need to restart timer or else we'll hang
             self._delay_timer.start()
+            self._logger.debug(f"Rate limiting next request to {self._min_rate_limit}s")
 
     def _execute_request(self, request: RequestQueueItem):
         """Execute a request using a RequestWorker instance.
@@ -188,6 +195,24 @@ class RequestController(QObject):
         self._request_queue.append(request)
         self._request_queue.sort()
         self._logger.debug(f"Enqueued request for {request.url}")
+        self._start_next_request()
+
+    def batch_enqueue(self, requests: list[RequestQueueItem]):
+        """Enqueue a batch of requests to be sent. More efficient than enqueuing one request at a
+        time for large numbers of requests, as the request queue will only be sorted once.
+
+        Args:
+            requests (list[RequestQueueItem]): Requests to enqueue.
+        """
+        urls = []
+        for request in requests:
+            self._request_queue.append(request)
+            urls.append(request.url)
+        self._request_queue.sort()
+
+        urls_log = "\n".join(urls)
+        self._logger.debug(f"Enqueued {len(requests)} requests:\n{urls_log}")
+
         self._start_next_request()
 
     def contains_requests(self, priority=-1, extra_data={}):
@@ -302,6 +327,7 @@ class RequestController(QObject):
     @pyqtSlot(float)
     def update_min_rate_limit(self, min_rate_limit):
         self._min_rate_limit = max(min_rate_limit, self.ABS_MIN_RATE_LIMIT)
+        self._delay_timer.setInterval(int(self._min_rate_limit * 1000))
         self._logger.debug(
             f"Successfully updated request handler min rate limit to {self._min_rate_limit}s."
         )

@@ -13,7 +13,7 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from PyQt6.QtWidgets import QMessageBox
 
 from app.pages import BaseTab
-from app.pages.utils import open_file
+from app.pages.utils import open_path
 from app.models import DatabaseHandler, ScatterPlotModel, Profile
 from app.ui import Ui_ScatterTab
 
@@ -219,7 +219,14 @@ class ScatterTab(BaseTab):
         button_result = box.exec()
 
         if button_result == QMessageBox.StandardButton.Open:
-            open_file(self._data_dir, self)
+            success = open_path(self._data_dir, self)
+            if not success:
+                QMessageBox.critical(
+                    self,
+                    "Error",
+                    "Failed to open directory. See log for details.",
+                    QMessageBox.StandardButton.Ok,
+                )
 
 
 class CustomToolbar(NavigationToolbar):

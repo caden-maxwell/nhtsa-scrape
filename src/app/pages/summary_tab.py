@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QMessageBox
 
 from app.ui import Ui_SummaryTab
 from app.pages import BaseTab
-from app.pages.utils import open_file
+from app.pages.utils import open_path
 from app.models import Profile
 
 
@@ -22,24 +22,15 @@ class SummaryTab(BaseTab):
         self.ui.openBtn.clicked.connect(self.open_profile)
 
     def refresh(self):
-        self.ui.makeEdit.setText(self._profile.make)
-        self.ui.modelEdit.setText(self._profile.model)
-        self.ui.startYearEdit.setText(str(self._profile.start_year))
-        self.ui.endYearEdit.setText(str(self._profile.end_year))
-        self.ui.pDmgEdit.setText(self._profile.primary_dmg)
-        self.ui.sDmgEdit.setText(self._profile.secondary_dmg)
-        self.ui.minDVEdit.setText(str(self._profile.min_dv))
-        self.ui.maxDVEdit.setText(str(self._profile.max_dv))
+        self.ui.paramsEdit.setText(self._profile.params)
 
     def open_profile(self):
         os.makedirs(self._profile_dir, exist_ok=True)
-        try:
-            open_file(self._profile_dir, self)
-        except Exception as e:
-            self._logger.error(f"Failed to open profile directory: {e}")
+        success = open_path(self._profile_dir, self)
+        if not success:
             QMessageBox.critical(
                 self,
                 "Error",
-                "Failed to open profile directory",
+                "Failed to open profile directory. See log for details.",
                 QMessageBox.StandardButton.Ok,
             )

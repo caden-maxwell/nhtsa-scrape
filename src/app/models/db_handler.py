@@ -140,25 +140,13 @@ class DatabaseHandler(QObject):
         self,
         profile: Profile,
         name: str = None,
-        make: str = None,
-        model: str = None,
-        start_year: str = None,
-        end_year: str = None,
-        p_dmg: str = None,
-        s_dmg: str = None,
-        min_dv: str = None,
-        max_dv: str = None,
+        multi: bool = None,
+        params: str = None
     ):
         try:
             profile.name = name if name else profile.name
-            profile.make = make if make else profile.make
-            profile.model = model if model else profile.model
-            profile.start_year = start_year if start_year else profile.start_year
-            profile.end_year = end_year if end_year else profile.end_year
-            profile.primary_dmg = p_dmg if p_dmg else profile.primary_dmg
-            profile.secondary_dmg = s_dmg if s_dmg else profile.secondary_dmg
-            profile.min_dv = min_dv if min_dv else profile.min_dv
-            profile.max_dv = max_dv if max_dv else profile.max_dv
+            profile.multi = multi if multi else profile.multi
+            profile.params = params if params else profile.params
             profile.modified = datetime.now().timestamp()
 
             self._session.commit()

@@ -1,5 +1,4 @@
 import logging
-import os
 from pathlib import Path
 import re
 
@@ -32,7 +31,6 @@ class DataView(QWidget):
 
         self._profile = profile
         profile_dir = (data_dir / self._get_profile_dir()).resolve()
-        self._prev_profile_dir = profile_dir  # Used if the profile is renamed
         self._data_dir = data_dir
 
         self._summary_tab = SummaryTab(profile, profile_dir)
@@ -74,16 +72,6 @@ class DataView(QWidget):
 
     def _set_tabs_profile_dir(self):
         profile_dir = (self._data_dir / self._get_profile_dir()).resolve()
-        if profile_dir == self._prev_profile_dir:
-            return
-
-        # Move the old profile directory to the new location
-        try:
-            os.rename(self._prev_profile_dir, profile_dir)
-        except Exception as e:
-            self._logger.error(f"Failed to move profile directory: {e}", exc_info=True)
-            return
-        self._prev_profile_dir = profile_dir
 
         for tab in self._tabs:
             tab.set_data_dir(profile_dir)
@@ -93,13 +81,10 @@ class DataView(QWidget):
         if profile.id == self._profile.id:
             self._set_tabs_profile_dir()
 
-    @pyqtSlot(Event)
-    def handle_event_added(self, event):
-        for tab in self._tabs:
-            tab.refresh()
-
-    def get_profile(self):
-        return self._profile
+    @pyqtSlot(Event, Profile)
+    def handle_event_added(self, event: Event, profile: Profile):
+        if profile.id == self._profile.id:
+            self.update_current_tab()
 
     def closeEvent(self, event):
         self.exited.emit()

@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.pages import BaseTab
+from app.pages.utils import remove_path
 from app.models import DatabaseHandler, EventList, Event, Profile
 from app.scrape import (
     RequestController,
@@ -570,6 +571,7 @@ class EventsTab(BaseTab):
                 "No EDR data found for this vehicle.",
                 QMessageBox.StandardButton.Ok,
             )
+            remove_path(edr_data_dir)
             return
 
         button = QMessageBox.question(
@@ -584,6 +586,7 @@ class EventsTab(BaseTab):
             or button == QMessageBox.StandardButton.Escape
         ):
             self._logger.debug("User chose not to save EDR data.")
+            remove_path(edr_data_dir)
             return
 
         self._req_controller.enqueue_request(
@@ -622,6 +625,7 @@ class EventsTab(BaseTab):
                 "No EDR data found for this vehicle.",
                 QMessageBox.StandardButton.Ok,
             )
+            remove_path(edr_data_dir)
             return
 
         filenames = []
@@ -641,6 +645,7 @@ class EventsTab(BaseTab):
             or button_result == QMessageBox.StandardButton.Escape
         ):
             self._logger.debug("User chose not to save EDR data.")
+            remove_path(edr_data_dir)
             return
 
         for doc in edr_docs:

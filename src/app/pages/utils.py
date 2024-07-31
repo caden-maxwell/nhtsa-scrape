@@ -1,12 +1,19 @@
+import logging
 import os
 import sys
 from subprocess import Popen, PIPE, STDOUT
+from pathlib import Path
 
-from PyQt6.QtWidgets import QMessageBox
 
+def open_path(path: Path) -> bool:
+    """Platform-independent method to open a file or program with the default application.
 
-def open_file(path, self):
-    """Platform-independent os.startfile()"""
+    Args:
+        path (Path): The file or program to open. 
+    
+    Returns:
+        bool: True if the file/program was opened successfully, False otherwise.
+    """
     try:
         if sys.platform == "win32":
             os.startfile(path)
@@ -14,6 +21,21 @@ def open_file(path, self):
             opener = "open" if sys.platform == "darwin" else "xdg-open"
             Popen([opener, path], stderr=STDOUT, stdout=PIPE)
     except Exception as e:
-        exc_msg = f"Could not open path '{path}': {e}"
-        self._logger.error(exc_msg)
-        QMessageBox.critical(self, "Failed to open", exc_msg)
+        logging.getLogger(__file__).error(f"Could not open path '{path}': {e}")
+        return False
+
+
+def remove_path(path: Path) -> bool:
+    """Removes a directory if it exists and is empty.
+
+    Args:
+        path (Path): The directory to remove.
+
+    Returns:
+        bool: True if the path was removed successfully, False otherwise.
+    """
+    try:
+        Path.rmdir(path)
+    except OSError as e:
+        logging.error(f"Could not remove directory '{path}': {e}")
+        return False
