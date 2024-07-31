@@ -6,6 +6,8 @@
 
 Sorted from highest (top) to lowest priority:
 
+- FIX: Add params to summary tab instead of just "?"
+- FIX: Come up with better naming for profiles
 - FIX: Unused max request time after refactoring the RequestHandler
 - FIX: Remove messageboxes for individual events, too obtrusive
 - FIX: Photo save is blocking on GUI
