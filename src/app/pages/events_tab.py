@@ -472,7 +472,6 @@ class EventsTab(BaseTab):
 
         image = image.resize((w, h))
 
-        print(img_key)
         event_imgs[img_key] = image
 
         self._update_event_btns(event)
