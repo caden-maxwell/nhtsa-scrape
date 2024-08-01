@@ -7,7 +7,7 @@ from PyQt6.QtWidgets import QWidget
 
 from app.pages import SummaryTab, EventsTab, ScatterTab, CSVTab, BaseTab
 from app.models import DatabaseHandler, Profile, Event
-from app.scrape import RequestController
+from app.scrape import RequestHandler
 from app.ui import Ui_DataView
 
 
@@ -16,7 +16,7 @@ class DataView(QWidget):
 
     def __init__(
         self,
-        req_handler: RequestController,
+        req_handler: RequestHandler,
         db_handler: DatabaseHandler,
         profile: Profile,
         data_dir: Path,

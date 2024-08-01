@@ -7,7 +7,7 @@ from PyQt6.QtCore import pyqtSignal
 from PyQt6.QtWidgets import QWidget, QFileDialog
 
 from app.pages.utils import open_path
-from app.scrape import RequestController
+from app.scrape import RequestHandler
 from app.ui import Ui_SettingsMenu
 
 
@@ -20,16 +20,16 @@ class SettingsMenu(QWidget):
         "type": "object",
         "properties": {
             "rateLimit": {
-                "description": f"Rate limit in seconds. Should be greater than {RequestController.MIN_RATE_LIMIT} to avoid site bans.",
+                "description": f"Rate limit in seconds. Should be greater than {RequestHandler.MIN_RATE_LIMIT} to avoid site bans.",
                 "type": "number",
-                "default": RequestController.DEFAULT_RATE_LIMIT,
-                "minimum": RequestController.MIN_RATE_LIMIT,
+                "default": RequestHandler.DEFAULT_RATE_LIMIT,
+                "minimum": RequestHandler.MIN_RATE_LIMIT,
             },
             "timeout": {
                 "description": "Request timeout in seconds.",
                 "type": "number",
-                "default": RequestController.DEFAULT_TIMEOUT,
-                "minimum": RequestController.MIN_TIMEOUT,
+                "default": RequestHandler.DEFAULT_TIMEOUT,
+                "minimum": RequestHandler.MIN_TIMEOUT,
             },
             "debug": {
                 "description": "Enable debug logging.",
@@ -45,7 +45,7 @@ class SettingsMenu(QWidget):
         },
     }
 
-    def __init__(self, req_handler: RequestController):
+    def __init__(self, req_handler: RequestHandler):
         super().__init__()
 
         self.ui = Ui_SettingsMenu()

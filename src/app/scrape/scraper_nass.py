@@ -11,7 +11,7 @@ from app.scrape import (
     BaseScraper,
     Priority,
     FieldNames,
-    RequestController,
+    RequestHandler,
 )
 from app.resources import payload_NASS
 from app.models import Event
@@ -43,7 +43,7 @@ class ScraperNASS(BaseScraper):
 
     def __init__(
         self,
-        req_handler: RequestController,
+        req_handler: RequestHandler,
         make,
         model,
         start_model_year,

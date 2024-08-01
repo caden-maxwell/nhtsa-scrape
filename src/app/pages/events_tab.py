@@ -25,7 +25,7 @@ from app.pages import BaseTab
 from app.pages.utils import remove_path
 from app.models import DatabaseHandler, EventList, Event, Profile
 from app.scrape import (
-    RequestController,
+    RequestHandler,
     Priority,
     RequestQueueItem,
     BaseScraper,
@@ -38,7 +38,7 @@ from app.ui import Ui_EventsTab
 class EventsTab(BaseTab):
     def __init__(
         self,
-        req_controller: RequestController,
+        req_controller: RequestHandler,
         db_handler: DatabaseHandler,
         profile: Profile,
         data_dir: Path,
@@ -79,8 +79,8 @@ class EventsTab(BaseTab):
         self.ui.imgWidgetGrid.addWidget(self.no_images_label, 0, 0)
         self.no_images_label.setVisible(True)
 
-        self._req_controller = req_controller
-        self._req_controller.response_received.connect(self.handle_response)
+        self._req_handler = req_controller
+        self._req_handler.response_received.connect(self.handle_response)
 
         # key: event, value: dict of img_id: img
         self.img_cache = defaultdict(lambda: defaultdict(dict))
@@ -192,9 +192,9 @@ class EventsTab(BaseTab):
         if event != self._current_index_event:
             return
 
-        if self._req_controller.contains_requests(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "images"}
-        ) or self._req_controller.contains_requests(
+        ) or self._req_handler.contains_requests(
             Priority.IMAGE.value, {"event": event}
         ):
             self.ui.scrapeImgsBtn.setText("Scraping...")
@@ -205,7 +205,7 @@ class EventsTab(BaseTab):
             self.ui.scrapeImgsBtn.setEnabled(True)
             self.ui.stopBtn.setVisible(False)
 
-        if self._req_controller.contains_requests(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "raw", "event": event}
         ):
             self.ui.saveRawBtn.setText("Saving...")
@@ -214,7 +214,7 @@ class EventsTab(BaseTab):
             self.ui.saveRawBtn.setText("Save Raw Data")
             self.ui.saveRawBtn.setEnabled(True)
 
-        if self._req_controller.contains_requests(
+        if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "edr", "event": event}
         ):
             self.ui.fetchEDRBtn.setText("Fetching...")
@@ -274,7 +274,7 @@ class EventsTab(BaseTab):
         else:
             self._logger.error(f"Unknown scraper type: {event.scraper_type}")
 
-        self._req_controller.enqueue_request(
+        self._req_handler.enqueue_request(
             RequestQueueItem(
                 BaseScraper.ROOT
                 + str(scraper.case_url_raw).format(case_id=event.case_id),
@@ -286,10 +286,10 @@ class EventsTab(BaseTab):
 
     def _stop_btn_clicked(self):
         # Stops any requests for a case page requested specifically for images
-        self._req_controller.clear_requests(Priority.IMMEDIATE.value, {"for": "images"})
+        self._req_handler.clear_requests(Priority.IMMEDIATE.value, {"for": "images"})
 
         # Stops any requests for images themselves
-        self._req_controller.clear_requests(
+        self._req_handler.clear_requests(
             Priority.IMAGE.value, {"event": self._current_index_event}
         )
 
@@ -363,6 +363,7 @@ class EventsTab(BaseTab):
 
         image_elements = img_area_form.find_all("image")
         event_imgs = self.img_cache[event]
+        requests = []
         for img_element in image_elements:
             img_element: BeautifulSoup
             img_id = int(img_element.text)
@@ -371,7 +372,7 @@ class EventsTab(BaseTab):
             if event_imgs.get(img_id):
                 continue
 
-            self._req_controller.enqueue_request(
+            requests.append(
                 RequestQueueItem(
                     BaseScraper.ROOT
                     + str(ScraperNASS.img_url).format(
@@ -386,7 +387,9 @@ class EventsTab(BaseTab):
                 )
             )
             event_imgs.update({img_id: None})
+
         self.img_cache[event] = event_imgs
+        self._req_handler.batch_enqueue(requests)
 
     def _fetch_imgs_ciss(
         self, event: Event, request: RequestQueueItem, response: Response
@@ -423,6 +426,7 @@ class EventsTab(BaseTab):
         filtered_photos = sorted_photos.get(img_set.lower(), [])
 
         event_imgs = self.img_cache[event]
+        requests = []
         for photo in filtered_photos:
             obj_id = photo.get("ObjectId")
 
@@ -431,7 +435,7 @@ class EventsTab(BaseTab):
             if event_imgs[obj_id]:
                 continue
 
-            self._req_controller.enqueue_request(
+            requests.append(
                 RequestQueueItem(
                     BaseScraper.ROOT + str(ScraperCISS.img_url).format(obj_id=obj_id),
                     priority=Priority.IMAGE.value,
@@ -439,7 +443,9 @@ class EventsTab(BaseTab):
                     callback=self._parse_image,
                 )
             )
+
         self.img_cache[event] = event_imgs
+        self._req_handler.batch_enqueue(requests)
 
     def _parse_image(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -449,7 +455,7 @@ class EventsTab(BaseTab):
         if event.scraper_type == "NASS":
             img_key = int(request.url.split("&")[1].split("=")[1])
         elif event.scraper_type == "CISS":
-            img_key = request.url.split("/")[5]
+            img_key = request.url.split("/")[4]
 
         image = Image.open(BytesIO(response.content))
 
@@ -466,6 +472,7 @@ class EventsTab(BaseTab):
 
         image = image.resize((w, h))
 
+        print(img_key)
         event_imgs[img_key] = image
 
         self._update_event_btns(event)
@@ -589,7 +596,7 @@ class EventsTab(BaseTab):
             remove_path(edr_data_dir)
             return
 
-        self._req_controller.enqueue_request(
+        self._req_handler.enqueue_request(
             RequestQueueItem(
                 BaseScraper.ROOT
                 + str(ScraperNASS.edr_url).format(
@@ -663,7 +670,7 @@ class EventsTab(BaseTab):
                 },
                 callback=self._save_ciss_edr,
             )
-            self._req_controller.enqueue_request(request)
+            self._req_handler.enqueue_request(request)
 
     def _save_nass_edr(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -710,8 +717,8 @@ class EventsTab(BaseTab):
     def closeEvent(self, event):
         # TODO: This will clear all immediate and image requests, even if they are not for the current tab
         #   Not too much of an issue, but could be improved
-        self._req_controller.clear_requests(Priority.IMMEDIATE.value)
-        self._req_controller.clear_requests(Priority.IMAGE.value)
+        self._req_handler.clear_requests(Priority.IMMEDIATE.value)
+        self._req_handler.clear_requests(Priority.IMAGE.value)
         self._logger.debug("Cleared image requests.")
 
 

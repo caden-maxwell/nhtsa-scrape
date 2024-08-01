@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpin
 from app.models import DatabaseHandler, Profile, Event
 from app.pages import DataView
 from app.scrape import (
-    RequestController,
+    RequestHandler,
     BaseScraper,
     ScraperNASS,
     ScraperCISS,
@@ -44,7 +44,7 @@ class ScrapeMenu(QWidget):
 
     def __init__(
         self,
-        req_handler: RequestController,
+        req_handler: RequestHandler,
         db_handler: DatabaseHandler,
         data_dir: Path,
     ):

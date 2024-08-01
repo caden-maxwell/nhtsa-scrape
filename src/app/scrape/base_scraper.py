@@ -7,7 +7,7 @@ from requests import Response
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from app.scrape import RequestController, RequestQueueItem, Priority
+from app.scrape import RequestHandler, RequestQueueItem, Priority
 from app.models import Event
 
 
@@ -73,7 +73,7 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 
     @abstractmethod
-    def __init__(self, req_controller: RequestController):
+    def __init__(self, req_controller: RequestHandler):
         """
         Initializes the BaseScraper. Do not make any signal/slot connections here,
         as this function will be run in the main thread. If you need to connect signals/slots,
