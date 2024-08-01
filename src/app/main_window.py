@@ -7,7 +7,7 @@ from PyQt6.QtGui import QCloseEvent
 
 from app.log_utils import QtLogHandler, ColorFormatter
 from app.pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
-from app.scrape import RequestController
+from app.scrape import RequestHandler
 from app.models import DatabaseHandler
 from app.ui import Ui_MainWindow
 
@@ -19,7 +19,7 @@ class MainWindow(QWidget):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self._req_handler = RequestController()
+        self._req_handler = RequestHandler()
         path = Path(__file__).parent.parent / "app.db"
         self._db_handler = DatabaseHandler(path)
 

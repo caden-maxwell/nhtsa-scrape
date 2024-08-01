@@ -12,7 +12,7 @@ from app.scrape import (
     RequestQueueItem,
     Priority,
     FieldNames,
-    RequestController,
+    RequestHandler,
 )
 from app.resources import payload_CISS
 from app.models import Event
@@ -43,7 +43,7 @@ class ScraperCISS(BaseScraper):
 
     def __init__(
         self,
-        req_handler: RequestController,
+        req_handler: RequestHandler,
         make,
         model,
         start_model_year,

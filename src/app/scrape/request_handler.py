@@ -74,7 +74,7 @@ class RequestWorker(QRunnable):
 
 
 # Create a controller class to manage the requests
-class RequestController(QObject):
+class RequestHandler(QObject):
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
 
