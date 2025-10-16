@@ -180,7 +180,12 @@ class RequestHandler(QObject):
             self._logger.error(f"Invalid request method: {request.method}")
             return
 
-        request.headers.update({"User-Agent": "Mozilla/5.0"})
+        default_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0",
+            "Accept-Language": "en-US,en;q=0.5",
+        }   
+
+        request.headers.update(default_headers)
         self._ongoing_requests.append(request)
 
         runnable = RequestWorker(request, self._timeout)
@@ -330,15 +335,15 @@ class RequestHandler(QObject):
     @pyqtSlot(float)
     def update_rate_limit(self, rate_limit):
         self._rate_limit = max(rate_limit, self.MIN_RATE_LIMIT)
-        self._logger.debug(
-            f"Successfully updated request handler min rate limit to {self._rate_limit}s."
+        self._logger.info(
+            f"Updated request handler min rate limit to {self._rate_limit}s."
         )
 
     @pyqtSlot(float)
     def update_timeout(self, timeout):
         self._timeout = max(timeout, self.MIN_TIMEOUT)
-        self._logger.debug(
-            f"Successfully updated request handler timeout to {self._timeout}s"
+        self._logger.info(
+            f"Updated request handler timeout to {self._timeout}s"
         )
 
     @pyqtSlot(RequestQueueItem, requests.Response)
