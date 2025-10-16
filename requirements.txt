@@ -1,0 +1,11 @@
+PyQt6
+requests
+beautifulsoup4
+Pillow
+lxml
+numpy
+matplotlib
+sqlalchemy
+jsonschema
+python-Levenshtein
+fuzzywuzzy
