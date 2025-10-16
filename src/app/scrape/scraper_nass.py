@@ -412,7 +412,7 @@ class ScraperNASS(BaseScraper):
 
             self.event_parsed.emit(
                 Event(
-                    summary=case_xml.find("Summary").text,
+                    summary=str(case_xml.find("Summary").text),
                     scraper_type="NASS",
                     case_num=case_xml.find("Case")["CaseStr"],
                     case_id=case_id,

@@ -436,7 +436,7 @@ class ScraperCISS(BaseScraper):
             voi_form = veh_forms[event["voi"]]["Vehicle"]
             self.event_parsed.emit(
                 Event(
-                    summary=case_json["Summary"],
+                    summary=str(case_json["Summary"]),
                     scraper_type="CISS",
                     case_num=case_json["CaseNum"],
                     case_id=case_id,

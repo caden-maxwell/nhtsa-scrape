@@ -63,7 +63,7 @@ class SettingsMenu(QWidget):
         )
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
         self.settings_path.touch(exist_ok=True)
-        self._logger.debug(f"Settings path: {self.settings_path}")
+        self._logger.info(f"Loading settings from {self.settings_path}")
 
         self._settings = {}
         for key, value in self.SETTINGS_SCHEMA["properties"].items():
@@ -100,10 +100,20 @@ class SettingsMenu(QWidget):
             )
 
         self._logger.info(
-            f"Successfully loaded settings:\n{json.dumps(self._settings, indent=4)}"
+            f"Loaded settings:\n{json.dumps(self._settings, indent=4)}"
         )
 
         self.ui.backBtn.clicked.connect(self.back.emit)
+
+        # Set up debug mode checkbox
+        self.ui.debugCheckbox.setToolTip(
+            self.SETTINGS_SCHEMA["properties"]["debug"]["description"]
+        )
+        self.ui.debugCheckbox.setChecked(self._settings["debug"])
+        self.ui.debugCheckbox.clicked.connect(self._toggle_debug)
+        
+        # Update debug mode for the root logger
+        self._set_logger_debug(self._settings["debug"])
 
         # Set up min rate limit spinbox
         self.ui.rateLimitSpinBox.setToolTip(
@@ -124,13 +134,6 @@ class SettingsMenu(QWidget):
         self.rate_limit_changed.emit(self._settings["rateLimit"])
         self.timeout_changed.emit(self._settings["timeout"])
 
-        # Set up debug checkbox
-        self.ui.debugCheckbox.setToolTip(
-            self.SETTINGS_SCHEMA["properties"]["debug"]["description"]
-        )
-        self.ui.debugCheckbox.setChecked(self._settings["debug"])
-        self.ui.debugCheckbox.clicked.connect(self._toggle_debug)
-
         # Set up data save path
         self.ui.filenameEdit.setToolTip(
             self.SETTINGS_SCHEMA["properties"]["dataSavePath"]["description"]
@@ -145,13 +148,13 @@ class SettingsMenu(QWidget):
                 f"Failed to create data save path '{self._settings['dataSavePath']}': {e}"
             )
             # Set data save path to default
-            self._settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"][
-                "dataSavePath"
-            ]["default"]
+            self._settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"]["dataSavePath"]["default"]
             self.settings_path.write_text(json.dumps(self._settings, indent=4))
             self.ui.filenameEdit.setText(self._settings["dataSavePath"])
 
         self.ui.openBtn.clicked.connect(self._open_save_path)
+
+        self._logger.info(f"Successfully applied all settings.")
 
     def _update_rate_limit(self, value):
         value = round(value, 2)
@@ -189,14 +192,16 @@ class SettingsMenu(QWidget):
         self.settings_path.write_text(json.dumps(self._settings, indent=4))
         self.timeout_changed.emit(value)
 
-    def _toggle_debug(self, checked):
+    def _set_logger_debug(self, debug_on: bool):
         root_logger = logging.getLogger()
-        if checked:
+        if debug_on:
             root_logger.setLevel(logging.DEBUG)
-            self._logger.info("Enabled debug logging.")
         else:
-            self._logger.info("Disabled debug logging.")
             root_logger.setLevel(logging.INFO)
+        self._logger.info(f"Set logger debug mode to {debug_on}")
+
+    def _toggle_debug(self, checked):
+        self._set_logger_debug(checked)
         self._settings["debug"] = checked
         self.settings_path.write_text(json.dumps(self._settings, indent=4))
 
