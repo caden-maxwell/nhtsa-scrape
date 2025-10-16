@@ -5,7 +5,6 @@ from matplotlib import use as mpl_use
 
 mpl_use("qtagg")
 import matplotlib.pyplot as plt
-import seaborn as sns
 import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
@@ -18,7 +17,6 @@ from app.models import DatabaseHandler, ScatterPlotModel, Profile
 from app.ui import Ui_ScatterTab
 
 logging.getLogger("matplotlib").setLevel(logging.WARNING)
-sns.set_style("ticks")
 
 
 class ScatterTab(BaseTab):

@@ -9,4 +9,3 @@ sqlalchemy
 jsonschema
 python-Levenshtein
 fuzzywuzzy
-

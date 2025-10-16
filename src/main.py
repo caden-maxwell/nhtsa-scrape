@@ -10,7 +10,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setStyle("fusion")
 
-    icon_path = Path(__file__).parent / "app" / "resources" / "icon.png"
+    icon_path = Path(__file__).parent / "app" / "resources" / "icon.ico"
     pixmap = QPixmap()
     pixmap.loadFromData(icon_path.read_bytes())
     appIcon = QIcon(pixmap)

@@ -2,10 +2,10 @@
 
 
 a = Analysis(
-    ['main.py'],
+    ['src/main.py'],
     pathex=[],
     binaries=[],
-    datas=[("app/resources/icon.png", "app/resources"), ("app/resources/OpenSans-Regular.ttf", "app/resources")],
+    datas=[("src/app/resources/icon.ico", "app/resources"), ("src/app/resources/OpenSans-Regular.ttf", "app/resources")],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -32,7 +32,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='app/resources/icon.png'
+    icon='src/app/resources/icon.ico'
 )
 coll = COLLECT(
     exe,
