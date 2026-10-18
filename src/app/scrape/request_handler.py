@@ -6,8 +6,13 @@ import requests
 from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, pyqtSlot
 
 
+class ContextToken(QObject):
+    response_received = pyqtSignal(requests.Response)
+
+
 @dataclass
 class _CachedResponse:
+    # TODO: Fix some weird behavior is happening where expired cached responses are not getting thrown away
     COOKIE_EXPIRED_SECS = 900  # Assume site cookies expire after 15 minutes
 
     response: requests.Response
@@ -26,6 +31,7 @@ class RequestQueueItem:
     params: dict = field(default_factory=dict, compare=False)
     headers: dict = field(default_factory=dict, compare=False)
     priority: int = 0
+    token: ContextToken = field(default=None, compare=False)
     # Additional data used to identify the request (for internal use, not sent to url)
     extra_data: dict = field(default_factory=dict, compare=False)
     callback: callable = field(default=None, compare=False)
@@ -65,6 +71,7 @@ class RequestWorker(QRunnable):
             response = requests.get(
                 url=self._request.url,
                 headers=self._request.headers,
+                params=self._request.params,
                 timeout=self._timeout,
             )
         except Exception as e:
@@ -77,10 +84,10 @@ class RequestWorker(QRunnable):
 class RequestHandler(QObject):
     stopped = pyqtSignal()
     response_received = pyqtSignal(RequestQueueItem, requests.Response)
+    next_request = pyqtSignal()
 
     DEFAULT_RATE_LIMIT = 0.7  # Default rate limit in seconds
     DEFAULT_TIMEOUT = 7  # Default request timeout in seconds
-    MAX_CONCURRENT_REQUESTS = -1  # Maximum number of concurrent requests
 
     MIN_RATE_LIMIT = 0.25  # Minimum rate limit in seconds
     MIN_TIMEOUT = 0.25  # Minimum request timeout in seconds
@@ -101,6 +108,8 @@ class RequestHandler(QObject):
         self._delay_timer.setInterval(int(self._rate_limit * 1000))
         self._delay_timer.setSingleShot(True)
         self._delay_timer.timeout.connect(self._start_next_request)
+        # Need to use signals to avoid timer thread issues
+        self.next_request.connect(self._start_next_request)
 
         self.running = True
 
@@ -109,12 +118,11 @@ class RequestHandler(QObject):
         self.stopped.emit()
 
     def _start_next_request(self):
-        """Start the next request in the queue if both the rate limit and concurrent request limit are met.
+        """
+        Start the next request in the queue if both the rate limit and concurrent request limit are met.
         If the rate limit is not met, the delay timer is started to wait for the next request.
         """
         if self._request_queue and self.running:
-
-            # if the next request's response is cached, we can use it immediately
             request = self._request_queue[0]
             prepared_req = requests.Request(
                 method=request.method,
@@ -122,41 +130,23 @@ class RequestHandler(QObject):
                 params=request.params,
                 headers=request.headers,
             ).prepare()
-            request.url = prepared_req.url
 
-            if request.url in self._response_cache:
-                cached = self._response_cache[request.url]
+            if prepared_req.url in self._response_cache:
+                cached = self._response_cache[prepared_req.url]
                 if not cached.expired():
-                    self._logger.debug(f"Using cached response for {request.url}.")
+                    self._logger.debug(f"Using cached response for {prepared_req.url}.")
                     self._request_queue.remove(request)
-                    self._process_response(
-                        request, self._response_cache[request.url].response
-                    )
-                    self._start_timer()
+                    self._handle_response(request, self._response_cache[prepared_req.url].response, cached=True)
                     return
                 else:
-                    self._logger.debug(f"Cached response expired for {request.url}.")
+                    self._logger.debug(f"Cached response expired for {prepared_req.url}.")
 
-            # If not in cache, perform additional checks:
-            # Check if the rate limit is met
+            # Check if still constrained by rate limit
             if self._delay_timer.remainingTime() > 0:
-                self._logger.debug(
-                    f"Need to wait {self._delay_timer.remainingTime()/1000:.2f} seconds before next request!"
-                )
+                secs = self._delay_timer.remainingTime() / 1000
+                self._logger.debug(f"Need to wait {secs:.2f} seconds before next request!")
                 return
 
-            # Check if the maximum concurrent requests limit is met
-            if (
-                self._threadpool.activeThreadCount() >= self.MAX_CONCURRENT_REQUESTS
-                and self.MAX_CONCURRENT_REQUESTS != -1
-            ):
-                self._logger.debug(
-                    "Maximum concurrent requests reached. Waiting for reponses."
-                )
-                self._start_timer()
-                return
-
-            # Start the next request
             self._request_queue.remove(request)
             self._execute_request(request)
 
@@ -181,8 +171,9 @@ class RequestHandler(QObject):
             return
 
         default_headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:83.0) Gecko/20100101 Firefox/83.0",
-            "Accept-Language": "en-US,en;q=0.5",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
+            "Accept-Language": "en-US,en;q=0.9",
         }   
 
         request.headers.update(default_headers)
@@ -203,7 +194,7 @@ class RequestHandler(QObject):
         self._request_queue.append(request)
         self._request_queue.sort()
         self._logger.debug(f"Enqueued request for {request.url}")
-        self._start_next_request()
+        self.next_request.emit()
 
     def batch_enqueue(self, requests: list[RequestQueueItem]):
         """Enqueue a batch of requests to be sent. More efficient than enqueuing one request at a
@@ -221,7 +212,7 @@ class RequestHandler(QObject):
         urls_log = "\n".join(urls)
         self._logger.debug(f"Enqueued {len(requests)} requests:\n{urls_log}")
 
-        self._start_next_request()
+        self.next_request.emit()
 
     def contains_requests(self, priority=-1, extra_data={}):
         """Check if the request queue or ongoing requests contains any requests with the given priority and extra data.
@@ -347,36 +338,25 @@ class RequestHandler(QObject):
         )
 
     @pyqtSlot(RequestQueueItem, requests.Response)
-    def _handle_response(self, request: RequestQueueItem, response: requests.Response):
+    def _handle_response(
+        self, request: RequestQueueItem, response: requests.Response, cached: bool = False
+    ):
         """Handle a response from a request worker.
 
         Args:
             request (RequestQueueItem): Request that was sent.
             response (requests.Response): Response received from the request.
+            cached (bool): Whether the response came from the cache
         """
-        if request not in self._ongoing_requests:
-            self._logger.debug(
-                f"Ignoring response for {request.url}, removed from ongoing requests."
-            )
-            return
+        if not cached:
+            if request not in self._ongoing_requests:
+                self._logger.debug(
+                    f"Ignoring response for {request.url}, removed from ongoing requests."
+                )
+                return
+            self._ongoing_requests.remove(request)
+            self._response_cache[response.url] = _CachedResponse(response)
 
-        self._ongoing_requests.remove(request)
-
-        self._response_cache[response.url] = _CachedResponse(response)
-
-        self._process_response(request, response)
-
-    @pyqtSlot(Exception)
-    def _handle_exception(self, exception: Exception):
-        self._logger.error(f"Request worker exception: {exception}")
-
-    def _process_response(self, request: RequestQueueItem, response: requests.Response):
-        """Process a response from a request worker or the cache.
-
-        Args:
-            request (RequestQueueItem): Request that was sent.
-            response (requests.Response): Response received from the request.
-        """
         if not response:
             self._logger.error(f"Failed to get response for {request.url}.")
             return
@@ -387,6 +367,13 @@ class RequestHandler(QObject):
             )
             return
 
-        # Cache and emit the response
         if self.running:
+            # New way of doing things
+            request.token.response_received.emit(response)
+
+            # Legacy; work to remove this old method
             self.response_received.emit(request, response)
+
+    @pyqtSlot(Exception)
+    def _handle_exception(self, exception: Exception):
+        self._logger.error(f"Request worker exception: {exception}")

@@ -27,6 +27,8 @@ class ScraperCISS(BaseScraper):
     case_list_url = "/CISS/Index"
     img_url = "/photos/{obj_id}/Image"
     edr_url = "/File/{obj_id}?inline=false&fileName={filename}"
+    html_options_name="div"
+    html_options_id="panel-options"
     _fuzz_threshold = 90
 
     # CISS-specific dropdown field ids

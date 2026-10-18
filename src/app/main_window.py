@@ -7,7 +7,7 @@ from PyQt6.QtGui import QCloseEvent
 
 from app.log_utils import QtLogHandler, ColorFormatter
 from app.pages import MainMenu, LogsWindow, ProfileMenu, ScrapeMenu, SettingsMenu
-from app.scrape import RequestHandler
+from app.scrape import RequestHandler, ScraperAPI
 from app.models import DatabaseHandler
 from app.ui import Ui_MainWindow
 
@@ -20,6 +20,7 @@ class MainWindow(QWidget):
         self.ui.setupUi(self)
 
         self._req_handler = RequestHandler()
+        self._api = ScraperAPI(self._req_handler)
         path = Path(__file__).parent.parent / "app.db"
         self._db_handler = DatabaseHandler(path)
 
@@ -47,7 +48,7 @@ class MainWindow(QWidget):
         self._mainMenuPage = MainMenu()
         self._settingsMenuPage = SettingsMenu(self._req_handler)
         data_dir = self._settingsMenuPage.get_save_path()
-        self._scrapeMenuPage = ScrapeMenu(self._req_handler, self._db_handler, data_dir)
+        self._scrapeMenuPage = ScrapeMenu(self._api, self._db_handler, data_dir)
         self._profilesMenuPage = ProfileMenu(
             self._req_handler, self._db_handler, data_dir
         )

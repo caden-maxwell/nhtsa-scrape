@@ -69,6 +69,16 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
 
     @property
     @abstractmethod
+    def html_options_name(self) -> str:
+        """The name of the HTML tag containing the dropdown options"""
+
+    @property
+    @abstractmethod
+    def html_options_id(self) -> str:
+        """The ID of the HTML tag containing the dropdown options"""
+
+    @property
+    @abstractmethod
     def field_names(self) -> FieldNames:
         """Returns a dataclass of dropdown field names for each parameter of the scraper."""
 

@@ -3,7 +3,6 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from bs4 import BeautifulSoup
 from requests import Response
 
 from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThread
@@ -16,8 +15,7 @@ from app.scrape import (
     BaseScraper,
     ScraperNASS,
     ScraperCISS,
-    RequestQueueItem,
-    Priority,
+    ScraperAPI,
 )
 from app.ui import Ui_ScrapeMenu
 
@@ -25,8 +23,6 @@ from app.ui import Ui_ScrapeMenu
 @dataclass
 class _SearchModel:
     scraper: BaseScraper  # The scraper to use
-    html_options_name: str  # The name of the HTML tag containing the dropdown options
-    html_options_id: str  # The ID of the HTML tag containing the dropdown options
     make_combo: QComboBox  # The make dropdown
     model_combo: QComboBox  # The model dropdown
     start_year_combo: QComboBox  # The start model year dropdown
@@ -44,7 +40,7 @@ class ScrapeMenu(QWidget):
 
     def __init__(
         self,
-        req_handler: RequestHandler,
+        api: ScraperAPI,
         db_handler: DatabaseHandler,
         data_dir: Path,
     ):
@@ -61,8 +57,7 @@ class ScrapeMenu(QWidget):
         self._engine_thread: QThread = None
         self._db_handler = db_handler
 
-        self._req_handler = req_handler
-        self._req_handler.response_received.connect(self.handle_response)
+        self._api = api 
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
@@ -71,8 +66,6 @@ class ScrapeMenu(QWidget):
 
         nass_model = _SearchModel(
             scraper=ScraperNASS,
-            html_options_name="table",
-            html_options_id="searchTable",
             make_combo=self.ui.makeCombo,
             model_combo=self.ui.modelCombo,
             start_year_combo=self.ui.startYearCombo,
@@ -86,8 +79,6 @@ class ScrapeMenu(QWidget):
 
         ciss_model = _SearchModel(
             scraper=ScraperCISS,
-            html_options_name="div",
-            html_options_id="panel-options",
             make_combo=self.ui.makeCombo_2,
             model_combo=self.ui.modelCombo_2,
             start_year_combo=self.ui.startYearCombo_2,
@@ -99,7 +90,9 @@ class ScrapeMenu(QWidget):
             radio_button=self.ui.cissRadioBtn,
         )
 
-        self._nhtsa_models = [ciss_model, nass_model]
+        #self._nhtsa_models = [ciss_model, nass_model]
+        # TODO: fix the broken CISS parsing
+        self._nhtsa_models = [nass_model]
 
         self.ui.makeCombo.activated.connect(lambda: self.fetch_models(nass_model))
         self.ui.makeCombo_2.activated.connect(lambda: self.fetch_models(ciss_model))
@@ -107,103 +100,43 @@ class ScrapeMenu(QWidget):
 
         self._data_viewer = None
 
-        self.fetch_search()
-
-    def fetch_search(self):
-        """Fetches the NASS and CISS search filter sites to retrieve dropdown options."""
         for nhtsa_model in self._nhtsa_models:
-            self._req_handler.enqueue_request(
-                RequestQueueItem(
-                    BaseScraper.ROOT + nhtsa_model.scraper.search_url,
-                    priority=Priority.IMMEDIATE.value,
-                    callback=self._update_dropdowns,
-                    extra_data={"search_model": nhtsa_model},
-                )
-            )
+            self._api.fetch_info(nhtsa_model.scraper).parsed_ready \
+                .connect(lambda info: self._update_dropdowns(nhtsa_model, info))
 
-    @pyqtSlot(RequestQueueItem, Response)
-    def handle_response(self, request: RequestQueueItem, response: Response):
-        if request.callback.__self__ == self:
-            request.callback(request, response)
-
-    def _update_dropdowns(self, request: RequestQueueItem, response: Response):
-        """Parses the response from a search site and populates the search fields."""
-        nhtsa_model: _SearchModel = request.extra_data["search_model"]
-
-        # Parse response
-        soup = BeautifulSoup(response.content, "html.parser")
-        options = soup.find(
-            nhtsa_model.html_options_name, id=nhtsa_model.html_options_id
-        )
-        dropdowns: list[BeautifulSoup] = options.select("select")
-
-        dropdown_data = {}
-        for dropdown in dropdowns:
-            options = dropdown.find_all("option")
-            options: list[BeautifulSoup]
-            dropdown_data[dropdown["name"]] = [
-                (option.text, option.get("value")) for option in options
-            ]
-
-        # Populate dropdowns
+    def _update_dropdowns(self, nhtsa_model: _SearchModel, dropdown_data: dict):
         nhtsa_model.make_combo.clear()
-        for data in dropdown_data[nhtsa_model.scraper.field_names.make]:
+        for data in dropdown_data["make"]:
             nhtsa_model.make_combo.addItem(*data)
 
         self.fetch_models(nhtsa_model)
 
         nhtsa_model.start_year_combo.clear()
-        for data in dropdown_data[nhtsa_model.scraper.field_names.start_model_year]:
+        for data in dropdown_data["start_model_year"]:
             nhtsa_model.start_year_combo.addItem(*data)
 
         nhtsa_model.end_year_combo.clear()
-        for data in dropdown_data[nhtsa_model.scraper.field_names.end_model_year]:
+        for data in dropdown_data["end_model_year"]:
             nhtsa_model.end_year_combo.addItem(*data)
 
         nhtsa_model.p_dmg_combo.clear()
-        for data in dropdown_data[nhtsa_model.scraper.field_names.primary_damage]:
+        for data in dropdown_data["p_dmg"]:
             nhtsa_model.p_dmg_combo.addItem(*data)
 
         nhtsa_model.s_dmg_combo.clear()
-        for data in dropdown_data[nhtsa_model.scraper.field_names.secondary_damage]:
+        for data in dropdown_data["s_dmg"]:
             nhtsa_model.s_dmg_combo.addItem(*data)
 
         self._logger.info(f"{nhtsa_model.scraper.__name__} search fields populated.")
         nhtsa_model.radio_button.setEnabled(True)
 
-    def fetch_models(self, search_model: _SearchModel):
-        """Fetches the models for the given make and calls update_model_dropdown once there is a response."""
-        extra_data = {"search_model": search_model}
+    def fetch_models(self, engine_ui: _SearchModel):
+        # {"makeIds": models_backend.make_combo.currentData()}
+        engine_ui.model_combo.clear()
+        self._api.fetch_models(engine_ui.make_combo.currentText(), engine_ui.scraper).parsed_ready \
+            .connect(lambda data: self.update_model_dropdown(engine_ui, data))
 
-        params = (
-            {"make": search_model.make_combo.currentText()}
-            if search_model.scraper == ScraperNASS
-            else {"makeIds": search_model.make_combo.currentData()}
-        )
-        self._req_handler.enqueue_request(
-            RequestQueueItem(
-                BaseScraper.ROOT + search_model.scraper.models_url,
-                params=params,
-                priority=Priority.IMMEDIATE.value,
-                extra_data=extra_data,
-                callback=self.update_model_dropdown,
-            )
-        )
-
-    def update_model_dropdown(self, request: RequestQueueItem, response: Response):
-        """Populates the model dropdown with models from the response."""
-
-        # Parse response
-        model_dcts = json.loads(response.content)
-        models = []
-        for model in model_dcts:
-            models.append((model["Value"], model["Key"]))
-        models.sort()
-
-        search_model: _SearchModel = request.extra_data["search_model"]
-
-        # Populate model dropdown
-        search_model.model_combo.clear()
+    def update_model_dropdown(self, search_model: _SearchModel, models):
         search_model.model_combo.addItem("All", -1)
         for model in models:
             search_model.model_combo.addItem(*model)
@@ -300,7 +233,7 @@ class ScrapeMenu(QWidget):
             )
 
         self._scraper = nhtsa_model.scraper(
-            req_handler=self._req_handler,
+            req_handler=self._api._req_handler,
             make=_get_combo_as_tuple(nhtsa_model.make_combo),
             model=_get_combo_as_tuple(nhtsa_model.model_combo),
             start_model_year=_get_combo_as_tuple(nhtsa_model.start_year_combo),
@@ -324,7 +257,7 @@ class ScrapeMenu(QWidget):
     def _new_data_viewer(self):
         if self._db_handler.profile_exists(self._profile):
             self._data_viewer = DataView(
-                self._req_handler, self._db_handler, self._profile, self._data_dir
+                self._api._req_handler, self._db_handler, self._profile, self._data_dir
             )
             self._db_handler.profile_updated.connect(
                 self._data_viewer.handle_profile_updated

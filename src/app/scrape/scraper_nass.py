@@ -19,15 +19,17 @@ from app.models import Event
 
 class ScraperNASS(BaseScraper):
 
-    search_url = "/LegacyCDS/Search"
-    models_url = "/LegacyCDS/GetVehicleModels/"
+    search_url = "/crashviewer/LegacyCDS/Search"
+    models_url = "/crashviewer/LegacyCDS/GetVehicleModels/"
     case_url = "/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID={case_id}"
     case_url_raw = (
         "/nass-cds/CaseForm.aspx?GetXML&caseid={case_id}&year=&transform=0&docinfo=0"
     )
-    case_list_url = "/LegacyCDS"
+    case_list_url = "/crashviewer/LegacyCDS"
     img_url = "/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={version}"
     edr_url = "/nass-cds/CaseForm.aspx?ViewPage&xsl=VE.xsl&tab=EDR&form=VehicleExteriorForms&baseNode=&vehnum={veh_num}&occnum=-1&pos={edr_id}&pos2=-1&websrc=true&title=Vehicle%20%20Exterior%20-%20EDR&caseid={case_id}&year=&fullimage=false"
+    html_options_name="form"
+    html_options_id="SearchForm"
 
     # NASS-specific dropdown field ids
     field_names = FieldNames(
