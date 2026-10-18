@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 import requests
 
-from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QObject, QRunnable, QThreadPool, QTimer, pyqtSignal, pyqtSlot, Qt
 
 
 class ContextToken(QObject):
@@ -109,7 +109,8 @@ class RequestHandler(QObject):
         self._delay_timer.setSingleShot(True)
         self._delay_timer.timeout.connect(self._start_next_request)
         # Need to use signals to avoid timer thread issues
-        self.next_request.connect(self._start_next_request)
+        # Also need to use Queued connection to avoid cached responses being signaled before slot is connected
+        self.next_request.connect(self._start_next_request, Qt.ConnectionType.QueuedConnection)
 
         self.running = True
 
@@ -154,9 +155,7 @@ class RequestHandler(QObject):
             self._logger.debug(f"Rate limiting next request to {self._rate_limit}s")
 
     def _start_timer(self):
-        # Need to convert s to ms
-        self._delay_timer.setInterval(int(self._rate_limit * 1000))
-
+        self._delay_timer.setInterval(int(self._rate_limit * 1000)) # milliseconds
         self._delay_timer.start()
 
     def _execute_request(self, request: RequestQueueItem):

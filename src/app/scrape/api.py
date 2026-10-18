@@ -73,6 +73,7 @@ class ScraperAPI(QObject):
         makeId = 0 # TODO
         params = {"make": make} if scraper == ScraperNASS else {"makeIds": makeId}
 
+        # This is not actually clearing requests for whatever reason
         self._req_handler.clear_requests(Priority.IMMEDIATE)
         self._req_handler.enqueue_request(
             RequestQueueItem(
