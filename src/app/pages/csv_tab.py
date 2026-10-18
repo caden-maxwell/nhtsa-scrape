@@ -52,9 +52,7 @@ class CSVTab(BaseTab):
         box.setIcon(QMessageBox.Icon.Information)
         box.setText("CSV saved to:")
         box.setInformativeText(str(csv_path))
-        box.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open
-        )
+        box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open)
         box.setDefaultButton(QMessageBox.StandardButton.Ok)
         button_result = box.exec()
 

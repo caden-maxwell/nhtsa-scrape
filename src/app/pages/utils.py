@@ -9,8 +9,8 @@ def open_path(path: Path) -> bool:
     """Platform-independent method to open a file or program with the default application.
 
     Args:
-        path (Path): The file or program to open. 
-    
+        path (Path): The file or program to open.
+
     Returns:
         bool: True if the file/program was opened successfully, False otherwise.
     """

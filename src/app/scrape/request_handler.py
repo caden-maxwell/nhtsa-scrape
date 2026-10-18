@@ -19,9 +19,7 @@ class _CachedResponse:
     created: datetime = datetime.now()
 
     def expired(self):
-        return (
-            datetime.now() - self.created
-        ).total_seconds() > self.COOKIE_EXPIRED_SECS
+        return (datetime.now() - self.created).total_seconds() > self.COOKIE_EXPIRED_SECS
 
 
 @dataclass(order=True)
@@ -137,7 +135,9 @@ class RequestHandler(QObject):
                 if not cached.expired():
                     self._logger.debug(f"Using cached response for {prepared_req.url}.")
                     self._request_queue.remove(request)
-                    self._handle_response(request, self._response_cache[prepared_req.url].response, cached=True)
+                    self._handle_response(
+                        request, self._response_cache[prepared_req.url].response, cached=True
+                    )
                     return
                 else:
                     self._logger.debug(f"Cached response expired for {prepared_req.url}.")
@@ -155,7 +155,7 @@ class RequestHandler(QObject):
             self._logger.debug(f"Rate limiting next request to {self._rate_limit}s")
 
     def _start_timer(self):
-        self._delay_timer.setInterval(int(self._rate_limit * 1000)) # milliseconds
+        self._delay_timer.setInterval(int(self._rate_limit * 1000))  # milliseconds
         self._delay_timer.start()
 
     def _execute_request(self, request: RequestQueueItem):
@@ -173,7 +173,7 @@ class RequestHandler(QObject):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0",
             "Accept-Language": "en-US,en;q=0.9",
-        }   
+        }
 
         request.headers.update(default_headers)
         self._ongoing_requests.append(request)
@@ -277,8 +277,7 @@ class RequestHandler(QObject):
         return [
             request
             for request in self._request_queue
-            if self._priority_and_data_match(request, priority, extra_data)
-            or priority == -1
+            if self._priority_and_data_match(request, priority, extra_data) or priority == -1
         ]
 
     def _get_ongoing_requests(self, priority=-1, extra_data={}):
@@ -294,8 +293,7 @@ class RequestHandler(QObject):
         return [
             request
             for request in self._ongoing_requests
-            if self._priority_and_data_match(request, priority, extra_data)
-            or priority == -1
+            if self._priority_and_data_match(request, priority, extra_data) or priority == -1
         ]
 
     def _priority_and_data_match(
@@ -325,16 +323,12 @@ class RequestHandler(QObject):
     @pyqtSlot(float)
     def update_rate_limit(self, rate_limit):
         self._rate_limit = max(rate_limit, self.MIN_RATE_LIMIT)
-        self._logger.info(
-            f"Updated request handler min rate limit to {self._rate_limit}s."
-        )
+        self._logger.info(f"Updated request handler min rate limit to {self._rate_limit}s.")
 
     @pyqtSlot(float)
     def update_timeout(self, timeout):
         self._timeout = max(timeout, self.MIN_TIMEOUT)
-        self._logger.info(
-            f"Updated request handler timeout to {self._timeout}s"
-        )
+        self._logger.info(f"Updated request handler timeout to {self._timeout}s")
 
     @pyqtSlot(RequestQueueItem, requests.Response)
     def _handle_response(

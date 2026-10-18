@@ -51,9 +51,7 @@ class EventTable(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def refresh_data(self):
-        self._data: list[Event] = self._db_handler.get_events(
-            self._profile, include_ignored=False
-        )
+        self._data: list[Event] = self._db_handler.get_events(self._profile, include_ignored=False)
         self._data = [event.to_tuple() for event in self._data]
         self.layoutChanged.emit()
         self._logger.debug("Refreshed data.")

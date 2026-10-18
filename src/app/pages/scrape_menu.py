@@ -56,7 +56,7 @@ class ScrapeMenu(QWidget):
         self._engine_thread: QThread = None
         self._db_handler = db_handler
 
-        self._api = api 
+        self._api = api
 
         self.ui.backBtn.clicked.connect(self.back.emit)
         self.ui.submitBtn.clicked.connect(self.handle_submit)
@@ -89,7 +89,7 @@ class ScrapeMenu(QWidget):
             radio_button=self.ui.cissRadioBtn,
         )
 
-        #self._nhtsa_models = [ciss_model, nass_model]
+        # self._nhtsa_models = [ciss_model, nass_model]
         # TODO: fix the broken CISS parsing
         self._nhtsa_models = [nass_model]
 
@@ -100,8 +100,9 @@ class ScrapeMenu(QWidget):
         self._data_viewer = None
 
         for nhtsa_model in self._nhtsa_models:
-            self._api.fetch_info(nhtsa_model.scraper).parsed_ready \
-                .connect(lambda info: self._update_dropdowns(nhtsa_model, info))
+            self._api.fetch_info(nhtsa_model.scraper).parsed_ready.connect(
+                lambda info: self._update_dropdowns(nhtsa_model, info)
+            )
 
     def _update_dropdowns(self, nhtsa_model: _SearchModel, dropdown_data: dict):
         nhtsa_model.make_combo.clear()
@@ -132,8 +133,9 @@ class ScrapeMenu(QWidget):
     def fetch_models(self, engine_ui: _SearchModel):
         # {"makeIds": models_backend.make_combo.currentData()}
         engine_ui.model_combo.clear()
-        self._api.fetch_models(engine_ui.make_combo.currentText(), engine_ui.scraper).parsed_ready \
-            .connect(lambda data: self.update_model_dropdown(engine_ui, data))
+        self._api.fetch_models(
+            engine_ui.make_combo.currentText(), engine_ui.scraper
+        ).parsed_ready.connect(lambda data: self.update_model_dropdown(engine_ui, data))
 
     def update_model_dropdown(self, search_model: _SearchModel, models):
         search_model.model_combo.addItem("All", -1)
@@ -153,9 +155,7 @@ class ScrapeMenu(QWidget):
         self.ui.stopBtn.setVisible(True)
 
         if self._scraper and self._scraper.running:
-            self._logger.warning(
-                "Scrape engine is already running. Ignoring submission."
-            )
+            self._logger.warning("Scrape engine is already running. Ignoring submission.")
             return
 
         # Get the active database based on the radio button
@@ -198,8 +198,7 @@ class ScrapeMenu(QWidget):
         # The only case in which we keep the old data viewer open is if we are
         #   performing multi-analysis and the previously used profile exists
         if not (
-            self.ui.multiCheckBox.isChecked()
-            and self._db_handler.profile_exists(self._profile)
+            self.ui.multiCheckBox.isChecked() and self._db_handler.profile_exists(self._profile)
         ):
             self._profile = Profile(
                 name=name,
@@ -258,9 +257,7 @@ class ScrapeMenu(QWidget):
             self._data_viewer = DataView(
                 self._api._req_handler, self._db_handler, self._profile, self._data_dir
             )
-            self._db_handler.profile_updated.connect(
-                self._data_viewer.handle_profile_updated
-            )
+            self._db_handler.profile_updated.connect(self._data_viewer.handle_profile_updated)
             self._db_handler.event_added.connect(self._data_viewer.handle_event_added)
             self._data_viewer.exited.connect(self._set_dv_closed)
             self._data_viewer.show()

@@ -27,8 +27,8 @@ class ScraperCISS(BaseScraper):
     case_list_url = "/CISS/Index"
     img_url = "/photos/{obj_id}/Image"
     edr_url = "/File/{obj_id}?inline=false&fileName={filename}"
-    html_options_name="div"
-    html_options_id="panel-options"
+    html_options_name = "div"
+    html_options_id = "panel-options"
     _fuzz_threshold = 90
 
     # CISS-specific dropdown field ids
@@ -116,9 +116,7 @@ class ScraperCISS(BaseScraper):
         self._payload.update(payload)
 
     def _scrape(self):
-        self._logger.info(
-            textwrap.dedent(
-                f"""
+        self._logger.info(textwrap.dedent(f"""
                 --== {self.__class__.__name__} Started ==--
                     Make: {self._make.text}
                     Model: {self._model.text}
@@ -128,9 +126,7 @@ class ScraperCISS(BaseScraper):
                     Min Delta V: {self._min_dv}
                     Max Delta V: {self._max_dv}
                 --==--==--==--==--==--==--==--
-                """
-            )
-        )
+                """))
 
         self._req_case_list()
 
@@ -148,8 +144,7 @@ class ScraperCISS(BaseScraper):
 
     def _handle_response(self, request: RequestQueueItem, response: Response):
         if (
-            request.priority == Priority.CASE_LIST.value
-            or request.priority == Priority.CASE.value
+            request.priority == Priority.CASE_LIST.value or request.priority == Priority.CASE.value
         ) and request.extra_data.get("database") == "CISS":
             request.callback(request, response)
 
@@ -158,9 +153,7 @@ class ScraperCISS(BaseScraper):
             return
 
         if not response.content:
-            self._logger.error(
-                f"Received empty response from {request.url}. Ending scrape..."
-            )
+            self._logger.error(f"Received empty response from {request.url}. Ending scrape...")
             return
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -221,10 +214,7 @@ class ScraperCISS(BaseScraper):
         def make_match(vehicle: dict):
             """Check if the make of the scraped vehicle matches the "make" scrape parameter."""
             make = vehicle.get("VPICMakeDesc", "") or vehicle.get("MakeDesc", "")
-            return (
-                fuzz.partial_ratio(make.lower(), self._make.text.lower())
-                >= self._fuzz_threshold
-            )
+            return fuzz.partial_ratio(make.lower(), self._make.text.lower()) >= self._fuzz_threshold
 
         def model_match(vehicle: dict):
             """
@@ -233,8 +223,7 @@ class ScraperCISS(BaseScraper):
             """
             model = vehicle.get("VPICModelDesc", "") or vehicle.get("ModelDesc", "")
             return (
-                fuzz.partial_ratio(model.lower(), self._model.text.lower())
-                >= self._fuzz_threshold
+                fuzz.partial_ratio(model.lower(), self._model.text.lower()) >= self._fuzz_threshold
                 or self._model.value == -1
             )
 
@@ -283,8 +272,7 @@ class ScraperCISS(BaseScraper):
             ) or self._primary_damage.value == -1
 
             contacted_dmg_match = (
-                fuzz.partial_ratio(self._primary_damage.text, alt_veh_dmg)
-                >= self._fuzz_threshold
+                fuzz.partial_ratio(self._primary_damage.text, alt_veh_dmg) >= self._fuzz_threshold
             ) or self._primary_damage.value == -1
 
             # voi = vehicle of interest
@@ -358,9 +346,7 @@ class ScraperCISS(BaseScraper):
                 failed_events += 1
                 continue
 
-            crush_profile = veh_forms[event["voi"]]["CrushProfiles"].get(
-                event["event_num"]
-            )
+            crush_profile = veh_forms[event["voi"]]["CrushProfiles"].get(event["event_num"])
 
             if not crush_profile:
                 self._logger.warning(
@@ -393,9 +379,7 @@ class ScraperCISS(BaseScraper):
             KMPH_TO_MPH = 0.621371
             KG_TO_LBS = 2.20462
 
-            voi_curb_wgt = int(
-                veh_forms[event["voi"]]["Vehicle"]["CurbWt"].split(" ")[0]
-            )  # in kgs
+            voi_curb_wgt = int(veh_forms[event["voi"]]["Vehicle"]["CurbWt"].split(" ")[0])  # in kgs
             if alt_veh := veh_forms[event["alt_veh_num"]]["Vehicle"]:
                 a_curb_wgt = alt_veh["CurbWt"]
                 if a_curb_wgt.isnumeric():
@@ -429,9 +413,7 @@ class ScraperCISS(BaseScraper):
             NASS_vc = NASS_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
 
             # 0.5992 * e^( -0.1125 * NASS_vc + 0.003889 * NASS_vc^2 - 0.0001153 * NASS_vc^3 )
-            e = 0.5992 * np.exp(
-                -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
-            )
+            e = 0.5992 * np.exp(-0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3)
             TOT_dv = NASS_dv * (1.0 + e)
 
             vehicle
@@ -479,9 +461,7 @@ class ScraperCISS(BaseScraper):
             self.total_events += 1
 
         if failed_events >= len(key_events):
-            self._logger.warning(
-                f"Insufficient data for caseID {case_id}. Excluding from results."
-            )
+            self._logger.warning(f"Insufficient data for caseID {case_id}. Excluding from results.")
             self.failed_cases += 1
             return
 

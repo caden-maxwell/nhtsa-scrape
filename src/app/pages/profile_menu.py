@@ -13,9 +13,7 @@ from app.pages import DataView
 class ProfileMenu(QWidget):
     back = pyqtSignal()
 
-    def __init__(
-        self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path
-    ):
+    def __init__(self, req_handler: RequestHandler, db_handler: DatabaseHandler, data_dir: Path):
         super().__init__()
 
         self._logger = logging.getLogger(__name__)
@@ -28,9 +26,7 @@ class ProfileMenu(QWidget):
         self.ui.setupUi(self)
 
         self.ui.listView.setModel(self._model)
-        self.ui.listView.selectionModel().selectionChanged.connect(
-            self.handle_selection_changed
-        )
+        self.ui.listView.selectionModel().selectionChanged.connect(self.handle_selection_changed)
         self.ui.listView.clearSelection()
 
         self.ui.backBtn.clicked.connect(self.back.emit)
@@ -61,9 +57,7 @@ class ProfileMenu(QWidget):
             self._db_handler.profile_updated.connect(data_viewer.handle_profile_updated)
             self._db_handler.event_added.connect(data_viewer.handle_event_added)
             self._data_viewers.append(data_viewer)
-            data_viewer.exited.connect(
-                lambda viewer=data_viewer: self._data_viewers.remove(viewer)
-            )
+            data_viewer.exited.connect(lambda viewer=data_viewer: self._data_viewers.remove(viewer))
             data_viewer.show()
 
     def handle_delete(self):

@@ -56,9 +56,7 @@ class DataView(QWidget):
         """Generate a directory name for the profile."""
         dir_name = f"{self._profile.name}".replace(" ", "_")
         filename_safe = ["_", "-", "(", ")"]
-        dir_name = "".join(
-            c if c.isalnum() or c in filename_safe else "_" for c in dir_name
-        )
+        dir_name = "".join(c if c.isalnum() or c in filename_safe else "_" for c in dir_name)
         return re.sub(r"[_-]{2,}", "_", dir_name)
 
     def update_current_tab(self):

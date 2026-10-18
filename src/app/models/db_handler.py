@@ -77,9 +77,7 @@ class DatabaseHandler(QObject):
             stmt = select(ProfileEvent).where(ProfileEvent.profile == profile)
             return self._session.execute(stmt).scalars().all()
         except Exception as e:
-            self._logger.error(
-                f"Error getting profile events for profile {profile.id}: {e}"
-            )
+            self._logger.error(f"Error getting profile events for profile {profile.id}: {e}")
             return []
 
     def add_event(self, event: Event, profile: Profile):
@@ -137,11 +135,7 @@ class DatabaseHandler(QObject):
             return
 
     def update_profile(
-        self,
-        profile: Profile,
-        name: str = None,
-        multi: bool = None,
-        params: str = None
+        self, profile: Profile, name: str = None, multi: bool = None, params: str = None
     ):
         try:
             profile.name = name if name else profile.name

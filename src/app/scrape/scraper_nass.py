@@ -22,14 +22,12 @@ class ScraperNASS(BaseScraper):
     search_url = "/crashviewer/LegacyCDS/Search"
     models_url = "/crashviewer/LegacyCDS/GetVehicleModels/"
     case_url = "/nass-cds/CaseForm.aspx?xsl=main.xsl&CaseID={case_id}"
-    case_url_raw = (
-        "/nass-cds/CaseForm.aspx?GetXML&caseid={case_id}&year=&transform=0&docinfo=0"
-    )
+    case_url_raw = "/nass-cds/CaseForm.aspx?GetXML&caseid={case_id}&year=&transform=0&docinfo=0"
     case_list_url = "/crashviewer/LegacyCDS"
     img_url = "/nass-cds/GetBinary.aspx?Image&ImageID={img_id}&CaseID={case_id}&Version={version}"
     edr_url = "/nass-cds/CaseForm.aspx?ViewPage&xsl=VE.xsl&tab=EDR&form=VehicleExteriorForms&baseNode=&vehnum={veh_num}&occnum=-1&pos={edr_id}&pos2=-1&websrc=true&title=Vehicle%20%20Exterior%20-%20EDR&caseid={case_id}&year=&fullimage=false"
-    html_options_name="form"
-    html_options_id="SearchForm"
+    html_options_name = "form"
+    html_options_id = "SearchForm"
 
     # NASS-specific dropdown field ids
     field_names = FieldNames(
@@ -77,9 +75,7 @@ class ScraperNASS(BaseScraper):
             self.field_names.end_model_year: self._end_model_year.value,
             self.field_names.primary_damage: self._primary_damage.value,
             self.field_names.secondary_damage: (
-                self._secondary_damage.value
-                if self._secondary_damage.value != -1
-                else None
+                self._secondary_damage.value if self._secondary_damage.value != -1 else None
             ),
             self.field_names.min_dv: self._min_dv,
             self.field_names.max_dv: self._max_dv,
@@ -88,9 +84,7 @@ class ScraperNASS(BaseScraper):
         self._payload.update(payload)
 
     def _scrape(self):
-        self._logger.info(
-            textwrap.dedent(
-                f"""
+        self._logger.info(textwrap.dedent(f"""
                 --== {self.__class__.__name__} Started ==--
                     Make: {self._make.text}
                     Model: {self._model.text}
@@ -100,9 +94,7 @@ class ScraperNASS(BaseScraper):
                     Min Delta V: {self._min_dv}
                     Max Delta V: {self._max_dv}
                 --==--==--==--==--==--==--==--
-                """
-            )
-        )
+                """))
 
         self._req_case_list()
 
@@ -120,8 +112,7 @@ class ScraperNASS(BaseScraper):
     @pyqtSlot(RequestQueueItem, Response)
     def _handle_response(self, request: RequestQueueItem, response: Response):
         if (
-            request.priority == Priority.CASE_LIST.value
-            or request.priority == Priority.CASE.value
+            request.priority == Priority.CASE_LIST.value or request.priority == Priority.CASE.value
         ) and request.extra_data.get("database") == "NASS":
             request.callback(request, response)
 
@@ -130,9 +121,7 @@ class ScraperNASS(BaseScraper):
             return
 
         if not response.content:
-            self._logger.error(
-                f"Received empty response from {request.url}. Ending scrape..."
-            )
+            self._logger.error(f"Received empty response from {request.url}. Ending scrape...")
             return
 
         soup = BeautifulSoup(response.content, "html.parser")
@@ -191,8 +180,7 @@ class ScraperNASS(BaseScraper):
 
         def make_match(veh_sum: BeautifulSoup):
             return (
-                self._make.value == int(veh_sum.find("Make").get("value"))
-                or self._make.value == -1
+                self._make.value == int(veh_sum.find("Make").get("value")) or self._make.value == -1
             )
 
         def model_match(veh_sum: BeautifulSoup):
@@ -202,9 +190,7 @@ class ScraperNASS(BaseScraper):
             )
 
         def year_match(veh_sum: BeautifulSoup):
-            end_year = (
-                self._end_model_year.value if (self._end_model_year.value) != -1 else 9999
-            )
+            end_year = self._end_model_year.value if (self._end_model_year.value) != -1 else 9999
             year = veh_sum.find("Year").text
             if year == "Unknown":
                 if self._start_model_year.value == -1 and end_year == 9999:
@@ -217,11 +203,7 @@ class ScraperNASS(BaseScraper):
         # Get the vehicles in the case that match the search criteria
         vehicle_nums = []
         for veh_summary in case_xml.find_all("VehicleSum"):
-            if (
-                make_match(veh_summary)
-                and model_match(veh_summary)
-                and year_match(veh_summary)
-            ):
+            if make_match(veh_summary) and model_match(veh_summary) and year_match(veh_summary):
                 vehicle_nums.append(int(veh_summary.get("VehicleNumber")))
 
         if not vehicle_nums:
@@ -295,9 +277,7 @@ class ScraperNASS(BaseScraper):
                 failed_events += 1
                 continue
 
-            cdc_event = veh_ext_form.find(
-                "CDCevent", {"eventNumber": event["event_num"]}
-            )
+            cdc_event = veh_ext_form.find("CDCevent", {"eventNumber": event["event_num"]})
             if not cdc_event:
                 self._logger.warning(
                     f"No CDCevent found for event {event['event_num']} in case {case_id}. Skipping..."
@@ -407,9 +387,7 @@ class ScraperNASS(BaseScraper):
             a_curb_wgt = alt_data["a_curb_wgt"]
             NASS_vc = NASS_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
 
-            e = 0.5992 * np.exp(
-                -0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3
-            )
+            e = 0.5992 * np.exp(-0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3)
             TOT_dv = NASS_dv * (1.0 + e)
 
             self.event_parsed.emit(
@@ -455,9 +433,7 @@ class ScraperNASS(BaseScraper):
             self.total_events += 1
 
         if failed_events >= len(key_events):
-            self._logger.warning(
-                f"Insufficient data for caseID {case_id}. Excluding from results."
-            )
+            self._logger.warning(f"Insufficient data for caseID {case_id}. Excluding from results.")
             self.failed_cases += 1
             return
 

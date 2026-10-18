@@ -70,7 +70,7 @@ class ScraperAPI(QObject):
         token = APIResponseToken(scraper)
         token.response_received.connect(lambda data: self._parse_models(data, token))
 
-        makeId = 0 # TODO
+        makeId = 0  # TODO
         params = {"make": make} if scraper == ScraperNASS else {"makeIds": makeId}
 
         # This is not actually clearing requests for whatever reason
@@ -104,4 +104,3 @@ class ScraperAPI(QObject):
                 return ScraperCISS
             case _:
                 self._logger.error(f"Could not match name to scraper engine: {scraper}")
-                

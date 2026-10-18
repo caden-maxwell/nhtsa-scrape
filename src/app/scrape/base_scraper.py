@@ -136,18 +136,14 @@ class BaseScraper(QObject, ABC, metaclass=_Meta):
             self._logger.info("No data was found. Scrape complete.")
         else:
             total_cases = self.success_cases + self.failed_cases
-            self._logger.info(
-                textwrap.dedent(
-                    f"""
+            self._logger.info(textwrap.dedent(f"""
                 ---- Scrape Summary ----
                 - Total Cases Requested: {total_cases}
                     - Successfully Parsed: {self.success_cases} ({self.success_cases / (total_cases) * 100:.2f}%)
                     - Failed to Parse: {self.failed_cases} ({self.failed_cases / (total_cases) * 100:.2f}%)
                 - Total Collision Events Extracted: {self.total_events}
                 - Time Elapsed: {(datetime.now() - self.start_time).total_seconds():.2f}s
-                -------------------------"""
-                )
-            )
+                -------------------------"""))
 
         self.running = False
         self.completed.emit()

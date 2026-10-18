@@ -194,9 +194,7 @@ class EventsTab(BaseTab):
 
         if self._req_handler.contains_requests(
             Priority.IMMEDIATE.value, {"for": "images"}
-        ) or self._req_handler.contains_requests(
-            Priority.IMAGE.value, {"event": event}
-        ):
+        ) or self._req_handler.contains_requests(Priority.IMAGE.value, {"event": event}):
             self.ui.scrapeImgsBtn.setText("Scraping...")
             self.ui.scrapeImgsBtn.setEnabled(False)
             self.ui.stopBtn.setVisible(True)
@@ -276,8 +274,7 @@ class EventsTab(BaseTab):
 
         self._req_handler.enqueue_request(
             RequestQueueItem(
-                BaseScraper.ROOT
-                + str(scraper.case_url_raw).format(case_id=event.case_id),
+                BaseScraper.ROOT + str(scraper.case_url_raw).format(case_id=event.case_id),
                 priority=Priority.IMMEDIATE.value,
                 extra_data={"event": event, "for": request_purpose},
                 callback=callback,
@@ -289,9 +286,7 @@ class EventsTab(BaseTab):
         self._req_handler.clear_requests(Priority.IMMEDIATE.value, {"for": "images"})
 
         # Stops any requests for images themselves
-        self._req_handler.clear_requests(
-            Priority.IMAGE.value, {"event": self._current_index_event}
-        )
+        self._req_handler.clear_requests(Priority.IMAGE.value, {"event": self._current_index_event})
 
         self._update_event_btns(self._current_index_event)
 
@@ -337,9 +332,7 @@ class EventsTab(BaseTab):
 
         self._update_event_btns(event)
 
-    def _fetch_imgs_nass(
-        self, event: Event, request: RequestQueueItem, response: Response
-    ):
+    def _fetch_imgs_nass(self, event: Event, request: RequestQueueItem, response: Response):
         soup = BeautifulSoup(response.content, "xml")
         img_form = soup.find("IMGForm")
         cookie = response.headers.get("Set-Cookie", "")
@@ -391,9 +384,7 @@ class EventsTab(BaseTab):
         self.img_cache[event] = event_imgs
         self._req_handler.batch_enqueue(requests)
 
-    def _fetch_imgs_ciss(
-        self, event: Event, request: RequestQueueItem, response: Response
-    ):
+    def _fetch_imgs_ciss(self, event: Event, request: RequestQueueItem, response: Response):
         json_data: dict = response.json()
         photos = json_data.get("Photos")
 
@@ -503,9 +494,7 @@ class EventsTab(BaseTab):
 
         self._update_event_btns(event)
 
-    def _save_json_case(
-        self, event: Event, response: Response, raw_data_dir: Path, filename: str
-    ):
+    def _save_json_case(self, event: Event, response: Response, raw_data_dir: Path, filename: str):
         # Create a unique file name
         filename = filename + ".json"
         raw_data_path = raw_data_dir / filename
@@ -520,13 +509,9 @@ class EventsTab(BaseTab):
             data = json.dumps(data, indent=4)
             f.write(data)
 
-        self._logger.info(
-            f"Saved JSON case data for case {event.case_id} to {raw_data_path}"
-        )
+        self._logger.info(f"Saved JSON case data for case {event.case_id} to {raw_data_path}")
 
-    def _save_xml_case(
-        self, event: Event, response: Response, edr_data_dir: Path, filename: str
-    ):
+    def _save_xml_case(self, event: Event, response: Response, edr_data_dir: Path, filename: str):
         # Create a unique file name
         filename = filename + ".xml"
         raw_data_path = edr_data_dir / filename
@@ -540,9 +525,7 @@ class EventsTab(BaseTab):
             soup = BeautifulSoup(response.content, "xml")
             f.write(soup.prettify("utf-8"))
 
-        self._logger.info(
-            f"Saved XML case data for case {event.case_id} to {raw_data_path}"
-        )
+        self._logger.info(f"Saved XML case data for case {event.case_id} to {raw_data_path}")
 
     def _fetch_edr(self, request: RequestQueueItem, response: Response):
         event: Event = request.extra_data.get("event")
@@ -587,10 +570,7 @@ class EventsTab(BaseTab):
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
-        if (
-            button == QMessageBox.StandardButton.No
-            or button == QMessageBox.StandardButton.Escape
-        ):
+        if button == QMessageBox.StandardButton.No or button == QMessageBox.StandardButton.Escape:
             self._logger.debug("User chose not to save EDR data.")
             remove_path(edr_data_dir)
             return
@@ -618,10 +598,7 @@ class EventsTab(BaseTab):
 
         edr_docs = []
         for doc in docs:
-            if (
-                doc.get("DocTypeDesc") == "EDR"
-                and doc.get("VehNum") == event.vehicle_num
-            ):
+            if doc.get("DocTypeDesc") == "EDR" and doc.get("VehNum") == event.vehicle_num:
                 edr_docs.append(doc)
 
         if not edr_docs:
@@ -782,7 +759,9 @@ class ImageThumbnail(QWidget):
         self.save_button.setEnabled(False)
         self.save_button.setText("Saving...")
 
-        text = f"Case No: {event.case_id} - NASS DV: {event.NASS_dv:.4f} - TOT DV: {event.TOT_dv:.4f}"
+        text = (
+            f"Case No: {event.case_id} - NASS DV: {event.NASS_dv:.4f} - TOT DV: {event.TOT_dv:.4f}"
+        )
         draw = ImageDraw.Draw(self.image)
 
         width, height = self.image.size

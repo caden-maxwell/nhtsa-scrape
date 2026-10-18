@@ -75,9 +75,7 @@ class Event(Base):
     e: Mapped[int] = mapped_column()
     TOT_dv: Mapped[int] = mapped_column()
 
-    event_profile_associations: Mapped[List["ProfileEvent"]] = relationship(
-        back_populates="event"
-    )
+    event_profile_associations: Mapped[List["ProfileEvent"]] = relationship(back_populates="event")
 
     profiles: AssociationProxy[List["Profile"]] = association_proxy(
         "event_profile_associations",

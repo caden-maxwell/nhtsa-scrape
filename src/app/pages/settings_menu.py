@@ -58,9 +58,7 @@ class SettingsMenu(QWidget):
         self.rate_limit_changed.connect(self._req_handler.update_rate_limit)
         self.timeout_changed.connect(self._req_handler.update_timeout)
 
-        self.settings_path = (
-            Path(__file__).parent.parent / "resources" / "settings.json"
-        )
+        self.settings_path = Path(__file__).parent.parent / "resources" / "settings.json"
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
         self.settings_path.touch(exist_ok=True)
         self._logger.info(f"Loading settings from {self.settings_path}")
@@ -82,12 +80,8 @@ class SettingsMenu(QWidget):
                 error: ValidationError
                 if len(error.absolute_schema_path) > 1:
                     param = error.absolute_schema_path[1]
-                    self._logger.error(
-                        f"'{param}' in settings file is invalid: {error}"
-                    )
-                    tmp_settings[param] = self.SETTINGS_SCHEMA["properties"][param][
-                        "default"
-                    ]
+                    self._logger.error(f"'{param}' in settings file is invalid: {error}")
+                    tmp_settings[param] = self.SETTINGS_SCHEMA["properties"][param]["default"]
                     self._logger.debug(f"Set '{param}' to default value.")
             self._settings = tmp_settings
 
@@ -95,23 +89,17 @@ class SettingsMenu(QWidget):
             validate(self._settings, self.SETTINGS_SCHEMA)
             self.settings_path.write_text(json.dumps(self._settings, indent=4))
         except Exception as e:
-            self._logger.error(
-                f"Failed to load settings file: {e}. Using default settings."
-            )
+            self._logger.error(f"Failed to load settings file: {e}. Using default settings.")
 
-        self._logger.info(
-            f"Loaded settings:\n{json.dumps(self._settings, indent=4)}"
-        )
+        self._logger.info(f"Loaded settings:\n{json.dumps(self._settings, indent=4)}")
 
         self.ui.backBtn.clicked.connect(self.back.emit)
 
         # Set up debug mode checkbox
-        self.ui.debugCheckbox.setToolTip(
-            self.SETTINGS_SCHEMA["properties"]["debug"]["description"]
-        )
+        self.ui.debugCheckbox.setToolTip(self.SETTINGS_SCHEMA["properties"]["debug"]["description"])
         self.ui.debugCheckbox.setChecked(self._settings["debug"])
         self.ui.debugCheckbox.clicked.connect(self._toggle_debug)
-        
+
         # Update debug mode for the root logger
         self._set_logger_debug(self._settings["debug"])
 
@@ -148,13 +136,15 @@ class SettingsMenu(QWidget):
                 f"Failed to create data save path '{self._settings['dataSavePath']}': {e}"
             )
             # Set data save path to default
-            self._settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"]["dataSavePath"]["default"]
+            self._settings["dataSavePath"] = self.SETTINGS_SCHEMA["properties"]["dataSavePath"][
+                "default"
+            ]
             self.settings_path.write_text(json.dumps(self._settings, indent=4))
             self.ui.filenameEdit.setText(self._settings["dataSavePath"])
 
         self.ui.openBtn.clicked.connect(self._open_save_path)
 
-        self._logger.info(f"Successfully applied all settings.")
+        self._logger.info("Successfully applied all settings.")
 
     def _update_rate_limit(self, value):
         value = round(value, 2)
@@ -162,9 +152,7 @@ class SettingsMenu(QWidget):
         # Ensure minimum rate is no smaller than the absolute minimum
         min_rate_limit = self.SETTINGS_SCHEMA["properties"]["rateLimit"]["minimum"]
         if value < min_rate_limit:
-            self._logger.warning(
-                f"Rate limit set to {min_rate_limit}s to avoid site bans."
-            )
+            self._logger.warning(f"Rate limit set to {min_rate_limit}s to avoid site bans.")
             self.ui.rateLimitSpinBox.setValue(min_rate_limit)
             value = min_rate_limit
 

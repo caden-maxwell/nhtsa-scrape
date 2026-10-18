@@ -27,9 +27,7 @@ class MainWindow(QWidget):
         # Setup logger
         self._logs_window = LogsWindow()
         self._log_handler = QtLogHandler()
-        self._log_handler.setFormatter(
-            ColorFormatter("%(levelname)s - %(name)s - %(message)s")
-        )
+        self._log_handler.setFormatter(ColorFormatter("%(levelname)s - %(name)s - %(message)s"))
         self._log_handler.setLevel(logging.DEBUG)
         self._log_handler.log_message.connect(self._logs_window.handle_logger_message)
         logging.basicConfig(
@@ -49,9 +47,7 @@ class MainWindow(QWidget):
         self._settingsMenuPage = SettingsMenu(self._req_handler)
         data_dir = self._settingsMenuPage.get_save_path()
         self._scrapeMenuPage = ScrapeMenu(self._api, self._db_handler, data_dir)
-        self._profilesMenuPage = ProfileMenu(
-            self._req_handler, self._db_handler, data_dir
-        )
+        self._profilesMenuPage = ProfileMenu(self._req_handler, self._db_handler, data_dir)
         self.ui.stackedWidget.addWidget(self._mainMenuPage)
         self.ui.stackedWidget.addWidget(self._scrapeMenuPage)
         self.ui.stackedWidget.addWidget(self._profilesMenuPage)
@@ -64,9 +60,7 @@ class MainWindow(QWidget):
             self._settingsMenuPage.back,
         ]
         for btn in back_btns:
-            btn.connect(
-                lambda: self.ui.stackedWidget.setCurrentWidget(self._mainMenuPage)
-            )
+            btn.connect(lambda: self.ui.stackedWidget.setCurrentWidget(self._mainMenuPage))
 
         self._mainMenuPage.new.connect(
             lambda: self.ui.stackedWidget.setCurrentWidget(self._scrapeMenuPage)
@@ -79,12 +73,8 @@ class MainWindow(QWidget):
         )
         self._mainMenuPage.logs.connect(self._logs_window.show)
 
-        self._settingsMenuPage.save_path_changed.connect(
-            self._profilesMenuPage.data_dir_changed
-        )
-        self._settingsMenuPage.save_path_changed.connect(
-            self._scrapeMenuPage.data_dir_changed
-        )
+        self._settingsMenuPage.save_path_changed.connect(self._profilesMenuPage.data_dir_changed)
+        self._settingsMenuPage.save_path_changed.connect(self._scrapeMenuPage.data_dir_changed)
 
     def closeEvent(self, event: QCloseEvent):
         """Safely close all threads/processes"""

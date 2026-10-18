@@ -29,18 +29,10 @@ class ScatterTab(BaseTab):
         self._model = ScatterPlotModel(db_handler, profile)
         self._data_dir = data_dir
 
-        self.ui.nassDataBtn.clicked.connect(
-            lambda: self.btn_update(self.update_nass_data)
-        )
-        self.ui.nassLabelBtn.clicked.connect(
-            lambda: self.btn_update(self.update_nass_labels)
-        )
-        self.ui.totalDataBtn.clicked.connect(
-            lambda: self.btn_update(self.update_tot_data)
-        )
-        self.ui.totalLabelBtn.clicked.connect(
-            lambda: self.btn_update(self.update_tot_labels)
-        )
+        self.ui.nassDataBtn.clicked.connect(lambda: self.btn_update(self.update_nass_data))
+        self.ui.nassLabelBtn.clicked.connect(lambda: self.btn_update(self.update_nass_labels))
+        self.ui.totalDataBtn.clicked.connect(lambda: self.btn_update(self.update_tot_data))
+        self.ui.totalLabelBtn.clicked.connect(lambda: self.btn_update(self.update_tot_labels))
 
         self.figure, self.ax = plt.subplots()
         self.ax: plt.Axes
@@ -89,9 +81,7 @@ class ScatterTab(BaseTab):
         self.update_legend()
 
     def update_tot_labels(self):
-        visible = (
-            self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
-        )
+        visible = self.ui.totalLabelBtn.isChecked() and self.ui.totalLabelBtn.isEnabled()
         for label in self.tot_labels:
             label.set_visible(visible)
 
@@ -180,9 +170,7 @@ class ScatterTab(BaseTab):
 
         self.ax.set_xlabel("Crush (inches)", fontsize=20)
         self.ax.set_ylabel("Change in Velocity (mph)", fontsize=20)
-        self.ax.legend(
-            self.nass_legend + self.tot_legend, loc="upper left"
-        ).set_draggable(True)
+        self.ax.legend(self.nass_legend + self.tot_legend, loc="upper left").set_draggable(True)
 
         self.update_nass_data()
         self.update_tot_data()
@@ -210,9 +198,7 @@ class ScatterTab(BaseTab):
         box.setIcon(QMessageBox.Icon.Information)
         box.setText("Figure saved to:")
         box.setInformativeText(str(path))
-        box.setStandardButtons(
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open
-        )
+        box.setStandardButtons(QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Open)
         box.setDefaultButton(QMessageBox.StandardButton.Ok)
         button_result = box.exec()
 

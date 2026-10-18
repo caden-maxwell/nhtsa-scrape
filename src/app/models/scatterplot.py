@@ -9,7 +9,7 @@ class ScatterPlotModel:
 
         self.db_handler = db_handler
         self.profile = profile
-        
+
         self._case_ids = []
         self._x_data = []
         self._y1_data = []
@@ -28,9 +28,7 @@ class ScatterPlotModel:
         self._x_data = []
         self._y1_data = []
         self._y2_data = []
-        events: list[Event] = self.db_handler.get_events(
-            self.profile, include_ignored=False
-        )
+        events: list[Event] = self.db_handler.get_events(self.profile, include_ignored=False)
 
         for event in events:
             self._case_ids.append(float(event.case_id))
