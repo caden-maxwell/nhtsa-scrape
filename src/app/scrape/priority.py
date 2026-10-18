@@ -1,7 +1,7 @@
-import enum
+from enum import IntEnum
 
 
-class Priority(enum.Enum):
+class Priority(IntEnum):
     """Enum for request priorities. Lower integer is higher priority."""
 
     IMMEDIATE = 0  # For requests that need to be handled immediately
