@@ -362,7 +362,8 @@ class RequestHandler(QObject):
 
         if self.running:
             # New way of doing things
-            request.token.response_received.emit(response)
+            if request.token is not None:
+                request.token.response_received.emit(response)
 
             # Legacy; work to remove this old method
             self.response_received.emit(request, response)
