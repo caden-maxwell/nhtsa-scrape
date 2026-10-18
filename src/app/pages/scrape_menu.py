@@ -11,7 +11,6 @@ from PyQt6.QtWidgets import QWidget, QMessageBox, QComboBox, QRadioButton, QSpin
 from app.models import DatabaseHandler, Profile, Event
 from app.pages import DataView
 from app.scrape import (
-    RequestHandler,
     BaseScraper,
     ScraperNASS,
     ScraperCISS,
