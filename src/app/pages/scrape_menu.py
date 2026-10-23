@@ -12,8 +12,8 @@ from app.models import DatabaseHandler, Profile, Event
 from app.pages import DataView
 from app.scrape import (
     BaseScraper,
-    ScraperNASS,
-    ScraperCISS,
+    NassScraper,
+    CissScraper,
     ScraperAPI,
 )
 from app.ui import Ui_ScrapeMenu
@@ -64,7 +64,7 @@ class ScrapeMenu(QWidget):
         self.ui.stopBtn.setVisible(False)
 
         nass_model = _SearchModel(
-            scraper=ScraperNASS,
+            scraper=NassScraper,
             make_combo=self.ui.makeCombo,
             model_combo=self.ui.modelCombo,
             start_year_combo=self.ui.startYearCombo,
@@ -77,7 +77,7 @@ class ScrapeMenu(QWidget):
         )
 
         ciss_model = _SearchModel(
-            scraper=ScraperCISS,
+            scraper=CissScraper,
             make_combo=self.ui.makeCombo_2,
             model_combo=self.ui.modelCombo_2,
             start_year_combo=self.ui.startYearCombo_2,
@@ -90,7 +90,6 @@ class ScrapeMenu(QWidget):
         )
 
         # self._nhtsa_models = [ciss_model, nass_model]
-        # TODO: fix the broken CISS parsing
         self._nhtsa_models = [nass_model]
 
         self.ui.makeCombo.activated.connect(lambda: self.fetch_models(nass_model))

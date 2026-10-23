@@ -29,8 +29,8 @@ from app.scrape import (
     Priority,
     RequestQueueItem,
     BaseScraper,
-    ScraperNASS,
-    ScraperCISS,
+    NassScraper,
+    CissScraper,
 )
 from app.ui import Ui_EventsTab
 
@@ -266,9 +266,9 @@ class EventsTab(BaseTab):
 
         scraper: BaseScraper = None
         if event.scraper_type == "NASS":
-            scraper = ScraperNASS
+            scraper = NassScraper
         elif event.scraper_type == "CISS":
-            scraper = ScraperCISS
+            scraper = CissScraper
         else:
             self._logger.error(f"Unknown scraper type: {event.scraper_type}")
 
@@ -368,7 +368,7 @@ class EventsTab(BaseTab):
             requests.append(
                 RequestQueueItem(
                     BaseScraper.ROOT
-                    + str(ScraperNASS.img_url).format(
+                    + str(NassScraper.img_url).format(
                         img_id=img_id,
                         case_id=event.case_id,
                         version=img_element["version"],
@@ -428,7 +428,7 @@ class EventsTab(BaseTab):
 
             requests.append(
                 RequestQueueItem(
-                    BaseScraper.ROOT + str(ScraperCISS.img_url).format(obj_id=obj_id),
+                    BaseScraper.ROOT + str(CissScraper.img_url).format(obj_id=obj_id),
                     priority=Priority.IMAGE.value,
                     extra_data={"event": event},
                     callback=self._parse_image,
@@ -578,7 +578,7 @@ class EventsTab(BaseTab):
         self._req_handler.enqueue_request(
             RequestQueueItem(
                 BaseScraper.ROOT
-                + str(ScraperNASS.edr_url).format(
+                + str(NassScraper.edr_url).format(
                     veh_num=event.vehicle_num, edr_id=edr_id, case_id=event.case_id
                 ),
                 priority=Priority.IMMEDIATE.value,
@@ -636,7 +636,7 @@ class EventsTab(BaseTab):
             obj_id = doc.get("ObjectID")
             request = RequestQueueItem(
                 BaseScraper.ROOT
-                + str(ScraperCISS.edr_url).format(filename=filename, obj_id=obj_id),
+                + str(CissScraper.edr_url).format(filename=filename, obj_id=obj_id),
                 priority=Priority.IMMEDIATE.value,
                 extra_data={
                     "event": event,

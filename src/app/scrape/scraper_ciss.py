@@ -14,11 +14,10 @@ from app.scrape import (
     FieldNames,
     RequestHandler,
 )
-from app.resources import payload_CISS
 from app.models import Event
 
 
-class ScraperCISS(BaseScraper):
+class CissScraper(BaseScraper):
 
     search_url = "/CISS/SearchFilter"
     models_url = "/SCI/GetvPICVehicleModelbyMake/"
@@ -30,6 +29,50 @@ class ScraperCISS(BaseScraper):
     html_options_name = "div"
     html_options_id = "panel-options"
     _fuzz_threshold = 90
+    _payload = {
+        "Study": "CISS",
+        "CrashMonth": -1,
+        "CrashMinVehicleCount": -1,
+        "CrashMaxVehicleCount": -1,
+        "CrashSeverity": "",
+        "VehicleBodyCategory": "",
+        "VehicleDamageImpactPlane": "",
+        "VehicleDamageImpactSubSection": "",
+        "VehicleDamagePDOFFrom": "",
+        "VehicleDamagePDOFTo": "",
+        "VehicleDamageDeltaVFrom": "",
+        "VehicleDamageDeltaVTo": "",
+        "VehDeltaVUnit": 2,
+        "VehicleDamageBarrierSpeedFrom": "",
+        "VehicleDamageBarrierSpeedTo": "",
+        "VehBarrEquiSpeedUnit": 2,
+        "VehicleDamageRollover": False,
+        "VehicleDamageDataRecorder": False,
+        "OccupantAgeFrom": "",
+        "OccupantAgeTo": "",
+        "OccupantAgeTypeSelection": 1,
+        "OccupantSeatPosition": "",
+        "OccCrashSeverity": "",
+        "OccupantHeightFrom": "",
+        "OccupantHeightTo": "",
+        "OccupantHTypeSelection": 1,
+        "OccupantWeightFrom": "",
+        "OccupantWeightTo": "",
+        "OccupantWTypeSelection": 1,
+        "InjuryBodyRegion": "",
+        "InjuryAISorNASS": "",
+        "InjuryAIS_Min": "",
+        "InjuryAIS_Max": "",
+        "InjuryISS_Min": "",
+        "InjuryISS_Max": "",
+        "ManualBeltUsed": "",
+        "AirBagDeployed": "",
+        "AirBagLocation": "",
+        "ChildSeatUsed": -1,
+        "legacyCriteria": "",
+        "currentPage": 1,
+        "SearchStr": "",
+    }
 
     # CISS-specific dropdown field ids
     field_names = FieldNames(
@@ -56,8 +99,6 @@ class ScraperCISS(BaseScraper):
         max_dv,
     ):
         super().__init__(req_handler)
-
-        self._payload = payload_CISS.copy()
 
         # Named tuple to store the text and value of a dropdown option, as we may need both
         Option = namedtuple("Param", ["text", "value"])

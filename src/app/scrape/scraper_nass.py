@@ -13,11 +13,10 @@ from app.scrape import (
     FieldNames,
     RequestHandler,
 )
-from app.resources import payload_NASS
 from app.models import Event
 
 
-class ScraperNASS(BaseScraper):
+class NassScraper(BaseScraper):
 
     search_url = "/crashviewer/LegacyCDS/Search"
     models_url = "/crashviewer/LegacyCDS/GetVehicleModels/"
@@ -28,6 +27,51 @@ class ScraperNASS(BaseScraper):
     edr_url = "/crashviewer/nass-cds/CaseForm.aspx?ViewPage&xsl=VE.xsl&tab=EDR&form=VehicleExteriorForms&baseNode=&vehnum={veh_num}&occnum=-1&pos={edr_id}&pos2=-1&websrc=true&title=Vehicle%20%20Exterior%20-%20EDR&caseid={case_id}&year=&fullimage=false"
     html_options_name = "form"
     html_options_id = "SearchForm"
+    _payload = {
+        "ddlYear": -1,
+        "ddlMonth": -1,
+        "ddlMinVeh": -1,
+        "ddlMaxVeh": -1,
+        "ddlCrashCriteria": -1,
+        "ddlMake": -1,
+        "ddlModel": -1,
+        "ddlStartModelYear": -1,
+        "ddlBodyCategory": -1,
+        "ddlEndModelYear": -1,
+        "ddlPrimaryDamage": -1,
+        "tPDOFFrom": None,
+        "tPDOFTo": None,
+        "lSecondaryDamage": None,
+        "tDeltaVFrom": None,
+        "tDeltaVTo": None,
+        "rDeltaV": "mph",
+        "tBarrierFrom": None,
+        "tBarrierTo": None,
+        "rBarrier": "mph",
+        "tAgeFrom": None,
+        "tAgeTo": None,
+        "rAgeType": "Y",
+        "ddlSex": -1,
+        "lSeatPosition": -1,
+        "tHeightFrom": None,
+        "tHeightTo": None,
+        "tWeightFrom": None,
+        "tWeightTo": None,
+        "lBodyRegion": -1,
+        "tAIS": None,
+        "tMaxAISFrom": None,
+        "tMaxAISTo": None,
+        "tISSFrom": None,
+        "tISSTo": None,
+        "ddlManualBeltAvail": -1,
+        "ddlAirBagAvailable": -1,
+        "ddlAirBagLocation": -1,
+        "ddlAutomaticBeltAvail": -1,
+        "ddlAirBagDeployed": -1,
+        "ddlChildSeatUsed": -1,
+        "btnSubmit": "Submit2",
+        "currentPage": 1,
+    }
 
     # NASS-specific dropdown field ids
     field_names = FieldNames(
@@ -54,8 +98,6 @@ class ScraperNASS(BaseScraper):
         max_dv,
     ):
         super().__init__(req_handler)
-
-        self._payload = payload_NASS.copy()
 
         # Named tuple to store the text and value of a dropdown option, as we may need both
         Option = namedtuple("Param", ["text", "value"])
@@ -381,14 +423,14 @@ class ScraperNASS(BaseScraper):
             c_bar = CM_TO_IN * ((crush[0] + crush[5]) * 0.5 + sum(crush[1:5])) / 5
 
             # NASS DV
-            NASS_dv = float(total_dv) * KMPH_TO_MPH  # Convert to mph
+            nass_dv = float(total_dv) * KMPH_TO_MPH  # Convert to mph
 
             voi_curb_wgt *= KG_TO_LBS  # Convert to lbs
             a_curb_wgt = alt_data["a_curb_wgt"]
-            NASS_vc = NASS_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
+            nass_vc = nass_dv / (a_curb_wgt / (voi_curb_wgt + a_curb_wgt))
 
-            e = 0.5992 * np.exp(-0.1125 * NASS_vc + 0.003889 * NASS_vc**2 - 0.0001153 * NASS_vc**3)
-            TOT_dv = NASS_dv * (1.0 + e)
+            e = 0.5992 * np.exp(-0.1125 * nass_vc + 0.003889 * nass_vc**2 - 0.0001153 * nass_vc**3)
+            TOT_dv = nass_dv * (1.0 + e)
 
             self.event_parsed.emit(
                 Event(
@@ -423,8 +465,8 @@ class ScraperNASS(BaseScraper):
                     a_curb_wgt=round(a_curb_wgt, 2),
                     a_dmg_loc=alt_data["a_dmg_loc"],
                     c_bar=round(c_bar, 6),
-                    NASS_dv=round(NASS_dv, 6),
-                    NASS_vc=round(NASS_vc, 6),
+                    NASS_dv=round(nass_dv, 6),
+                    NASS_vc=round(nass_vc, 6),
                     e=round(e, 6),
                     TOT_dv=round(TOT_dv, 6),
                 ),

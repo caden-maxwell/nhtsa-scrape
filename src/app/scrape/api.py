@@ -7,8 +7,8 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from app.scrape.request_handler import RequestHandler, RequestQueueItem, ContextToken
 from app.scrape.priority import Priority
 from app.scrape.base_scraper import BaseScraper
-from app.scrape.scraper_nass import ScraperNASS
-from app.scrape.scraper_ciss import ScraperCISS
+from app.scrape.scraper_nass import NassScraper
+from app.scrape.scraper_ciss import CissScraper
 
 
 class APIResponseToken(ContextToken):
@@ -71,7 +71,7 @@ class ScraperAPI(QObject):
         token.response_received.connect(lambda data: self._parse_models(data, token))
 
         makeId = 0  # TODO
-        params = {"make": make} if scraper == ScraperNASS else {"makeIds": makeId}
+        params = {"make": make} if scraper == NassScraper else {"makeIds": makeId}
 
         # TODO: Probably handle with token context. Don't want to remove ALL of this priority
         self._req_handler.clear_requests(Priority.IMMEDIATE)
@@ -99,8 +99,8 @@ class ScraperAPI(QObject):
     def _match_scraper(self, scraper: str) -> BaseScraper:
         match scraper:
             case "NASS" | "nass":
-                return ScraperNASS
+                return NassScraper
             case "CISS" | "ciss":
-                return ScraperCISS
+                return CissScraper
             case _:
                 self._logger.error(f"Could not match name to scraper engine: {scraper}")
